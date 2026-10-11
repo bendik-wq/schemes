@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Takk, søknaden er mottatt | Asym</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header class="bar"><div class="wrap"><a class="brand" href="/">Asym<span>.</span></a></div></header>
+<div class="hero"><div class="wrap narrow">
+  <span class="eyebrow">Søknad mottatt</span>
+  <h1 id="hi">Takk. <em>Ett steg igjen.</em></h1>
+  <div id="book" style="display:none">
+    <p class="sub">Dere ser ut som en god match. Velg et tidspunkt for strategimøtet nå, så holder vi av plassen.</p>
+    <a class="btn" id="booklink" href="#" target="_blank" rel="noopener">VELG TIDSPUNKT →</a>
+  </div>
+  <div id="wait">
+    <p class="sub">Vi går gjennom søknaden og tar kontakt innen én virkedag.</p>
+  </div>
+  <div class="vsl" style="margin-top:34px">
+    <div class="ph"><div><div class="play"></div><strong>60 sekunder før møtet</strong><br><small>Hva som skjer nå, og hvordan dere får mest ut av møtet</small></div></div>
+  </div>
+  <div class="grid g3" style="text-align:left">
+    <div class="card"><span class="n">1</span><p><strong>Legg møtet i kalenderen nå.</strong> Vi har få plasser. Uteblir dere, går plassen videre.</p></div>
+    <div class="card"><span class="n">2</span><p><strong>Vi forbereder oss.</strong> Før møtet gjør vi en første analyse av bedriften deres. Den får dere uansett.</p></div>
+    <div class="card"><span class="n">3</span><p><strong>Ha tallene klare.</strong> Omsetning, antall ansatte og hva én ny kunde er verdt. Da kan vi regne på gevinsten sammen.</p></div>
+  </div>
+</div></div>
+<footer><div class="wrap"><span>© Asym</span></div></footer>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var url = q.get("book");
+    if (url && /^https:\/\//.test(url)) {
+      document.getElementById("book").style.display = "";
+      document.getElementById("wait").style.display = "none";
+      document.getElementById("booklink").href = url;
+    }
+    var name = q.get("name");
+    if (name) document.getElementById("hi").firstChild.textContent = "Takk, " + name.split(" ")[0] + ". ";
+  })();
+</script>
+</body>
+</html>
