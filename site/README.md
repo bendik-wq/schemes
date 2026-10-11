@@ -1,4 +1,6 @@
-# Landingssider: topp 3 tilbud (Cloudflare Pages)
+# Landingssider (Cloudflare Pages)
+
+Norske sider (`/`) for Bergen-tilbudene, engelske (`/en/`) for de tre globale flaggskipstilbudene i `offers/flagship-3-offers.md`.
 
 | Side | URL | Tilbud |
 |---|---|---|
@@ -6,6 +8,10 @@
 | `public/ki-synlighet/` | `/ki-synlighet/` | #1 KI-Synlighet Enterprise (fra 320k) |
 | `public/founder-content/` | `/founder-content/` | #2 Founder Content Engine (fra 32k/mnd) |
 | `public/takk/` | `/takk/` | Takkeside / book møte |
+| `public/en/authority/` | `/en/authority/` | Authority Engine, organic content (from $3k/mo) |
+| `public/en/founder-build/` | `/en/founder-build/` | Founder Build Program, Claude Code for founders ($30k) |
+| `public/en/executive-health/` | `/en/executive-health/` | Executive Health Office (from $30k/yr) |
+| `public/en/thanks/` | `/en/thanks/` | Engelsk takkeside |
 | `functions/api/apply.js` | `POST /api/apply` | Tar imot søknader og sender dem til webhook |
 
 Ingen byggesteg. Ren HTML/CSS/JS. Hver side følger VSL-strukturen: hook → video → «ikke din feil» → mekanisme → ROI-kalkulator → tidslinje → garanti → for/ikke for → FAQ → søknad i 4 steg → after-close.

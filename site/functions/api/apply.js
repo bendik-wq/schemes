@@ -5,7 +5,8 @@
 //   CALENDAR_URL       (valgfri) Calendly/Cal.com for kvalifiserte leads
 // Valgfritt: bind et KV-namespace som LEADS for å lagre kopi av hver søknad.
 
-const QUALIFIED_REVENUE = ["20-50", "50-200", "200+"];
+// Norske sider bruker MNOK-intervaller, engelske bruker USD.
+const QUALIFIED_REVENUE = ["20-50", "50-200", "200+", "1m-5m", "5m-20m", "20m+", "500k-1m", "1m+"];
 
 export async function onRequestPost({ request, env }) {
   let data;
@@ -16,12 +17,12 @@ export async function onRequestPost({ request, env }) {
   }
 
   // Enkel spam-felle (skjult felt) og påkrevde felt
-  if (data.website_hp) return json({ redirect: "/takk/" });
+  if (data.website_hp) return json({ redirect: "/takk/" }); // stille avvisning av bots
   for (const k of ["name", "email", "company"]) {
     if (!data[k] || String(data[k]).trim().length < 2) return json({ error: "Mangler " + k }, 400);
   }
 
-  const qualified = QUALIFIED_REVENUE.includes(data.revenue) && data.ready !== "nei";
+  const qualified = QUALIFIED_REVENUE.includes(data.revenue) && !["nei", "no"].includes(data.ready);
   const lead = {
     ...data,
     qualified,
@@ -43,9 +44,10 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Skjemaet er ikke koblet til ennå (WEBHOOK_URL mangler)" }, 500);
   }
 
+  const thanks = String(data.page || "").startsWith("/en/") ? "/en/thanks/" : "/takk/";
   const redirect = qualified && env.CALENDAR_URL
-    ? `/takk/?book=${encodeURIComponent(env.CALENDAR_URL)}&name=${encodeURIComponent(data.name)}`
-    : "/takk/";
+    ? `${thanks}?book=${encodeURIComponent(env.CALENDAR_URL)}&name=${encodeURIComponent(data.name)}`
+    : thanks;
   return json({ ok: true, redirect });
 }
 

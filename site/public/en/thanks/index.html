@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Thank you | Asym</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header class="bar"><div class="wrap"><a class="brand" href="/en/">Asym<span>.</span></a></div></header>
+<div class="hero"><div class="wrap narrow">
+  <span class="eyebrow">Application received</span>
+  <h1 id="hi">Thank you. <em>One step left.</em></h1>
+  <div id="book" style="display:none">
+    <p class="sub">You look like a strong fit. Pick a time for your call now and we will hold your spot.</p>
+    <a class="btn" id="booklink" href="#" target="_blank" rel="noopener">PICK A TIME →</a>
+  </div>
+  <div id="wait">
+    <p class="sub">We will review your application and contact you within one business day.</p>
+  </div>
+  <div class="vsl" style="margin-top:34px">
+    <div class="ph"><div><div class="play"></div><strong>60 seconds before your call</strong><br><small>What happens next, and how to get the most from the call</small></div></div>
+  </div>
+  <div class="grid g3" style="text-align:left">
+    <div class="card"><span class="n">1</span><p><strong>Add the call to your calendar.</strong> Spots are limited; missed calls are released.</p></div>
+    <div class="card"><span class="n">2</span><p><strong>We prepare.</strong> Before the call we do a first review of your situation. You keep it either way.</p></div>
+    <div class="card"><span class="n">3</span><p><strong>Come with your goals.</strong> The clearer the goal, the more useful the call.</p></div>
+  </div>
+</div></div>
+<footer><div class="wrap"><span>© Asym</span></div></footer>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var url = q.get("book");
+    if (url && /^https:\/\//.test(url)) {
+      document.getElementById("book").style.display = "";
+      document.getElementById("wait").style.display = "none";
+      document.getElementById("booklink").href = url;
+    }
+    var name = q.get("name");
+    if (name) document.getElementById("hi").firstChild.textContent = "Thank you, " + name.split(" ")[0] + ". ";
+  })();
+</script>
+</body>
+</html>
