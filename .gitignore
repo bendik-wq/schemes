@@ -1,1 +1,3 @@
 ads-data/
+node_modules/
+.wrangler/

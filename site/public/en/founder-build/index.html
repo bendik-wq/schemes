@@ -15,7 +15,7 @@
 
 <header class="bar"><div class="wrap">
   <a class="brand" href="/en/">Asym<span>.</span></a>
-  <a class="btn small" href="#apply">Apply for the next cohort</a>
+  <a class="btn small" href="#plan">Get a free build plan</a>
 </div></header>
 
 <div class="hero"><div class="wrap">
@@ -119,6 +119,25 @@
   <details><summary>Who owns what I build?</summary><p>You do. All code, all configuration, all of it.</p></details>
 </div></section>
 
+<section id="plan"><div class="wrap narrow">
+  <span class="ai-tag">Free · powered by Claude</span>
+  <h2>Describe the tool you wish existed. <em>Get the build plan.</em></h2>
+  <p class="lead">This generator runs on the Claude API, behind a serverless function built with Claude Code, the same workflow you'll learn. Describe your tool and get a realistic plan for your two Build Days.</p>
+  <form class="ai-box" data-ai="build-plan" data-cta="Build it with us in 6 weeks →" novalidate>
+    <input class="hp" name="website_hp" tabindex="-1" autocomplete="off">
+    <div class="row">
+      <div class="field"><label>Your company</label><input name="company" required maxlength="160" placeholder="e.g. 40-person logistics company"></div>
+      <div class="field"><label>Who will use it?</label><input name="users" required maxlength="160" placeholder="e.g. our sales team and 200 clients"></div>
+    </div>
+    <div class="field"><label>The tool you want</label><textarea name="tool" rows="3" required maxlength="600" placeholder="e.g. a client portal where customers see shipment status, documents and invoices"></textarea></div>
+    <div class="field"><label>Systems it must connect to (optional)</label><input name="systems" maxlength="300" placeholder="e.g. HubSpot, Xero, Google Sheets"></div>
+    <div class="field"><label>Email (we'll send you a copy)</label><input type="email" name="email" required autocomplete="email"></div>
+    <p class="err" aria-live="polite"></p>
+    <button class="btn" type="submit">Generate my build plan</button>
+  </form>
+  <div data-ai-out="build-plan" style="margin-top:24px"></div>
+</div></section>
+
 <section id="apply"><div class="wrap narrow">
   <h2 class="center">Apply for the next cohort</h2>
   <p class="lead center">Four short steps. If you're a fit, you'll book a 45-minute call where we map the first three tools you'll build.</p>
@@ -158,5 +177,6 @@
 
 <footer><div class="wrap"><span>© Asym</span><span>Claude and Claude Code are trademarks of Anthropic. Asym is not affiliated with or endorsed by Anthropic. Results vary.</span></div></footer>
 <script src="/assets/app.js"></script>
+<script src="/assets/ai.js"></script>
 </body>
 </html>

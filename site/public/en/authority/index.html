@@ -14,7 +14,7 @@
 
 <header class="bar"><div class="wrap">
   <a class="brand" href="/en/">Asym<span>.</span></a>
-  <a class="btn small" href="#apply">See if you qualify</a>
+  <a class="btn small" href="#hooks">Get 5 free hooks</a>
 </div></header>
 
 <div class="hero"><div class="wrap">
@@ -106,6 +106,25 @@
   <details><summary>Who owns the content?</summary><p>You. Every recording, clip and article, during and after the agreement.</p></details>
 </div></section>
 
+<section id="hooks"><div class="wrap narrow">
+  <span class="ai-tag">Free · powered by Claude</span>
+  <h2>Get your first 5 hooks <em>in 30 seconds</em></h2>
+  <p class="lead">Tell us who you are and who buys from you. Our AI strategist writes your positioning line, five opening hooks and three video ideas, the same way we start every client.</p>
+  <form class="ai-box" data-ai="hooks" data-cta="Turn these into 1,000,000 views →" novalidate>
+    <input class="hp" name="website_hp" tabindex="-1" autocomplete="off">
+    <div class="row">
+      <div class="field"><label>Your role</label><input name="role" required maxlength="120" placeholder="Founder, managing partner, surgeon…"></div>
+      <div class="field"><label>Industry / niche</label><input name="niche" required maxlength="160" placeholder="e.g. M&amp;A law for tech companies"></div>
+    </div>
+    <div class="field"><label>Who buys from you?</label><input name="audience" required maxlength="200" placeholder="e.g. founders of $5–50M SaaS companies preparing to sell"></div>
+    <div class="field"><label>Your strongest opinion (optional)</label><input name="angle" maxlength="300" placeholder="e.g. most founders sell too early"></div>
+    <div class="field"><label>Email (we'll send you a copy)</label><input type="email" name="email" required autocomplete="email"></div>
+    <p class="err" aria-live="polite"></p>
+    <button class="btn" type="submit">Generate my hooks</button>
+  </form>
+  <div data-ai-out="hooks" style="margin-top:24px"></div>
+</div></section>
+
 <section id="apply" class="alt"><div class="wrap narrow">
   <h2 class="center">See if you qualify</h2>
   <p class="lead center">Four short steps. If you're a fit, you'll book a 45-minute strategy call where we show you what your buyers see today.</p>
@@ -148,5 +167,6 @@
 
 <footer><div class="wrap"><span>© Asym</span><span>Guarantee covers views, not sales or revenue. Results vary.</span></div></footer>
 <script src="/assets/app.js"></script>
+<script src="/assets/ai.js"></script>
 </body>
 </html>
