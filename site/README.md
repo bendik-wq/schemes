@@ -12,9 +12,22 @@ Norske sider (`/`) for Bergen-tilbudene, engelske (`/en/`) for de tre globale fl
 | `public/en/founder-build/` | `/en/founder-build/` | Founder Build Program, Claude Code for founders ($30k) |
 | `public/en/executive-health/` | `/en/executive-health/` | Executive Health Office (from $30k/yr) |
 | `public/en/thanks/` | `/en/thanks/` | Engelsk takkeside |
+| `public/en/strength-span/` | `/en/strength-span/` | Strength Span: longevity, mobility, strength ($30k/yr) |
+| `functions/api/claude.js` | `POST /api/claude` | Claude-generatorer: hooks, byggeplan, healthspan-snapshot |
 | `functions/api/apply.js` | `POST /api/apply` | Tar imot søknader og sender dem til webhook |
 
 Ingen byggesteg. Ren HTML/CSS/JS. Hver side følger VSL-strukturen: hook → video → «ikke din feil» → mekanisme → ROI-kalkulator → tidslinje → garanti → for/ikke for → FAQ → søknad i 4 steg → after-close.
+
+## Live
+
+**https://asym-offers.pages.dev** (Cloudflare Pages-prosjekt `asym-offers`, deployet med `wrangler pages deploy`).
+
+Secrets som må settes (Cloudflare → Workers & Pages → asym-offers → Settings → Variables and Secrets, eller `npx wrangler pages secret put NAVN`):
+- `ANTHROPIC_API_KEY`: Claude API-nøkkel for generatorene (modell `claude-opus-5-5`, effort `low`, fallback `default`)
+- `WEBHOOK_URL`: hvor søknader og leads sendes (Zapier, Make, Slack, CRM)
+- `CALENDAR_URL` (valgfri): booking-link for kvalifiserte
+
+Anbefalt: bind et KV-namespace som `LEADS`, så aktiveres rate limiting (5 AI-generasjoner per IP per time). Vurder også Cloudflare Turnstile på generatorene før dere kjører annonser.
 
 ## Deploy
 
@@ -26,7 +39,8 @@ Ingen byggesteg. Ren HTML/CSS/JS. Hver side følger VSL-strukturen: hook → vid
 **Alternativ B: CLI**
 ```bash
 cd site
-npx wrangler pages deploy        # bruker wrangler.toml
+npm install
+npx wrangler pages deploy --branch main   # bruker wrangler.toml (prosjekt asym-offers)
 npx wrangler pages secret put WEBHOOK_URL
 ```
 
