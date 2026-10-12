@@ -32,6 +32,13 @@ T = {
   nodes=[("01 · FOUNDATION", "Claude Code, set up"), ("02 · FUNNELS", "VSL & applications"), ("03 · TRACKING", "Pixel + Conversions API"),
          ("04 · ADS", "Meta ads engine"), ("05 · SALES", "Sales command centre"), ("06 · SOFTWARE", "Your own tools")],
   core='Your<br><i>business</i>',
+  badge=("New", "Founding cohort · 8 seats"),
+  sys_desc=["Your workspace, project memory, skill library and guardrails, set up properly. The part everyone skips.",
+            "Video sales pages, multi-step applications, qualification and booking. Live by Build Day 2.",
+            "Every lead, call and sale sent to Meta from your server. Ads optimise on revenue, not clicks.",
+            "New hooks and creatives every week, tested against each other, with a clear scale-or-kill report.",
+            "Show-up, close rate, cost per call and ROAS in one view. Claude reviews every call.",
+            "Client portals, quoting tools and dashboards that replace subscriptions and retainers."],
   proc_eyebrow="Process", proc_h="How it works",
   proc=[("01", "Identify bottlenecks", "We audit your funnel, tracking, tools and spend, and find exactly where money leaks."),
         ("02", "Build your stack", "We set up Claude Code and build your funnels, tracking and dashboards live, with your team."),
@@ -96,6 +103,13 @@ T = {
   nodes=[("01 · FUNDAMENT", "Claude Code, satt opp"), ("02 · FUNNELS", "VSL og søknader"), ("03 · SPORING", "Pixel + Conversions API"),
          ("04 · ANNONSER", "Meta-annonsemotor"), ("05 · SALG", "Salgssentral"), ("06 · PROGRAMVARE", "Egne verktøy")],
   core='Din<br><i>bedrift</i>',
+  badge=("Nytt", "Founding-kull · 8 plasser"),
+  sys_desc=["Arbeidsmiljø, prosjektminne, skills-bibliotek og sikkerhetsrammer, satt opp riktig. Delen alle hopper over.",
+            "Salgssider med video, søknader i flere steg, kvalifisering og booking. I drift innen Build Day 2.",
+            "Hvert lead, hver samtale og hvert salg sendes til Meta fra deres server. Annonsene optimaliserer på omsetning.",
+            "Nye hooks og kreativer hver uke, testet mot hverandre, med en tydelig rapport om hva som skal skaleres.",
+            "Oppmøte, lukkerate, kostnad per samtale og ROAS i én visning. Claude går gjennom hver samtale.",
+            "Kundeportaler, tilbudsverktøy og dashboard som erstatter abonnementer og retainere."],
   proc_eyebrow="Prosess", proc_h="Slik fungerer det",
   proc=[("01", "Finn flaskehalsene", "Vi går gjennom funnel, sporing, verktøy og kostnader, og finner nøyaktig hvor pengene lekker."),
         ("02", "Bygg stacken", "Vi setter opp Claude Code og bygger funnels, sporing og dashboard live, sammen med teamet ditt."),
@@ -138,40 +152,33 @@ T = {
 ),
 }
 
-# Plassering av de seks nodene rundt kjernen (prosent av orbit-boksen)
-NODE_POS = [(50, 6), (91, 30), (91, 70), (50, 94), (9, 70), (9, 30)]
-
 def li(items): return "".join(f"<li>{x}</li>" for x in items)
-
-def wcard(t, body_html, hl=False):
-    head, tagline, text = t
-    return f'<div class="wcard rv{" hl" if hl else ""}"><div class="h"><span>{head}</span><em>{tagline}</em></div>{body_html}<p>{text}</p></div>'
 
 def page(t):
     no = t["lang"] == "nb"
     nav = "".join(f'<a href="{h}">{l}</a>' for h, l in t["nav"])
-    stats = "".join(f'<div class="stat rv"><div class="k">{k}</div><div class="v">{v}</div><p>{p}</p></div>' for k, v, p in t["stats"])
-    shift = "".join(f'<div class="icard rv"><div class="ico">{i}</div><h3>{h}</h3><p>{p}</p></div>' for i, h, p in t["shift"])
-    built = "".join(f"<span><b>{b}</b></span>" for b in t["built"])
-    nodes = "".join(f'<div class="node" style="left:{x}%;top:{y}%"><small>{a}</small><span>{b}</span></div>' for (x, y), (a, b) in zip(NODE_POS, t["nodes"]))
-    proc = "".join(f'<div class="rv"><span class="n">{n}</span><h3>{h}</h3><p>{p}</p></div>' for n, h, p in t["proc"])
-    term_cmd = "Bygg en VSL-side med søknad i 5 steg og Meta CAPI" if no else "Build a VSL page with a 5-step application and Meta CAPI"
-    mock_this = f'''<div class="mock"><span class="a">❯</span> {term_cmd}<br><span class="d">● {"leser" if no else "reading"} CLAUDE.md · skills/funnels</span><br><span class="g">✓</span> public/index.html<br><span class="g">✓</span> functions/api/apply.js<br><span class="g">✓</span> functions/api/claude.js<br><span class="a">→ {"deployet til produksjon" if no else "deployed to production"}</span></div>'''
-    mock_funnel = '<div class="mock"><div class="bar" style="width:70%"></div><div class="bar" style="width:45%"></div><div class="bar" style="width:90%;height:54px;background:#15120f"></div><div class="bar o"></div></div>'
-    mock_track = f'''<div class="mock"><div class="row"><span>Lead</span><span class="g">server ✓</span></div><div class="row"><span>Schedule</span><span class="g">server ✓</span></div><div class="row"><span>Purchase</span><span class="g">server ✓</span></div><div class="row"><span class="d">{"deduplisert" if no else "deduplicated"}</span><span class="a">event_id ✓</span></div></div>'''
-    mock_sales = f'''<div class="mock"><div class="kpis"><div><b>82%</b><span>{"oppmøte" if no else "show-up"}</span></div><div><b>31%</b><span>{"lukkerate" if no else "close rate"}</span></div><div><b>4.2×</b><span>ROAS</span></div></div><div class="spark"></div></div>'''
-    mock_ads = '<div class="mock"><div class="creatives"><div data-l="HOOK A"></div><div data-l="HOOK B"></div><div data-l="HOOK C"></div></div></div>'
-    mock_tools = f'''<div class="mock"><div class="row"><span>{"Kundeportal" if no else "Client portal"}</span><span class="g">live</span></div><div class="row"><span>{"Tilbudsverktøy" if no else "Quoting tool"}</span><span class="g">live</span></div><div class="row"><span>{"Ukesrapport" if no else "Weekly report"}</span><span class="g">live</span></div><div class="row"><span class="d">{"abonnementer sagt opp" if no else "subscriptions cancelled"}</span><span class="a">4</span></div></div>'''
-    wall = (wcard(t["w_this"], mock_this, hl=True) + wcard(t["w_funnel"], mock_funnel) + wcard(t["w_track"], mock_track)
-            + wcard(t["w_sales"], mock_sales) + wcard(t["w_ads"], mock_ads) + wcard(t["w_tools"], mock_tools))
+    stats = "".join(f'<div class="stat"><div class="k">{k}</div><div class="v">{v}</div><p>{p}</p></div>' for k, v, p in t["stats"])
+    cols = "".join(f'<div class="col rv"><div class="num">{i}</div><h3>{h}</h3><p>{p}</p></div>' for i, h, p in t["shift"])
+    built = "".join(f"<b>{b}</b>" for b in t["built"])
+    sysg = "".join(f'<div class="rv"><span class="n">{a.split(" · ")[0]}</span><h3>{b}</h3><p>{d}</p></div>' for (a, b), d in zip(t["nodes"], t["sys_desc"]))
+    steps = "".join(f'<div class="rv"><div class="dot">{n}</div><h3>{h}</h3><p>{p}</p></div>' for n, h, p in t["proc"])
+    cmd = "Bygg en VSL-side med søknad i 5 steg og Meta CAPI" if no else "Build a VSL page with a 5-step application and Meta CAPI"
+    mock_this = f'<div class="mock"><span class="b">❯</span> {cmd}<br><span class="d">● {"leser" if no else "reading"} CLAUDE.md · skills/funnels</span><br><span class="g">✓</span> public/index.html<br><span class="g">✓</span> functions/api/apply.js<br><span class="g">✓</span> functions/api/claude.js<br><span class="b">→ {"deployet til produksjon" if no else "deployed to production"}</span></div>'
+    mock_track = f'<div class="mock"><div class="row"><span>Lead</span><span class="g">server ✓</span></div><div class="row"><span>Schedule</span><span class="g">server ✓</span></div><div class="row"><span>Purchase</span><span class="g">server ✓</span></div><div class="row"><span class="d">{"deduplisert" if no else "deduplicated"}</span><span class="b">event_id ✓</span></div></div>'
+    mock_sales = f'<div class="mock" style="background:#fbfaf7"><div class="kpis"><div><b>82%</b><span>{"oppmøte" if no else "show-up"}</span></div><div><b>31%</b><span>{"lukkerate" if no else "close rate"}</span></div><div><b>4.2×</b><span>ROAS</span></div></div><div class="spark"></div></div>'
+    def pcard(t3, mock, feature=False):
+        h, tag, txt = t3
+        return f'<div class="pcard rv{" feature" if feature else ""}"><div class="h"><span>{h}</span><span>{tag}</span></div>{mock}<p>{txt}</p></div>'
+    proof = pcard(t["w_this"], mock_this, True) + pcard(t["w_track"], mock_track) + pcard(t["w_sales"], mock_sales)
     faq = "".join(f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in t["faq"])
     rev = "".join(f'<option value="{v}">{l}</option>' for v, l in t["rev_opts"])
     spend = "".join(f"<option>{o}</option>" for o in t["spend_opts"])
     goal = "".join(f'<label><input type="radio" name="goal" value="{o}" required> {o}</label>' for o in t["goal_opts"])
     ready = "".join(f'<label><input type="radio" name="ready" value="{v}" required> {l}</label>' for v, l in t["ready_opts"])
     secure = "".join(f"<span>{x}</span>" for x in t["secure"])
+    meta = "".join(f"<span>{m.strip()}</span>" for m in t["meta"].split("·"))
     s = t["s"]
-    return f'''<!doctype html>
+    return f"""<!doctype html>
 <html lang="{t["lang"]}">
 <head>
 <meta charset="utf-8">
@@ -180,7 +187,7 @@ def page(t):
 <meta name="description" content="{t["desc"]}">
 <meta property="og:title" content="{t["title"]}">
 <meta property="og:description" content="{t["desc"]}">
-<meta name="theme-color" content="#050505">
+<meta name="theme-color" content="#f7f6f2">
 <link rel="alternate" hreflang="en" href="/">
 <link rel="alternate" hreflang="nb" href="/no/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -189,63 +196,55 @@ def page(t):
 <link rel="stylesheet" href="/assets/op.css">
 </head>
 <body>
-<div class="strip"><a href="#apply">{t["strip"]} →</a></div>
+<div class="strip"><a href="#apply">{t["strip"].split("·")[0].strip()} · <b>{t["strip"].split("·")[1].strip()}</b> →</a></div>
 <header class="nav"><div class="wrap">
+  <a class="logo" href="/{t["path"]}"><i></i><strong>OPERATOR</strong></a>
   <nav class="l">{nav}</nav>
-  <a class="logo" href="/{t["path"]}"><i></i><strong>OPER<span>A</span>TOR</strong></a>
   <div class="r"><a class="lang" href="{t["other"]}">{t["other_label"]}</a><a class="btn sm" href="#apply">{t["nav_cta"]}</a></div>
 </div></header>
 
 <div class="hero"><div class="wrap">
+  <span class="badge"><b>{t["badge"][0]}</b>{t["badge"][1]}</span>
   <h1>{t["h1"]}</h1>
   <p class="tag">{t["tag"]}</p>
-  <a class="btn" href="#apply">{t["cta"]}</a>
-  <p class="meta">{t["meta"]}</p>
-  <div class="stats">{stats}</div>
+  <a class="btn" href="#apply">{t["cta"]} <span class="arr">→</span></a>
+  <div class="meta">{meta}</div>
 </div></div>
 
-<section class="shift"><div class="wrap center">
-  <h2 class="rv">{t["shift_h"]}</h2>
-  <div class="cards3">{shift}</div>
-  <div class="built rv"><span>{t["built_label"]}</span>{built}</div>
-</div></section>
-
-<section style="padding-top:20px"><div class="wrap center">
+<div class="vsl-wrap"><div class="wrap">
   <div class="vsl rv">
-    <!-- VSL: lim inn Cloudflare Stream / Vimeo iframe her -->
+    <!-- VSL: lim inn Cloudflare Stream / Vimeo iframe her (manus: copy/vsl-operator.md) -->
     <span class="sound">🔈 {t["vsl_sound"]}</span>
     <div class="ph"><div><div class="play"></div><strong>{t["vsl_title"]}</strong><small>{t["vsl_small"]}</small></div></div>
   </div>
-  <p style="margin-top:30px"><a class="btn" href="#apply">{t["cta"]}</a></p>
-</div></section>
-
-<hr class="glowline">
-
-<section class="roof" id="system"><div class="wrap">
-  <span class="eyebrow">{t["roof_eyebrow"]}</span>
-  <h2 class="rv" style="margin-top:14px">{t["roof_h"]}</h2>
-  <p class="lead narrow rv">{t["roof_lead"]}</p>
-  <div class="orbit rv"><div class="ring"></div><div class="ring r2"></div><div class="dots"></div><div class="core"><b>{t["core"]}</b></div>{nodes}</div>
-</div></section>
-
-<hr class="glowline">
-
-<section id="process"><div class="wrap">
-  <div class="center"><span class="eyebrow">{t["proc_eyebrow"]}</span><h2 class="rv" style="margin-top:14px">{t["proc_h"]}</h2></div>
-  <div class="process">{proc}</div>
-</div></section>
+  <div class="stats rv">{stats}</div>
+</div></div>
 
 <section><div class="wrap">
-  <div class="center"><span class="eyebrow">{t["wall_eyebrow"]}</span><h2 class="rv" style="margin-top:14px">{t["wall_h"]}</h2></div>
-  <div class="wall">{wall}</div>
-  <p class="center" style="margin-top:30px"><a class="btn" href="#apply">{t["cta"]}</a></p>
+  <div class="sec-head"><h2 class="rv">{t["shift_h"]}</h2></div>
+  <div class="cols3">{cols}</div>
+  <div class="built rv"><span class="lab">{t["built_label"]}</span>{built}</div>
 </div></section>
 
-<hr class="glowline">
+<section class="alt" id="system"><div class="wrap">
+  <div class="sec-head"><span class="eyebrow">{t["roof_eyebrow"]}</span><h2 class="rv">{t["roof_h"]}</h2><p class="lead rv">{t["roof_lead"]}</p></div>
+  <div class="sys">{sysg}</div>
+</div></section>
+
+<section id="process"><div class="wrap">
+  <div class="sec-head"><span class="eyebrow">{t["proc_eyebrow"]}</span><h2 class="rv">{t["proc_h"]}</h2></div>
+  <div class="steps">{steps}</div>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <div class="sec-head"><span class="eyebrow">{t["wall_eyebrow"]}</span><h2 class="rv">{t["wall_h"]}</h2></div>
+  <div class="proof">{proof}</div>
+  <p class="center" style="margin-top:44px"><a class="btn" href="#apply">{t["cta"]} <span class="arr">→</span></a></p>
+</div></section>
 
 <section id="plan"><div class="wrap narrow">
-  <div class="center"><span class="eyebrow">{t["ai_eyebrow"]}</span><h2 class="rv" style="margin-top:14px">{t["ai_h"]}</h2><p class="lead">{t["ai_lead"]}</p></div>
-  <div class="panel rv" style="margin-top:28px"><form data-ai novalidate>
+  <div class="sec-head"><span class="eyebrow">{t["ai_eyebrow"]}</span><h2 class="rv">{t["ai_h"]}</h2><p class="lead">{t["ai_lead"]}</p></div>
+  <div class="panel rv"><form data-ai novalidate>
     <input class="hp" name="website_hp" tabindex="-1" autocomplete="off">
     <div class="two"><div class="field"><label>{t["ai_company"]}</label><input name="company" required maxlength="160" placeholder="{t["ai_company_ph"]}"></div>
     <div class="field"><label>{t["ai_users"]}</label><input name="users" required maxlength="160" placeholder="{t["ai_users_ph"]}"></div></div>
@@ -258,7 +257,7 @@ def page(t):
   <div data-ai-out></div>
 </div></section>
 
-<section><div class="wrap">
+<section class="tight"><div class="wrap">
   <div class="fit">
     <div class="rv"><h3>{t["for_h"]}</h3><ul class="ticks">{li(t["for_l"])}</ul></div>
     <div class="rv"><h3>{t["not_h"]}</h3><ul class="ticks x">{li(t["not_l"])}</ul></div>
@@ -266,13 +265,13 @@ def page(t):
 </div></section>
 
 <section id="faq"><div class="wrap narrow">
-  <h2 class="center rv" style="font:700 clamp(30px,4vw,44px)/1.15 var(--sans);letter-spacing:-.02em;margin-bottom:34px">{t["faq_h"]}</h2>
-  {faq}
+  <div class="sec-head"><h2 class="rv">{t["faq_h"]}</h2></div>
+  <div class="faq">{faq}</div>
 </div></section>
 
-<section id="apply"><div class="wrap narrow">
-  <div class="center"><span class="eyebrow">{t["ap_eyebrow"]}</span><h2 class="rv" style="margin-top:14px">{t["ap_h"]}</h2><p class="lead">{t["ap_lead"]}</p></div>
-  <div class="panel" style="margin-top:28px"><form data-apply novalidate>
+<section id="apply" class="alt"><div class="wrap narrow">
+  <div class="sec-head"><span class="eyebrow">{t["ap_eyebrow"]}</span><h2 class="rv">{t["ap_h"]}</h2><p class="lead">{t["ap_lead"]}</p></div>
+  <div class="panel"><form data-apply novalidate>
     <input type="hidden" name="offer" value="operator">
     <input class="hp" name="website_hp" tabindex="-1" autocomplete="off">
     <div class="progress"><i></i><i></i><i></i><i></i><i></i></div>
@@ -300,15 +299,15 @@ def page(t):
 <section class="closer"><div class="wrap">
   <div class="wm" aria-hidden="true">{t["wm"]}</div>
   <h2>{t["close_h"]}</h2>
-  <p class="lead" style="position:relative">{t["close_sub"]}</p>
-  <a class="btn" href="#apply">{t["cta"]}</a>
+  <p class="lead">{t["close_sub"]}</p>
+  <a class="btn" href="#apply">{t["cta"]} <span class="arr">→</span></a>
 </div></section>
 
-<footer><div class="wrap"><div><b>OPERATOR</b><br>{t["foot_l"]}</div><div>{t["foot_r"]}</div></div></footer>
+<footer><div class="wrap"><div><strong>OPERATOR</strong><br>{t["foot_l"]}</div><div>{t["foot_r"]}</div></div></footer>
 <script src="/assets/op.js"></script>
 </body>
 </html>
-'''
+"""
 
 THANKS = {
   "en": dict(lang="en", file="thanks/index.html", home="/", title="Application received", h="Application received.<br><em>One step left.</em>",
@@ -322,19 +321,19 @@ THANKS = {
 }
 
 def thanks(t):
-    tips = "".join(f'<div class="icard"><div class="ico">{n}</div><p style="color:var(--text)">{x}</p></div>' for n, x in t["tips"])
+    tips = "".join(f'<div class="col"><div class="num">{n}</div><p>{x}</p></div>' for n, x in t["tips"])
     return f'''<!doctype html>
 <html lang="{t["lang"]}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>{t["title"]} · Operator</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/op.css"></head>
-<body><header class="nav"><div class="wrap" style="grid-template-columns:1fr"><a class="logo" href="{t["home"]}"><i></i><strong>OPER<span>A</span>TOR</strong></a></div></header>
+<body><header class="nav"><div class="wrap"><a class="logo" href="{t["home"]}"><i></i><strong>OPERATOR</strong></a></div></header>
 <div class="hero"><div class="wrap narrow">
   <h1 style="font-size:clamp(42px,7vw,76px)">{t["h"]}</h1>
   <div id="book" style="display:none"><p class="tag">{t["book"]}</p><a class="btn" id="booklink" href="#" target="_blank" rel="noopener">{t["bookbtn"]}</a></div>
   <p class="tag" id="wait">{t["wait"]}</p>
 </div></div>
-<section><div class="wrap"><div class="cards3">{tips}</div></div></section>
+<section><div class="wrap"><div class="cols3">{tips}</div></div></section>
 <script>(function(){{var q=new URLSearchParams(location.search),u=q.get("book");if(u&&/^https:\\/\\//.test(u)){{document.getElementById("book").style.display="";document.getElementById("wait").style.display="none";document.getElementById("booklink").href=u;}}}})();</script>
 </body></html>
 '''

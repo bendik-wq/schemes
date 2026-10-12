@@ -7,6 +7,10 @@
   var fmt = new Intl.NumberFormat(T.loc);
   function money(v) { return NO ? fmt.format(Math.round(v)) + " kr" : "$" + fmt.format(Math.round(v)); }
 
+  // Nav-skygge ved scroll
+  var navEl = document.querySelector(".nav");
+  if (navEl) { var onS = function () { navEl.classList.toggle("scrolled", window.scrollY > 8); }; window.addEventListener("scroll", onS, { passive: true }); onS(); }
+
   // Reveal on scroll
   var io = "IntersectionObserver" in window ? new IntersectionObserver(function (es) {
     es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
