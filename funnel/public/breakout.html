@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/site.css">
+<script id="op-cfg" type="application/json">{}</script>
+<script src="/assets/f.js" defer></script>
+<noscript><style>body.gated .reveal{display:block!important}.locked{display:none!important}</style></noscript>
+<script src="/assets/vsl.js" defer></script>
+<title>Next step · Operator</title>
+</head>
+<body class="page-breakout">
+<header class="nav"><div class="wide">
+  <a class="brand" href="/" aria-label="Operator home"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor"/><path d="M7.5 12a4.5 4.5 0 1 0 9 0 4.5 4.5 0 1 0-9 0Z" fill="none" stroke="#fff" stroke-width="2.2"/></svg><strong>Operator</strong></a>
+  <a class="btn sm" data-when="open" href="/book">Pick a time</a>
+</div></header>
+<main>
+  <section class="hero compact">
+    <div class="wrap">
+      <p class="eyebrow" data-slot="eyebrow"></p>
+      <h1 class="h2" data-slot="h1"></h1>
+      <p class="sub" data-slot="sub"></p>
+      <div class="ctas" data-when="join"><a class="btn" href="/go/join">Join the call</a><a class="link" href="/go/reschedule">Reschedule</a></div>
+    </div>
+  </section>
+  <section class="film" data-section="video">
+    <div class="wide">
+      <div class="player" data-player>
+        <video playsinline muted preload="metadata"></video>
+        <div class="poster" aria-hidden="true"><p class="poster-title">A short video before we speak</p></div>
+        <button class="listen" type="button" hidden><span class="listen-icon" aria-hidden="true"></span><span>Click to listen</span></button>
+        <div class="bar" aria-hidden="true"><i></i></div>
+      </div>
+    </div>
+  </section>
+  <section data-when="booked">
+    <div class="wrap narrow">
+      <header class="sec-head left"><p class="kicker">Before the call</p><h2 class="h3">Three things to prepare.</h2></header>
+      <ol class="prep" data-slot="prep"></ol>
+    </div>
+  </section>
+  <section data-when="open" class="cta-band">
+    <div class="wrap">
+      <h2 class="h3">Ready when you are.</h2>
+      <div class="ctas"><a class="btn lg" href="/book">Pick a time for your call</a></div>
+      <p class="assure">Price is covered on the call, once we know the scope.</p>
+    </div>
+  </section>
+  <section class="paper" data-section="faq">
+    <div class="wrap narrow">
+      <header class="sec-head"><p class="kicker">Questions</p><h2 class="h3">What founders ask before the call.</h2></header>
+      <div class="faqs" data-slot="faq"></div>
+    </div>
+  </section>
+  <section class="black guarantee slim" data-section="guarantee">
+    <div class="wrap"><p class="g-line" data-slot="guarantee"></p></div>
+  </section>
+  <section class="wa" data-section="whatsapp">
+    <div class="wrap"><p>Something to ask first? <a data-wa href="/go/wa">Message Bendik on WhatsApp</a></p></div>
+  </section>
+</main>
+<footer class="foot"><div class="wrap">
+  <p class="legal" data-slot="disclaimer">Operator is an independent program by Asym. Not affiliated with or endorsed by Anthropic.</p>
+  <p class="foot-row"><span>© <span data-slot="year">2026</span> <span data-slot="company">Asym</span></span><a href="/privacy">Privacy</a><button type="button" class="linkish" data-cookie-settings>Cookie settings</button></p>
+</div></footer>
+</body>
+</html>

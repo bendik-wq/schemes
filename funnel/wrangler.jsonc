@@ -1,0 +1,37 @@
+{
+  // Operator funnel + Funnel HQ. One Worker, one D1 database, a 5-minute cron.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "operator-funnel",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // The Worker runs first for every route except static assets, so it can write the
+  // page view server-side, set first-party cookies and fill the templates.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "html_handling": "none",
+    "not_found_handling": "none",
+    "run_worker_first": ["/*", "!/assets/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "operator-funnel",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  "triggers": { "crons": ["*/5 * * * *"] },
+
+  // Non-secret defaults. Secrets go in `wrangler secret put` or the Integrations tab.
+  "vars": {
+    "SITE_NAME": "",
+    "PUBLIC_URL": "",
+    "SALES_TIMEZONE": "Europe/Oslo"
+  }
+}

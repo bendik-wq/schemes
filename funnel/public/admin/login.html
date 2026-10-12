@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="light dark">
+  <title>Sign in · Funnel HQ</title>
+  <link rel="stylesheet" href="/assets/admin.css">
+  <script src="/assets/admin.js" defer></script>
+</head>
+<body data-page="login">
+  <main class="login">
+    <div class="login-card">
+      <span class="brand-mark" aria-hidden="true">O</span>
+      <h1 class="login-title">Funnel HQ</h1>
+      <p class="login-sub">Sign in to see your funnel, leads and sales.</p>
+      <form class="login-form" method="post" action="/admin/login">
+        <div class="login-error" id="login-error" role="alert" hidden>Wrong password. Try again.</div>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input class="input" type="password" name="password" autocomplete="current-password" required autofocus>
+        </label>
+        <button class="btn btn-primary" type="submit">Sign in</button>
+      </form>
+      <p class="login-foot">Operator by Asym · private dashboard</p>
+    </div>
+  </main>
+</body>
+</html>
