@@ -76,6 +76,18 @@ Then open `/admin` → **Integrations** and connect what you have. **Never paste
 
 ## Security notes
 
-Stranger-typed text is escaped and defanged once, in the dossier, before any email, chat ping or voice prompt. Webhooks fail closed (501 without a secret, HMAC over the raw body, replay windows). Admin sessions are HMAC-signed, revocable and same-origin only, with a strict CSP. Calls and conversions only follow verified bookings. Imported contacts never get marketing. See `test/security.test.ts` for the regression tests.
+The build went through an adversarial review: four specialist reviewers (admin auth, webhooks and public API, privacy and compliance, XSS and injection), then two skeptics who tried to break the fixes. Everything they confirmed is fixed and has a regression test in `test/security.test.ts` or `test/core.test.ts`.
 
-Residual decisions: no SMS OTP before AI calls (consent, caps and the country allowlist reduce wrong-number risk); a shared admin password with no audit log (use Cloudflare Access); Turnstile is recommended against sign-up email bombing.
+- Stranger-typed text is escaped and defanged once, in the dossier, before any email, chat ping or voice prompt. The voice agent only ever gets a first name and an industry label from our own list.
+- Webhooks fail closed: 501 without a secret, HMAC over the raw body, replay windows.
+- Bookings matched only by an email address update fields but send nothing, call no one and report nothing to ad platforms until the lead's own browser or an admin confirms them. Side effects run exactly once.
+- AI calls: consent per number, a toll-fraud allowlist (no premium, personal or Caribbean numbers), calling hours across every time zone of the phone's country (stricter windows for Canada and the UAE), do-not-call per number that survives erasure, a callback number in every call and voicemail.
+- Consent: nothing reaches Meta, GA4 or PostHog in the EU/EEA/UK/Norway/Switzerland before an explicit yes; a "no" is honoured everywhere; fonts are self-hosted.
+- Admin: signed revocable sessions, same-origin writes, strict CSP, per-IP lockout.
+
+**Before launch, do these three things:**
+1. Put **Cloudflare Access** (SSO) in front of `/admin*`. The password lockout is per IP; Access is what stops a distributed attack.
+2. Turn on **Turnstile** (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`) so scripts can't mass-create applications.
+3. Lock **Twilio and ElevenLabs geo permissions** to the countries you serve and set spend limits.
+
+Residual decisions: no SMS one-time code before AI calls (consent, caps and the number allowlist reduce wrong-number risk); one shared admin password with no audit log (Access fixes both); US territories (Puerto Rico, Guam, USVI) are not called.

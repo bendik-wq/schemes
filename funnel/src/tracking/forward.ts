@@ -79,7 +79,7 @@ async function prepare(rt: Runtime, ev: ForwardEvent): Promise<Prepared[]> {
     who.fbp ||= ctx.fbp;
     who.fbc ||= ctx.fbc;
     who.country ||= ctx.country;
-    if (adsAllowed === undefined) adsAllowed = !consentRequiredFor(rt, ctx.country) || ctx.consent === "granted";
+    if (adsAllowed === undefined) adsAllowed = ctx.consent !== "denied" && (!consentRequiredFor(rt, ctx.country) || ctx.consent === "granted");
   }
   if (adsAllowed === undefined) adsAllowed = !consentRequiredFor(rt, who.country ?? null);
   // Historical imports never produce ad conversions.
@@ -125,8 +125,8 @@ async function prepare(rt: Runtime, ev: ForwardEvent): Promise<Prepared[]> {
     out.push({
       dest: "ga4",
       url: `https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(s.get("GA4_MEASUREMENT_ID"))}&api_secret=${encodeURIComponent(s.get("GA4_API_SECRET"))}`,
-      body: { client_id: who.visitorId, user_id: lead?.id, events: [{ name: def.ga4, params }] },
-      matchKeys: ["client_id", ...(lead ? ["user_id"] : [])],
+      body: { client_id: who.visitorId, events: [{ name: def.ga4, params }] },
+      matchKeys: ["client_id"],
     });
   }
 

@@ -7,10 +7,12 @@ import { AI_CALLER, BRAND, FAQS, OUTBOUND_FIRST_MESSAGE, inboundSystemPrompt, ou
 import { hmacHex, safeEqual } from "../lib/crypto";
 import { newId } from "../lib/ids";
 import { callingZones, phoneCountry } from "../lib/phone";
-import { safeBusiness, safeFirstName, clip } from "../lib/text";
+import { safeFirstName, clip } from "../lib/text";
+import { getIndustry, inferIndustry } from "../landers/catalog";
 import { getLead, updateLead, effectiveTier, type Lead } from "../funnel/leads";
 import { getRep } from "../sales/reps";
 import { saveSetting } from "../settings";
+import { isSuppressed, suppress } from "../lib/suppress";
 import { track } from "../tracking/track";
 import { callableCountry, nextCallingTime } from "./calling-rules";
 import { formatCallTime, leadTimezone, sendOneOff } from "./email";
@@ -58,7 +60,7 @@ export function isStale(lead: Lead, kind: CallKind, runAt: number, createdAt: nu
 export async function numberOnDnc(rt: Runtime, phone: string | null): Promise<boolean> {
   if (!phone) return false;
   const r = await rt.env.DB.prepare("SELECT 1 AS x FROM leads WHERE phone = ? AND do_not_call_at IS NOT NULL LIMIT 1").bind(phone).first();
-  return !!r;
+  return !!r || (await isSuppressed(rt, "phone", phone));
 }
 
 export async function queueCall(rt: Runtime, lead: Lead, kind: Exclude<CallKind, "test">): Promise<{ queued: boolean; reason?: string }> {
@@ -114,9 +116,12 @@ export async function dynamicVariables(rt: Runtime, lead: Lead | null, kind: Cal
   const closer = safeFirstName(rep?.name || BRAND.founder, BRAND.founder);
   const tz = lead ? await leadTimezone(rt, lead) : "UTC";
   const callTime = lead?.call_at ? formatCallTime(lead.call_at, tz) : "your call";
+  // Never the free-text business answer: only a label from our own industry list.
   let business = "";
   if (lead) {
-    try { business = safeBusiness(JSON.parse(lead.answers || "{}").business); } catch { business = ""; }
+    let text = "";
+    try { text = String(JSON.parse(lead.answers || "{}").business || ""); } catch { text = ""; }
+    business = (getIndustry(lead.industry) || inferIndustry(text))?.label || "";
   }
   return {
     first_name: safeFirstName(lead?.first_name),
@@ -292,6 +297,7 @@ export async function handlePostCall(rt: Runtime, body: PostCall): Promise<{ ok:
 
   if (structured.do_not_call === true) {
     await updateLead(rt, lead.id, { do_not_call_at: now });
+    await suppress(rt, "phone", lead.phone);
     await cancelCalls(rt, lead.id, ["confirm", "speed_to_lead", "rebook"]);
   }
   if (!answered && call.attempts < AI_CALLER.maxAttempts && structured.do_not_call !== true) {

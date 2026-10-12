@@ -25,6 +25,8 @@ export interface BookingInfo {
   answers?: Array<{ q: string; a: string }> | null;
   /** "strong" = matched by our lead id (salesforce_uuid); "email" = email-only match; "none" = unverified browser claim. */
   verified: "strong" | "email" | "none";
+  /** This booking replaces the lead's previous one (a Calendly reschedule): it inherits that booking's verification. */
+  replaces?: boolean;
 }
 
 const SAFE_HOSTS = /^(?:[a-z0-9-]+\.)*(zoom\.us|zoom\.com|meet\.google\.com|teams\.microsoft\.com|teams\.live\.com|calendly\.com|cal\.com|whereby\.com|webex\.com|around\.co|riverside\.fm)$/i;
@@ -39,6 +41,10 @@ export function safeExternalUrl(u: string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+function historical0(lead: Pick<Lead, "booking_source" | "call_at">, now: number) {
+  return isHistorical(lead, now);
 }
 
 /** Imported or old bookings: field updates only, never side effects. */
@@ -59,14 +65,20 @@ export async function markBooked(rt: Runtime, lead: Lead, b: BookingInfo): Promi
   const host = await getRepByEmail(rt, b.hostEmail);
   if (host) fields.closer_id = host.id;
 
+  if (b.replaces && lead.booking_verified) b = { ...b, verified: "strong" };
   const sameRef = lead.booking_ref === b.ref && !lead.booking_cancelled_at;
   // A booking matched only by email never replaces a different live booking (it may not be them).
   const liveOther = !!lead.booking_ref && lead.booking_ref !== b.ref && !lead.booking_cancelled_at && !!lead.call_at && lead.call_at > now;
-  if (b.verified !== "strong" && liveOther) return "noop";
+  if (b.verified !== "strong" && liveOther && !b.replaces) return "noop";
   const timeChanged = !!b.callAt && b.callAt !== lead.call_at;
 
   if (sameRef && !timeChanged) {
     await updateLead(rt, lead.id, fields);
+    // The lead's own proof arrived after an email-only claim: upgrade and start the reminders once.
+    if (b.verified === "strong" && !lead.booking_verified && !historical0(lead, now)) {
+      const up = await rt.env.DB.prepare("UPDATE leads SET booking_verified = 1 WHERE id = ? AND booking_verified = 0").bind(lead.id).run();
+      if (up.meta?.changes) { const f = await getLead(rt, lead.id); if (f) await confirmBooking(rt, f); return "booked"; }
+    }
     return "noop";
   }
 
@@ -75,7 +87,7 @@ export async function markBooked(rt: Runtime, lead: Lead, b: BookingInfo): Promi
 
   if (sameRef && timeChanged) {
     await updateLead(rt, lead.id, { ...fields, call_at: b.callAt });
-    if (historical || b.verified !== "strong") return "updated";
+    if (historical || !lead.booking_verified) return "updated";
     const fresh = (await getLead(rt, lead.id))!;
     await enqueueSequence(rt, fresh, "booked");
     await enqueueSequence(rt, fresh, "precall");
@@ -97,6 +109,7 @@ export async function markBooked(rt: Runtime, lead: Lead, b: BookingInfo): Promi
     call_at: b.callAt,
     booked_at: lead.booked_at && !lead.booking_cancelled_at ? lead.booked_at : now,
     status,
+    booking_verified: b.verified === "strong" ? 1 : 0,
   });
   if (historical) return "updated";
   const fresh = (await getLead(rt, lead.id))!;
@@ -113,7 +126,7 @@ export async function markBooked(rt: Runtime, lead: Lead, b: BookingInfo): Promi
   await enqueueSequence(rt, fresh, "booked");
   await enqueueSequence(rt, fresh, "precall");
   const tier = effectiveTier(fresh) || "B";
-  const eventId = "e" + (await sha256Hex("booking|" + b.ref)).slice(0, 19);
+  const eventId = "e" + (await sha256Hex(`booking|${b.provider}|${lead.id}|${b.ref}|${b.callAt ?? ""}`)).slice(0, 19);
   await track(rt, { leadId: lead.id }, { name: "booking_scheduled", source: "webhook", props: { provider: b.provider, tier }, value: TIER_VALUE[tier], currency: "USD", eventId });
   return "booked";
 }
@@ -121,6 +134,7 @@ export async function markBooked(rt: Runtime, lead: Lead, b: BookingInfo): Promi
 /** Admin confirmed an email-only booking: run the side effects a verified booking gets. */
 export async function confirmBooking(rt: Runtime, lead: Lead): Promise<boolean> {
   if (lead.status !== "booked" || !lead.call_at || lead.booking_cancelled_at || isHistorical(lead, rt.now())) return false;
+  await rt.env.DB.prepare("UPDATE leads SET booking_verified = 1 WHERE id = ?").bind(lead.id).run();
   await cancelSequences(rt, lead.id, CANCEL_ON_BOOKING);
   await cancelCalls(rt, lead.id, ["speed_to_lead", "rebook"]);
   await queueCall(rt, lead, "confirm");

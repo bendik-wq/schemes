@@ -8,6 +8,7 @@ import { newId, refCode } from "../lib/ids";
 import { kvGate, kvGet, kvIncr } from "../lib/kv";
 import { normalizePhone, countryTimezone } from "../lib/phone";
 import { clip } from "../lib/text";
+import { isSuppressed } from "../lib/suppress";
 import { track, whoFromIdentity } from "../tracking/track";
 import { getLead, getLeadByEmail, parseAnswers, updateLead, effectiveTier, type Answers, type Lead } from "./leads";
 import { scoreApplication } from "./scoring";
@@ -129,6 +130,11 @@ export async function saveContact(rt: Runtime, id: Identity, input: ContactInput
 
   const leadId = newId("l");
   const ref = refCode();
+  const emailSuppressed = await isSuppressed(rt, "email", email);
+  // Consent is per number and per person: a number already used by another lead this month cannot be
+  // consented again from a fresh email (stops one person signing someone else up for calls).
+  const shared = await rt.env.DB.prepare("SELECT 1 AS x FROM leads WHERE phone = ? AND created_at > ? LIMIT 1").bind(phone, now - 30 * 86_400_000).first();
+  const consentOk = consent && !shared;
   const { s, cur, v, ftLander } = await lastTouch(rt, id);
   const lander = cur?.lander || id.lander || null;
   await rt.env.DB.prepare(
@@ -144,10 +150,11 @@ export async function saveContact(rt: Runtime, id: Identity, input: ContactInput
     v?.ft_channel ?? null, v?.ft_source ?? null, v?.ft_medium ?? null, v?.ft_campaign ?? null, v?.ft_content ?? null, v?.ft_term ?? null,
     v?.ft_referrer ?? null, v?.ft_landing ?? null, cur?.landing_path ?? null, id.variant, lander, ftLander,
     id.geo.country, id.geo.region, id.geo.city, id.device, id.fbp, id.fbc,
-    consent ? now : null, consent ? `${CALL_CONSENT.version}: ${CALL_CONSENT.label}` : null, countryTimezone(id.geo.country),
+    consentOk ? now : null, consentOk ? `${CALL_CONSENT.version}: ${CALL_CONSENT.label}` : null, countryTimezone(id.geo.country),
   ).run();
   await linkVisitorToLead(rt, id.visitorId, leadId);
   id.leadId = leadId;
+  if (emailSuppressed) await updateLead(rt, leadId, { unsubscribed_at: now });
   const lead = (await getLead(rt, leadId))!;
   await track(rt, { ...who, leadId }, { name: "lead_captured", props: { step: 1 } });
   await enqueueSequence(rt, lead, "abandoned");

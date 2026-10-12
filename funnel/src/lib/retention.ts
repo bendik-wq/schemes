@@ -20,6 +20,10 @@ export async function purgeOld(rt: Runtime, force = false): Promise<{ events: nu
   // Call transcripts and WhatsApp bodies: 13 months. Whole records of people we never worked with: 6 years.
   await rt.env.DB.prepare("UPDATE voice_calls SET transcript = NULL, recording_url = NULL WHERE created_at < ?").bind(cutoff).run();
   await rt.env.DB.prepare("UPDATE whatsapp_messages SET body = NULL WHERE created_at < ?").bind(cutoff).run();
+  // Short-lived counters (rate limits, login failures, gates) older than two days.
+  await rt.env.DB.prepare("DELETE FROM kv_state WHERE (key LIKE 'rl:%' OR key LIKE 'login_fail:%' OR key LIKE 'continue%' OR key LIKE 'triggers:%') AND updated_at < ?").bind(rt.now() - 2 * DAY).run();
+  await rt.env.DB.prepare("UPDATE visitors SET ft_landing = NULL, ft_click_id = NULL WHERE last_seen_at < ?").bind(cutoff).run();
+  await rt.env.DB.prepare("UPDATE sessions SET click_id = NULL, landing_path = NULL WHERE started_at < ?").bind(cutoff).run();
   const sixYears = rt.now() - 6 * 365 * DAY;
   const old = ((await rt.env.DB.prepare("SELECT id FROM leads WHERE updated_at < ? AND status != 'won' LIMIT 50").bind(sixYears).all<{ id: string }>()).results) || [];
   const { eraseLead } = await import("../sales/erase");

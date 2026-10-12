@@ -15,6 +15,7 @@ import { cancelAllEmails, isSafePath, unsubSig } from "../integrations/email";
 import { cancelCalls } from "../integrations/elevenlabs";
 import { safeExternalUrl } from "../integrations/booking";
 import { waLink } from "../integrations/whatsapp";
+import { suppress } from "../lib/suppress";
 
 export const links = new Hono<AppEnv>();
 
@@ -91,6 +92,7 @@ links.post("/u/:lead/:sig", async (c) => {
   const lead = await getLead(rt, leadId);
   if (lead && !lead.unsubscribed_at) {
     await updateLead(rt, lead.id, { unsubscribed_at: rt.now() });
+    await suppress(rt, "email", lead.email);
     await cancelAllEmails(rt, lead.id);
     await cancelCalls(rt, lead.id, ["speed_to_lead", "rebook"]);
     await track(rt, { leadId: lead.id }, { name: "unsubscribed", source: "server" });

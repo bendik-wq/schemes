@@ -4,6 +4,7 @@
 import type { Runtime } from "../app";
 import { LOST_REASONS, OBJECTIONS, STATUSES, type Status, type Tier } from "../config";
 import { newId } from "../lib/ids";
+import { suppress } from "../lib/suppress";
 import { clip } from "../lib/text";
 import { getLead, updateLead, type Lead } from "../funnel/leads";
 import { track } from "../tracking/track";
@@ -144,7 +145,7 @@ export async function applyLeadUpdate(
     if ((next === "won" || next === "lost") && !lead.closed_at) clean.closed_at = anchor; // never in the future
     if (next === "won" && !clean.revenue && !lead.revenue) clean.revenue = 0;
   }
-  if (patch.do_not_call === true) clean.do_not_call_at = now;
+  if (patch.do_not_call === true) { clean.do_not_call_at = now; await suppress(rt, "phone", lead.phone); }
   if (patch.do_not_call === false) clean.do_not_call_at = null;
   await updateLead(rt, lead.id, clean);
   const fresh = (await getLead(rt, lead.id)) as Lead;

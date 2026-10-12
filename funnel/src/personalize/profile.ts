@@ -74,9 +74,9 @@ export async function buildProfile(rt: Runtime, lead: Lead): Promise<Fact[]> {
     });
     if (v.video === "main" && watched.length) {
       add({ key: "vsl_chapters", text: `Watched these parts of the main film: ${watched.join("; ")}.`, weight: 3, topics: ["offer"] });
-      if (watched.includes("The offer and guarantee")) add({ key: "vsl_offer", text: "Watched the offer and guarantee section.", weight: 3, topics: ["guarantee", "offer"], you: "You have seen how the guarantee works, so I won't repeat it in full." });
+      if (watched.includes("The offer and guarantee")) add({ key: "vsl_offer", text: "Watched the offer and guarantee section.", weight: 3, topics: ["guarantee", "offer"] });
     }
-    if (v.video === "breakout" && v.completed) add({ key: "breakout_done", text: "Finished the breakout video.", weight: 3, topics: ["price", "time", "call"], you: "You have already heard me on cost and time, so this one is short." });
+    if (v.video === "breakout" && v.completed) add({ key: "breakout_done", text: "Finished the breakout video.", weight: 3, topics: ["price", "time", "call"] });
     if (v.video === "main" && !v.completed && v.unmuted && v.max_position > 30) add({ key: "vsl_stop", text: `Stopped the main film around ${Math.round(v.max_position / 60)} minutes.`, weight: 1, topics: [] });
   }
   if (by("vsl_rewatch").length) add({ key: "rewatch", text: "Rewatched part of the film.", weight: 2, topics: ["offer"] });

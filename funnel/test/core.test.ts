@@ -291,7 +291,7 @@ describe("toll-fraud protection", () => {
     }
   });
   it("allows ordinary mobile and geographic numbers in served markets", () => {
-    for (const n of ["+14155550123", "+14165550123", "+447700900123", "+61412345678", "+4791234567", "+46701234567", "+353871234567"]) {
+    for (const n of ["+14155550123", "+14165550123", "+447400123456", "+61412345678", "+4791234567", "+46701234567", "+353871234567"]) {
       expect(callableCountry(n), n).toBe(true);
     }
   });

@@ -80,10 +80,8 @@ export function safeFirstName(v: unknown, fallback = "there"): string {
 
 /** Business description safe for a voice prompt: no links or numbers, 120 chars. */
 export function safeBusiness(v: unknown): string {
-  const s = clip(v, 120);
-  if (!s || hasContactBait(s) || /\d{3,}/.test(s)) return "";
-  // Letters, digits, spaces and light punctuation only: no quotes, braces or newlines that could
-  // break out of the quoted data in a voice prompt.
-  const clean = s.replace(/[^\p{L}\p{N} ,.&/-]/gu, "").replace(/\s+/g, " ").trim();
+  // Clean first, then check the cleaned text, so stripped characters cannot hide a link or number.
+  const clean = clip(v, 120).replace(/[^\p{L}\p{N} ,.&/-]/gu, "").replace(/\s+/g, " ").trim();
+  if (!clean || hasContactBait(clean) || /\d{3,}/.test(clean.replace(/[^\d]/g, ""))) return "";
   return clean.length >= 3 ? clean : "";
 }

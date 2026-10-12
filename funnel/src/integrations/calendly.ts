@@ -205,14 +205,22 @@ export async function applyInvitee(rt: Runtime, ev: CalendlyEvent, inv: Calendly
     hostEmail: ev.hostEmail,
     answers: inv.answers,
     verified: kind === "uuid" ? "strong" : "email",
+    replaces: await replacesPrevious(rt, lead, inv),
   };
   const r = await markBooked(rt, lead, info);
   const fresh = await getLead(rt, lead.id);
   if (fresh && !fresh.app_completed_at) await applyCalendlyQualification(rt, fresh);
-  if (inv.no_show && fresh && fresh.status === "booked" && fresh.booking_ref === inv.uri) {
+  if (inv.no_show && fresh && fresh.status === "booked" && fresh.booking_ref === inv.uri && fresh.booking_verified) {
     await applyLeadUpdate(rt, fresh, { status: "no_show" }, { source: "calendly" });
   }
   return r;
+}
+
+/** A Calendly reschedule: the lead's current booking was cancelled with rescheduled=true by this same person. */
+async function replacesPrevious(rt: Runtime, lead: Lead, inv: CalendlyInvitee): Promise<boolean> {
+  if (!lead.booking_ref || lead.booking_ref === inv.uri) return false;
+  const prev = await rt.env.DB.prepare("SELECT rescheduled, email FROM calendly_bookings WHERE invitee_uri = ?").bind(lead.booking_ref).first<{ rescheduled: number; email: string | null }>();
+  return !!prev?.rescheduled && (prev.email || "").toLowerCase() === inv.email;
 }
 
 // ── Webhook ───────────────────────────────────────────────────────────────────
@@ -225,7 +233,7 @@ export async function handleCalendlyWebhook(rt: Runtime, body: Record<string, an
     const row = await rt.env.DB.prepare("SELECT lead_id FROM calendly_bookings WHERE invitee_uri = ?").bind(inviteeUri).first<{ lead_id: string | null }>();
     await rt.env.DB.prepare("UPDATE calendly_bookings SET no_show = 1, updated_at = ? WHERE invitee_uri = ?").bind(rt.now(), inviteeUri).run();
     const lead = await getLead(rt, row?.lead_id);
-    if (lead && lead.booking_ref === inviteeUri && lead.status === "booked") await applyLeadUpdate(rt, lead, { status: "no_show" }, { source: "calendly" });
+    if (lead && lead.booking_ref === inviteeUri && lead.status === "booked" && lead.booking_verified) await applyLeadUpdate(rt, lead, { status: "no_show" }, { source: "calendly" });
     return "no_show";
   }
   if (event !== "invitee.created" && event !== "invitee.canceled") return "ignored";

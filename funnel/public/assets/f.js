@@ -88,7 +88,9 @@
     function describe(el) {
       var t = el.closest ? el.closest("a,button,summary,[data-track],.opt") : null;
       if (!t) return null;
-      var label = (t.getAttribute("data-track") || t.getAttribute("aria-label") || t.textContent || "").replace(/\s+/g, " ").trim().slice(0, 40);
+      // Never the text of application options or anything marked private.
+      var priv = t.classList.contains("opt") || !!t.closest("[data-private], form");
+      var label = priv ? "" : (t.getAttribute("data-track") || t.getAttribute("aria-label") || t.textContent || "").replace(/\s+/g, " ").trim().slice(0, 40);
       return { tag: t.tagName.toLowerCase(), label: label, href: t.tagName === "A" ? (t.getAttribute("href") || "").slice(0, 80) : "", apply: t.hasAttribute("data-apply") ? 1 : 0 };
     }
     d.addEventListener("click", function (e) {
@@ -236,7 +238,7 @@
       var m = d.cookie.match(/(?:^|; )_fc=([01])/);
       return m ? (m[1] === "1" ? "granted" : "denied") : (cfg.consent || "unknown");
     }
-    function allowed() { return !cfg.consentRequired || readConsent() === "granted"; }
+    function allowed() { var c = readConsent(); return c !== "denied" && (!cfg.consentRequired || c === "granted"); }
     var loaded = false;
     function loadThirdParty() {
       if (loaded || !allowed()) return;

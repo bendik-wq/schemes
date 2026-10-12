@@ -43,15 +43,26 @@ export async function validSession(env: Env, token: string | undefined, now: num
 
 const GLOBAL_MAX = 100;
 
+function fnv(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
+
 /** IPv6 addresses are keyed by their /64, so rotating within a block does not reset the count. */
 export function ipKey(ip: string): string {
   if (!ip.includes(":")) return ip;
-  const parts = ip.toLowerCase().split("::")[0].split(":");
-  return parts.slice(0, 4).join(":") + "::/64";
+  // Expand "::" so every spelling of the same /64 gives the same key.
+  const [head, tail = ""] = ip.toLowerCase().split("::");
+  const h = head ? head.split(":") : [];
+  const t = tail ? tail.split(":") : [];
+  const full = ip.includes("::") ? [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill("0"), ...t] : h;
+  return full.slice(0, 4).map((x) => x.replace(/^0+(?=.)/, "")).join(":") + "::/64";
 }
 
 function lockKey(ip: string, now: number) {
-  return `login_fail:${ipKey(ip)}:${Math.floor(now / LOCK_WINDOW_MS)}`;
+  // Plain prefix so the key is stable within a call; the IP itself is not readable from storage.
+  return `login_fail:${fnv(ipKey(ip))}:${Math.floor(now / LOCK_WINDOW_MS)}`;
 }
 
 async function failures(env: Env, key: (t: number) => string, now: number): Promise<number> {
@@ -59,8 +70,7 @@ async function failures(env: Env, key: (t: number) => string, now: number): Prom
 }
 
 export async function isLockedOut(env: Env, ip: string, now: number): Promise<boolean> {
-  if ((await failures(env, (t) => lockKey(ip, t), now)) >= LOCK_MAX) return true;
-  return (await failures(env, (t) => `login_fail:all:${Math.floor(t / LOCK_WINDOW_MS)}`, now)) >= GLOBAL_MAX;
+  return (await failures(env, (t) => lockKey(ip, t), now)) >= LOCK_MAX;
 }
 
 function cookieSecure(url: string): boolean {
@@ -80,7 +90,9 @@ export async function login(c: Ctx, password: unknown): Promise<{ ok: boolean; s
   const mine = await kvIncr(env, lockKey(ip, now));
   const all = await kvIncr(env, `login_fail:all:${bucket}`);
   const prevMine = Number((await kvGet(env, lockKey(ip, now - LOCK_WINDOW_MS))) || 0);
-  if (mine + prevMine > LOCK_MAX || all > GLOBAL_MAX) return { ok: false, status: 429, error: "Too many attempts. Try again in 15 minutes." };
+  if (mine + prevMine > LOCK_MAX) return { ok: false, status: 429, error: "Too many attempts. Try again in 15 minutes." };
+  // Many failures from many addresses: alert, but never lock the owner out (put Cloudflare Access on /admin*).
+  if (all === GLOBAL_MAX) console.warn("admin login: unusual number of failed attempts across addresses");
   const given = typeof password === "string" ? password : "";
   const ok = given.length > 0 && safeEqual(await sha256Hex("cmp|" + given), await sha256Hex("cmp|" + pw));
   if (!ok) {

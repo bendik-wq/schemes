@@ -70,11 +70,11 @@ export async function track(rt: Runtime, who: Who, input: TrackInput): Promise<s
   const props = { ...(input.props || {}) };
   if (input.value != null) props.value = input.value;
   const ins = await rt.env.DB.prepare(
-    "INSERT OR IGNORE INTO events (id, ts, name, visitor_id, session_id, lead_id, path, source, variant, is_bot, props) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+    "INSERT INTO events (id, ts, name, visitor_id, session_id, lead_id, path, source, variant, is_bot, props) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
   ).bind(
     id, ts, input.name, who.visitorId ?? null, who.sessionId ?? null, who.leadId ?? null, (who.path || "").slice(0, 200) || null,
     input.source || "server", who.variant ?? null, who.isBot ? 1 : 0, cleanProps(props),
-  ).run().then((r) => r);
+  ).run();
   if (input.eventId && !ins.meta?.changes) return id; // already recorded and forwarded
 
   const def = EVENTS[input.name];

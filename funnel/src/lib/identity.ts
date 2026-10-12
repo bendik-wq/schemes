@@ -159,7 +159,8 @@ export async function resolveIdentity(c: Ctx, opts: { page: boolean }): Promise<
 
   const consentRequired = consentRequiredFor(rt, geo.country);
   const consent = readConsent(c);
-  const adsAllowed = !consentRequired || consent === "granted";
+  // An explicit "no" is honoured everywhere; in consent countries only an explicit "yes" allows.
+  const adsAllowed = consent !== "denied" && (!consentRequired || consent === "granted");
 
   const ipRaw = req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || null;
 

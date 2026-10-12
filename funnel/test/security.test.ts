@@ -230,3 +230,28 @@ describe("review fixes", () => {
     expect(inCallingHours(sat9, "America/New_York", "US")).toBe(true);
   });
 });
+
+describe("skeptic round fixes", () => {
+  it("voice business text: stripped characters cannot hide links or numbers", () => {
+    expect(sb("Plumbing, see evil(.)com or call 4'1'5'5'5'5'0'1'0'0")).toBe("");
+  });
+  it("AI output with any bare domain is rejected", () => {
+    for (const d of ["acme-secure.de", "acme.uk", "evil.shop", "bit.do/x"]) {
+      expect(validateAi({ subject: "S", preheader: "", paragraphs: ["Hi Ann,", `see ${d}`], ps: "", facts_used: [] }, new Set()).ok, d).toBe(false);
+    }
+  });
+});
+
+import { callableCountry as cc2 } from "../src/integrations/calling-rules";
+describe("second skeptic round", () => {
+  it("more premium and revenue-share ranges are refused", () => {
+    for (const n of ["+6490012345", "+4970012345678", "+358700123456", "+447781123456", "+447911123456", "+61891621234", "+6424091234", "+18801234567", "+16221234567"]) {
+      expect(cc2(n), n).toBe(false);
+    }
+    expect(cc2("+447624123456")).toBe(true); // Isle of Man mobile
+  });
+  it("every spelling of an IPv6 /64 gives one lockout key", () => {
+    expect(ipKey("2001:db8:1::5")).toBe(ipKey("2001:db8:1:0:1::5"));
+    expect(ipKey("2001:0db8:0001:0000::1")).toBe(ipKey("2001:db8:1::"));
+  });
+});

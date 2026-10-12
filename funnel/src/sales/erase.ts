@@ -3,17 +3,21 @@
 
 import type { Runtime } from "../app";
 import { getLead } from "../funnel/leads";
+import { suppress } from "../lib/suppress";
 
 export async function eraseLead(rt: Runtime, leadId: string): Promise<{ ok: boolean; ref?: string }> {
   const lead = await getLead(rt, leadId);
   if (!lead) return { ok: false };
   const db = rt.env.DB;
+  // Opt-outs outlive erasure, as HMACs only.
+  if (lead.unsubscribed_at) await suppress(rt, "email", lead.email);
+  if (lead.do_not_call_at) await suppress(rt, "phone", lead.phone);
   const visitors = ((await db.prepare("SELECT id FROM visitors WHERE lead_id = ? OR id = ?").bind(lead.id, lead.visitor_id || "").all<{ id: string }>()).results || []).map((v) => v.id);
   const stmts = [
     db.prepare("DELETE FROM emails WHERE lead_id = ?").bind(lead.id),
     db.prepare("DELETE FROM outbound_calls WHERE lead_id = ?").bind(lead.id),
-    db.prepare("DELETE FROM voice_calls WHERE lead_id = ?").bind(lead.id),
-    db.prepare("DELETE FROM whatsapp_messages WHERE lead_id = ?").bind(lead.id),
+    db.prepare("DELETE FROM voice_calls WHERE lead_id = ? OR (phone IS NOT NULL AND phone = ?)").bind(lead.id, lead.phone || "-"),
+    db.prepare("DELETE FROM whatsapp_messages WHERE lead_id = ? OR (phone IS NOT NULL AND phone = ?)").bind(lead.id, lead.phone || "-"),
     db.prepare("DELETE FROM calendly_bookings WHERE lead_id = ? OR lower(email) = ?").bind(lead.id, lead.email.toLowerCase()),
     db.prepare("DELETE FROM forward_log WHERE lead_id = ?").bind(lead.id),
     db.prepare("DELETE FROM events WHERE lead_id = ?").bind(lead.id),

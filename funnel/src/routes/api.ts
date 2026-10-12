@@ -5,6 +5,8 @@ import { setCookie } from "hono/cookie";
 import type { AppEnv, Ctx } from "../app";
 import { resolveIdentity, setConsentCookies } from "../lib/identity";
 import { kvIncr } from "../lib/kv";
+import { sha256Hex } from "../lib/crypto";
+import { ipKey } from "../admin/auth";
 import { whoFromIdentity, track } from "../tracking/track";
 import { collectBeacon, BEACON_MAX_BYTES, type BeaconBody } from "../tracking/collect";
 import { recordHeartbeat } from "../tracking/vsl";
@@ -41,7 +43,8 @@ async function readJson<T>(c: Ctx, max: number): Promise<T | null> {
 
 async function rateLimited(c: Ctx, bucket: string, max: number, windowMs: number): Promise<boolean> {
   const ip = c.req.header("cf-connecting-ip") || "unknown";
-  const n = await kvIncr(c.env, `rl:${bucket}:${ip}:${Math.floor(Date.now() / windowMs)}`);
+  const ipHash = (await sha256Hex("rl|" + ipKey(ip))).slice(0, 16); // never store the raw IP; IPv6 grouped by /64
+  const n = await kvIncr(c.env, `rl:${bucket}:${ipHash}:${Math.floor(Date.now() / windowMs)}`);
   return n > max;
 }
 
@@ -87,7 +90,9 @@ api.post("/consent", async (c) => {
   setConsentCookies(c, v);
   const id = await resolveIdentity(c, { page: false });
   // With consent, the visitor id may persist across days.
-  if (v === "granted") setCookie(c, "_fv", id.visitorId, { path: "/", httpOnly: true, secure: new URL(c.req.url).protocol === "https:", sameSite: "Lax", maxAge: 400 * 86_400 });
+  const secure = new URL(c.req.url).protocol === "https:";
+  if (v === "granted") setCookie(c, "_fv", id.visitorId, { path: "/", httpOnly: true, secure, sameSite: "Lax", maxAge: 400 * 86_400 });
+  else setCookie(c, "_fv", id.visitorId, { path: "/", httpOnly: true, secure, sameSite: "Lax" });
   await c.env.DB.prepare("UPDATE visitors SET consent = ? WHERE id = ?").bind(v, id.visitorId).run();
   await track(c.get("rt"), whoFromIdentity(id, "/"), { name: "consent_set", props: { consent: v }, localOnly: true });
   return c.json({ ok: true, consent: v });

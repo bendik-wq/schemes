@@ -95,6 +95,7 @@ export interface Lead {
   refund_amount: number | null;
   loi_signed_at: number | null;
   target_business: string | null;
+  booking_verified: number;
 }
 
 export type Answers = Record<string, string | string[]>;
@@ -146,7 +147,7 @@ const UPDATABLE = new Set<string>([
   "country", "region", "city", "device", "fbp", "fbc", "do_not_call_at", "call_consent_at", "call_consent_text", "timezone",
   "industry", "revenue_band", "budget_band", "willing_to_invest", "qual_source", "qual_flags", "temperature", "objection",
   "follow_up_at", "decision_maker", "fit_rating", "offer", "payment_plan", "installments_total", "next_payment_at",
-  "contract_signed_at", "refunded_at", "refund_amount", "loi_signed_at", "target_business",
+  "contract_signed_at", "refunded_at", "refund_amount", "loi_signed_at", "target_business", "booking_verified",
 ]);
 
 export async function updateLead(rt: Runtime, id: string, patch: Partial<Lead>): Promise<void> {

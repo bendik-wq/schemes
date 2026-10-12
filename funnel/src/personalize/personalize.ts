@@ -4,7 +4,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Runtime } from "../app";
 import { BANNED_PHRASES, BRAND, OUTCOME_PROMISES } from "../config";
-import { escHtml, unescHtml } from "../lib/text";
+import { escHtml, hasContactBait, unescHtml } from "../lib/text";
 import type { Lead } from "../funnel/leads";
 import type { EmailContent, EmailCtx } from "../integrations/email-types";
 import { TEMPLATE_TOPICS, ANSWER_TEMPLATES } from "../integrations/all-templates";
@@ -87,7 +87,7 @@ export function validateAi(out: unknown, allowedFacts: Set<string>): { ok: true;
   const all = [draft.subject, draft.preheader, draft.ps, ...draft.paragraphs].join("\n");
   if (all.length > 4000) return { ok: false, error: "too long" };
   if (HTML_RE.test(all)) return { ok: false, error: "html" };
-  if (LINK_RE.test(all)) return { ok: false, error: "link" };
+  if (LINK_RE.test(all) || hasContactBait(all)) return { ok: false, error: "link or contact detail" };
   if (EMAIL_RE.test(all)) return { ok: false, error: "email address" };
   if (PHONE_RE.test(all)) return { ok: false, error: "phone number" };
   if (PAYMENT_RE.test(all)) return { ok: false, error: "payment or credential request" };
