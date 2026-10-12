@@ -7,6 +7,7 @@ import { newId } from "../lib/ids";
 import { consentRequiredFor } from "../lib/identity";
 import { getLead, leadSessionContext, effectiveTier, type Lead } from "../funnel/leads";
 import { EVENTS } from "./catalog";
+import { isHttps, validOutbound } from "../lib/outbound";
 import type { Who } from "./track";
 
 export type Destination = "meta" | "ga4" | "posthog" | "crm";
@@ -129,7 +130,7 @@ async function prepare(rt: Runtime, ev: ForwardEvent): Promise<Prepared[]> {
     });
   }
 
-  if (adsAllowed && s.has("POSTHOG_KEY") && who.visitorId) {
+  if (adsAllowed && s.has("POSTHOG_KEY") && who.visitorId && validOutbound("POSTHOG_HOST", s.get("POSTHOG_HOST"))) {
     const host = s.get("POSTHOG_HOST").replace(/\/+$/, "");
     const props: Record<string, unknown> = { $current_url: eventUrl, source: "server", variant: who.variant || undefined };
     // Only non-identifying fields. Never email, name, phone or free text.
@@ -143,7 +144,7 @@ async function prepare(rt: Runtime, ev: ForwardEvent): Promise<Prepared[]> {
     });
   }
 
-  if (lead && CRM_EVENTS.has(ev.name) && s.has("LEAD_WEBHOOK_URL")) {
+  if (lead && CRM_EVENTS.has(ev.name) && s.has("LEAD_WEBHOOK_URL") && isHttps(s.get("LEAD_WEBHOOK_URL"))) {
     out.push({
       dest: "crm",
       url: s.get("LEAD_WEBHOOK_URL"),

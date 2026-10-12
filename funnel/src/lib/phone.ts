@@ -35,11 +35,24 @@ export function normalizePhone(raw: unknown, defaultCountry: string | null): str
   return "+" + d;
 }
 
+// +1 area codes that are NOT the US or Canada (Caribbean, Atlantic and Pacific territories), plus
+// non-geographic codes: premium (900, 976), personal and machine (5XX, 600, 700), toll-free (8XX).
+const NANP_BLOCKED = new Set([
+  "242", "246", "264", "268", "284", "340", "345", "441", "473", "649", "658", "664", "670", "671", "684", "721", "758", "767",
+  "784", "787", "809", "829", "849", "868", "869", "876", "939",
+  "900", "976", "500", "521", "522", "533", "544", "566", "577", "588", "600", "700", "710", "456",
+  "800", "811", "822", "833", "844", "855", "866", "877", "888",
+]);
+
 /** ISO country of an E.164 number (longest dial-code match; +1 split into US/CA by area code). */
 export function phoneCountry(e164: string | null | undefined): string | null {
   if (!e164 || !e164.startsWith("+")) return null;
   const d = e164.slice(1);
-  if (d.startsWith("1")) return CA_AREA.has(d.slice(1, 4)) ? "CA" : "US";
+  if (d.startsWith("1")) {
+    const area = d.slice(1, 4);
+    if (NANP_BLOCKED.has(area) || area[0] === "0" || area[0] === "1") return null;
+    return CA_AREA.has(area) ? "CA" : "US";
+  }
   let best: string | null = null;
   let bestLen = 0;
   for (const [iso, cc] of Object.entries(DIAL)) {
@@ -79,4 +92,36 @@ export function callingZones(e164: string | null | undefined): string[] {
 export function countryTimezone(country: string | null | undefined): string | null {
   const z = ZONES[(country || "").toUpperCase()];
   return z ? z[0] : null;
+}
+
+/**
+ * Numbers the AI caller may ring: ordinary mobile and geographic ranges only. Premium-rate,
+ * personal, shared-cost and other revenue-share ranges are refused (toll-fraud protection).
+ * Twilio and ElevenLabs geo permissions should be locked down as well.
+ */
+const CALLABLE: Record<string, RegExp> = {
+  US: /^\+1[2-9]\d{9}$/,
+  CA: /^\+1[2-9]\d{9}$/,
+  GB: /^\+44(7[1-57-9]\d{8}|[12]\d{8,9}|3\d{9})$/,
+  IE: /^\+353(8[35-9]\d{7}|[1-9]\d{6,8})$/,
+  AU: /^\+61[2-478]\d{8}$/,
+  NZ: /^\+64(2\d{7,9}|[34679]\d{7})$/,
+  NO: /^\+47[2-79]\d{7}$/,
+  SE: /^\+46(7[02369]\d{7}|[1-68]\d{6,8})$/,
+  DK: /^\+45[2-7]\d{7}$/,
+  FI: /^\+358(4\d{6,9}|50\d{5,8}|[1-35-9]\d{5,8})$/,
+  IS: /^\+354[4-8]\d{6}$/,
+  NL: /^\+31(6\d{8}|[1-57]\d{8})$/,
+  DE: /^\+49(1[5-7]\d{8,9}|[2-9]\d{6,10})$/,
+  AE: /^\+971(5[02-8]\d{7}|[2-79]\d{7})$/,
+  SG: /^\+65[689]\d{7}$/,
+};
+const PREMIUM: RegExp[] = [/^\+49(900|137|180)/, /^\+31(90[069])/, /^\+46(900|939|944)/, /^\+4590/, /^\+4782/, /^\+35860/, /^\+44(70|87|9)/, /^\+61(19|13|18)/];
+
+export function callableNumber(e164: string | null | undefined): boolean {
+  const c = phoneCountry(e164);
+  if (!c || !e164) return false;
+  if (PREMIUM.some((re) => re.test(e164))) return false;
+  const re = CALLABLE[c];
+  return !!re && re.test(e164);
 }

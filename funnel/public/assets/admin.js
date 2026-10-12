@@ -1217,7 +1217,12 @@
     }) : "";
     return card({ title: "Summary", body: facts }) + card({ title: "Film", body: vsl }) +
       card({ title: "Application", sub: L.app_completed_at ? "Submitted " + dt(L.app_completed_at) : "Step " + (L.step_reached || 0) + " reached, not submitted", body: answers }) +
-      (scoreLines ? card({ title: "How the score was built", flush: true, body: scoreLines }) : "") + booking + visits;
+      (scoreLines ? card({ title: "How the score was built", flush: true, body: scoreLines }) : "") + booking + visits +
+      card({ title: "Records", sub: "Booking checks and erasure on request", body:
+        '<div class="row-actions">' +
+        (L.status === "booked" ? '<button class="btn btn-sm" type="button" data-action="confirm-booking" data-id="' + esc(L.id) + '">Confirm booking and start reminders</button>' : "") +
+        '<button class="btn btn-sm btn-danger" type="button" data-action="erase-lead" data-id="' + esc(L.id) + '" data-ref="' + esc(L.ref_code) + '">Erase all data for this lead</button></div>' +
+        '<p class="faint small">Confirm only a booking you trust, for example one matched by email alone. Erasure deletes the lead, their visits, emails, calls and bookings, and keeps payment amounts without any link to the person.</p>' });
   }
 
   function field(label, inner, cls) { return '<label class="field' + (cls ? " " + cls : "") + '"><span class="field-label">' + esc(label) + "</span>" + inner + "</label>"; }
@@ -1477,6 +1482,14 @@
       const v = el.dataset.copy || "";
       const text = v.startsWith("/") ? location.origin + v : v;
       try { await navigator.clipboard.writeText(text); toast("Copied " + text); } catch (e) { toast("Copy failed. Select and copy: " + text, "err"); }
+    },
+    "confirm-booking": async (el) => {
+      try { await api("/leads/" + encodeURIComponent(el.dataset.id) + "/confirm-booking", { method: "POST" }); toast("Reminders and confirm call started"); } catch (e) { fail(e); }
+    },
+    "erase-lead": async (el) => {
+      const ref = prompt("This permanently deletes everything about this lead. Type their reference (" + el.dataset.ref + ") to confirm.");
+      if (ref !== el.dataset.ref) return;
+      try { await api("/leads/" + encodeURIComponent(el.dataset.id), { method: "DELETE", body: { confirm: ref } }); toast("Erased"); closeDrawer(); loadTab(); } catch (e) { fail(e); }
     },
     "open-lead": (el) => { location.hash = "lead=" + encodeURIComponent(el.dataset.id); },
     "drawer-close": () => closeLeadRoute(),

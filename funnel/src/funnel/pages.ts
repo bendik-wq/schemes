@@ -101,8 +101,9 @@ function commonCfg(rt: Runtime, id: Identity, page: string, pv: string | null) {
     pv,
     consentRequired: id.consentRequired,
     consent: id.consent,
-    pixel: id.adsAllowed && s.has("META_PIXEL_ID") ? s.get("META_PIXEL_ID") : null,
-    replay: id.adsAllowed && s.bool("POSTHOG_SESSION_REPLAY") && s.has("POSTHOG_KEY") ? { key: s.get("POSTHOG_KEY") } : null,
+    // Ids only; f.js loads nothing until consent allows it (replay always needs an explicit yes).
+    pixel: s.has("META_PIXEL_ID") ? s.get("META_PIXEL_ID") : null,
+    replay: s.bool("POSTHOG_SESSION_REPLAY") && s.has("POSTHOG_KEY") ? { key: s.get("POSTHOG_KEY") } : null,
   };
 }
 

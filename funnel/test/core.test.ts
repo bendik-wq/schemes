@@ -282,3 +282,17 @@ describe("vsl bitmap", () => {
     expect(orBitmaps("zz<script>", "")).toHaveLength(25);
   });
 });
+
+import { callableCountry } from "../src/integrations/calling-rules";
+describe("toll-fraud protection", () => {
+  it("refuses Caribbean NANP, premium and personal ranges", () => {
+    for (const n of ["+18765550123", "+18095550123", "+12685550123", "+19005550123", "+17875550123", "+18005550123", "+447012345678", "+449012345678", "+61190012345", "+4790012345".replace("479", "4782")]) {
+      expect(callableCountry(n), n).toBe(false);
+    }
+  });
+  it("allows ordinary mobile and geographic numbers in served markets", () => {
+    for (const n of ["+14155550123", "+14165550123", "+447700900123", "+61412345678", "+4791234567", "+46701234567", "+353871234567"]) {
+      expect(callableCountry(n), n).toBe(true);
+    }
+  });
+});

@@ -6,7 +6,7 @@ import type { MiddlewareHandler } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import type { AppEnv, Ctx } from "../app";
 import type { Env } from "../env";
-import { safeEqual, sha256Hex, signToken, verifyToken } from "../lib/crypto";
+import { hmacHex, safeEqual, sha256Hex, signToken, verifyToken } from "../lib/crypto";
 import { kvGet, kvSet, kvIncr } from "../lib/kv";
 import { signingSecret } from "../lib/secret";
 
@@ -15,8 +15,9 @@ const TTL_MS = 3 * 86_400_000;
 const LOCK_WINDOW_MS = 15 * 60_000;
 const LOCK_MAX = 10;
 
-async function fingerprint(pw: string) {
-  return (await sha256Hex("admin-pw|" + pw)).slice(0, 16);
+/** Keyed fingerprint of the password: revokes sessions on change, cannot be brute-forced from a cookie. */
+async function fingerprint(env: Env, pw: string) {
+  return (await hmacHex(await signingSecret(env), "admin-pw|" + pw)).slice(0, 16);
 }
 
 async function epoch(env: Env): Promise<string> {
@@ -25,7 +26,7 @@ async function epoch(env: Env): Promise<string> {
 
 export async function makeSession(env: Env, now: number): Promise<string> {
   const pw = String(env.ADMIN_PASSWORD || "");
-  return signToken(await signingSecret(env), `admin.${now + TTL_MS}.${await fingerprint(pw)}.${await epoch(env)}`);
+  return signToken(await signingSecret(env), `admin.${now + TTL_MS}.${await fingerprint(env, pw)}.${await epoch(env)}`);
 }
 
 export async function validSession(env: Env, token: string | undefined, now: number): Promise<boolean> {
@@ -35,18 +36,36 @@ export async function validSession(env: Env, token: string | undefined, now: num
   if (!payload) return false;
   const [kind, exp, fp, ep] = payload.split(".");
   if (kind !== "admin" || !(Number(exp) > now)) return false;
-  if (!safeEqual(fp || "", await fingerprint(pw))) return false; // password changed → revoked
+  if (!safeEqual(fp || "", await fingerprint(env, pw))) return false; // password changed → revoked
   if (ep !== (await epoch(env))) return false; // logged out everywhere → revoked
   return true;
 }
 
+const GLOBAL_MAX = 100;
+
+/** IPv6 addresses are keyed by their /64, so rotating within a block does not reset the count. */
+export function ipKey(ip: string): string {
+  if (!ip.includes(":")) return ip;
+  const parts = ip.toLowerCase().split("::")[0].split(":");
+  return parts.slice(0, 4).join(":") + "::/64";
+}
+
 function lockKey(ip: string, now: number) {
-  return `login_fail:${ip}:${Math.floor(now / LOCK_WINDOW_MS)}`;
+  return `login_fail:${ipKey(ip)}:${Math.floor(now / LOCK_WINDOW_MS)}`;
+}
+
+async function failures(env: Env, key: (t: number) => string, now: number): Promise<number> {
+  return Number((await kvGet(env, key(now))) || 0) + Number((await kvGet(env, key(now - LOCK_WINDOW_MS))) || 0);
 }
 
 export async function isLockedOut(env: Env, ip: string, now: number): Promise<boolean> {
-  const n = Number((await kvGet(env, lockKey(ip, now))) || 0) + Number((await kvGet(env, lockKey(ip, now - LOCK_WINDOW_MS))) || 0);
-  return n >= LOCK_MAX;
+  if ((await failures(env, (t) => lockKey(ip, t), now)) >= LOCK_MAX) return true;
+  return (await failures(env, (t) => `login_fail:all:${Math.floor(t / LOCK_WINDOW_MS)}`, now)) >= GLOBAL_MAX;
+}
+
+function cookieSecure(url: string): boolean {
+  const u = new URL(url);
+  return !(u.hostname === "localhost" || u.hostname === "127.0.0.1");
 }
 
 export async function login(c: Ctx, password: unknown): Promise<{ ok: boolean; status: number; error?: string }> {
@@ -56,15 +75,22 @@ export async function login(c: Ctx, password: unknown): Promise<{ ok: boolean; s
   const pw = String(env.ADMIN_PASSWORD || "");
   if (!pw) return { ok: false, status: 503, error: "ADMIN_PASSWORD is not set. Run `wrangler secret put ADMIN_PASSWORD`." };
   if (await isLockedOut(env, ip, now)) return { ok: false, status: 429, error: "Too many attempts. Try again in 15 minutes." };
+  // Count the attempt BEFORE comparing, so parallel guesses cannot all slip past the check.
+  const bucket = Math.floor(now / LOCK_WINDOW_MS);
+  const mine = await kvIncr(env, lockKey(ip, now));
+  const all = await kvIncr(env, `login_fail:all:${bucket}`);
+  const prevMine = Number((await kvGet(env, lockKey(ip, now - LOCK_WINDOW_MS))) || 0);
+  if (mine + prevMine > LOCK_MAX || all > GLOBAL_MAX) return { ok: false, status: 429, error: "Too many attempts. Try again in 15 minutes." };
   const given = typeof password === "string" ? password : "";
   const ok = given.length > 0 && safeEqual(await sha256Hex("cmp|" + given), await sha256Hex("cmp|" + pw));
   if (!ok) {
-    await kvIncr(env, lockKey(ip, now));
-    console.warn("admin login failed", ip);
+    console.warn("admin login failed", ipKey(ip));
     return { ok: false, status: 401, error: "Wrong password." };
   }
-  const secure = new URL(c.req.url).protocol === "https:";
-  setCookie(c, ADMIN_COOKIE, await makeSession(env, now), { path: "/", httpOnly: true, secure, sameSite: "Strict", maxAge: TTL_MS / 1000 });
+  // A successful login does not count against the limits.
+  await kvIncr(env, lockKey(ip, now), -1);
+  await kvIncr(env, `login_fail:all:${bucket}`, -1);
+  setCookie(c, ADMIN_COOKIE, await makeSession(env, now), { path: "/", httpOnly: true, secure: cookieSecure(c.req.url), sameSite: "Strict", maxAge: TTL_MS / 1000 });
   return { ok: true, status: 200 };
 }
 

@@ -1,6 +1,9 @@
 // Funnel HQ JSON API. Mounted at /admin/api behind requireAdmin (session cookie + same-origin writes).
 // Every handler reads the shared filters from the query. Secrets, raw IPs and full user agents never leave.
 
+import { OUTBOUND_KEYS, validOutbound } from "../lib/outbound";
+import { eraseLead } from "../sales/erase";
+import { confirmBooking } from "../integrations/booking";
 import { Hono } from "hono";
 import type { AppEnv, Ctx, Runtime } from "../app";
 import { APPLICATION, FAQS, LOST_REASONS, OBJECTIONS, STATUSES, VIDEOS } from "../config";
@@ -535,6 +538,9 @@ adminApi.put("/integrations", async (c) => {
     if (def.kind === "number" && !Number.isFinite(Number(raw))) return bad(c, "Enter a number.");
     if (def.kind === "select" && !(def.options || []).includes(raw)) return bad(c, "Pick one of the options.");
     if (def.kind === "url" && !/^https?:\/\/[^\s"'<>]+$/.test(raw)) return bad(c, "Enter a full URL starting with https://");
+    if (OUTBOUND_KEYS.includes(key) && !validOutbound(key, raw)) {
+      return bad(c, key.startsWith("SLACK") ? "Use a Slack incoming webhook (https://hooks.slack.com/…)." : key.startsWith("DISCORD") ? "Use a Discord webhook (https://discord.com/api/webhooks/…)." : key === "POSTHOG_HOST" ? "Use your PostHog host, e.g. https://eu.i.posthog.com." : "Use an https:// URL.");
+    }
   }
   await saveSetting(rt.env, key, raw);
   const fresh = await loadSettings(rt.env);
@@ -581,4 +587,24 @@ adminApi.put("/map/custom", async (c) => {
 adminApi.post("/logout", async (c) => {
   await logoutEverywhere(c);
   return c.json({ ok: true });
+});
+
+// Erasure on request. The caller must echo the lead's ref code as confirmation.
+adminApi.delete("/leads/:id", async (c) => {
+  const rt = rtOf(c);
+  const lead = await getLead(rt, c.req.param("id"));
+  if (!lead) return bad(c, "Lead not found.", 404);
+  const b = await body(c);
+  if (b.confirm !== lead.ref_code) return bad(c, "Type the lead's reference to confirm.");
+  const r = await eraseLead(rt, lead.id);
+  return c.json(r);
+});
+
+// Run the reminders and confirm call for a booking that was matched by email only.
+adminApi.post("/leads/:id/confirm-booking", async (c) => {
+  const rt = rtOf(c);
+  const lead = await getLead(rt, c.req.param("id"));
+  if (!lead) return bad(c, "Lead not found.", 404);
+  const ok = await confirmBooking(rt, lead);
+  return ok ? c.json({ ok: true }) : bad(c, "Only an upcoming booked call can be confirmed.");
 });

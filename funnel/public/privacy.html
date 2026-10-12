@@ -6,9 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="preload" href="/assets/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <script id="op-cfg" type="application/json">{}</script>
 <script src="/assets/f.js" defer></script>
@@ -37,14 +35,14 @@
     </ul>
 
     <h2 class="h3">Cookies</h2>
-    <p>We set first-party cookies to recognise your browser (a visitor id for up to 400 days and a session id for 30 minutes of inactivity), to remember your consent choice and which version of a page you saw. With your consent, we also set Meta advertising cookies (_fbp, _fbc). If you are in the EU, EEA, UK or Switzerland, no advertising cookies are set, no ad pixel loads and nothing is shared with ad platforms until you accept. You can change your choice at any time with <em>Cookie settings</em> at the bottom of every page.</p>
+    <p>We set our own cookies to recognise your browser: a visitor id (for up to 400 days, or only until you close the browser if you are in the EU, EEA, UK, Norway or Switzerland and have not accepted cookies), a session id that ends after 30 minutes of inactivity, your consent choice, and which version of a page you saw. With your consent we also set Meta advertising cookies (_fbp, _fbc). In the EU, EEA, UK, Norway and Switzerland, no advertising cookies are set, no ad pixel loads and nothing is shared with ad platforms until you accept. Session recording (with every form field masked) only runs if you accept. Fonts are served from our own server. You can change your choice at any time with <em>Cookie settings</em> at the bottom of every page.</p>
 
     <h2 class="h3">How we use it</h2>
     <ul>
       <li>To review your application and decide whether a call makes sense. Applications are scored automatically on the answers you give; you can ask a person to look at any decision again.</li>
       <li>To send you emails about your application, your call and the program. Some emails are written with the help of an AI model (Anthropic's Claude), using your application and how you used the site to make them relevant. We never quote back what you selected or copied on the page.</li>
       <li>To call you with an AI assistant, only if you ticked the box that allows it. The assistant says it is an AI, says the call is recorded, and stops if you say stop. Calls only happen during local daytime hours for your phone number's country.</li>
-      <li>To measure and improve our ads and pages, including sending hashed (scrambled) identifiers to Meta and Google so they can tell which ads lead to applications.</li>
+      <li>To measure and improve our ads and pages. With consent where it is required, we send Meta your email, phone, name and country in hashed (scrambled) form, plus your IP address, browser type and Meta cookie ids, so it can tell which ads lead to applications. Google Analytics receives a random visitor id and events, never your contact details.</li>
     </ul>
 
     <h2 class="h3">Legal basis</h2>
@@ -61,15 +59,17 @@
       <li><strong>Vapi</strong> (USA): optional web and phone assistant.</li>
       <li><strong>PostHog</strong> (EU or USA, depending on our settings): product analytics and, with consent, session replay with inputs masked.</li>
       <li><strong>Meta</strong> (Ireland/USA) and <strong>Google</strong> (Ireland/USA): ad measurement, with consent where required.</li>
-      <li><strong>Slack</strong> or <strong>Discord</strong> (USA): internal team alerts with your name and reference only.</li>
+      <li><strong>Slack</strong> or <strong>Discord</strong> (USA): internal team alerts with your name, reference, application tier and call status.</li>
+      <li><strong>Meta WhatsApp</strong> (Ireland/USA): if you message us on WhatsApp.</li>
+      <li><strong>Our CRM</strong>, if connected: a copy of your contact details and application status for our sales team.</li>
     </ul>
     <p>Transfers outside the EEA/UK rely on the providers' Standard Contractual Clauses or the EU-US Data Privacy Framework.</p>
 
     <h2 class="h3">How long we keep it</h2>
-    <p>Raw usage events are deleted after 13 months, and IP addresses, browser details and precise location are removed from older sessions. Application and call records are kept for as long as we have a relationship with you and up to 6 years afterwards for accounting and legal reasons, or deleted earlier on request.</p>
+    <p>Raw usage events are deleted after 13 months. After 13 months we also remove IP addresses, browser details, location, referrers and page addresses from visit records, and delete call recordings, call transcripts and WhatsApp message text. Application records of people we did not work with are deleted 6 years after the last activity. Clients' records are kept as long as accounting law requires. We erase everything about you on request; payment amounts we must keep for accounting are kept without your name.</p>
 
     <h2 class="h3">Your rights</h2>
-    <p>You can ask for a copy of your data, correction, deletion, restriction, or to object to processing, and you can unsubscribe from emails with the link in every email (it stops every email at once). Email us at the address above. If you are unhappy with how we handle your data, you can complain to your local data protection authority, for example Datatilsynet in Norway or the ICO in the UK.</p>
+    <p>You can ask for a copy of your data, correction, deletion, restriction, or to object to processing, and you can unsubscribe from emails with the link in every email (it stops every email at once). Email us at the address above. If you are unhappy with how we handle your data, you can complain to your local data protection authority, for example Datatilsynet in Norway, the ICO in the UK, the OAIC in Australia or the Office of the Privacy Commissioner in Canada. We do not sell your personal information. If you live in a US state with privacy rights, you can use the same contact to exercise them.</p>
   </article>
 </main>
 <footer class="foot"><div class="wrap"><p class="foot-row"><span>Operator by Asym</span><a href="/">Home</a><button type="button" class="linkish" data-cookie-settings>Cookie settings</button></p></div></footer>

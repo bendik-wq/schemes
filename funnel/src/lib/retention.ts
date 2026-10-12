@@ -14,5 +14,15 @@ export async function purgeOld(rt: Runtime, force = false): Promise<{ events: nu
      WHERE started_at < ? AND (ip IS NOT NULL OR user_agent IS NOT NULL OR lat IS NOT NULL)`,
   ).bind(cutoff).run();
   await rt.env.DB.prepare("DELETE FROM forward_log WHERE created_at < ?").bind(rt.now() - 90 * DAY).run();
+  // Older usage detail: drop query strings, referrers and coarse location as well.
+  await rt.env.DB.prepare("UPDATE sessions SET landing_query = NULL, referrer = NULL, region = NULL, tz = NULL WHERE started_at < ? AND (landing_query IS NOT NULL OR referrer IS NOT NULL)").bind(cutoff).run();
+  await rt.env.DB.prepare("UPDATE visitors SET city = NULL, region = NULL, ft_referrer = NULL WHERE last_seen_at < ?").bind(cutoff).run();
+  // Call transcripts and WhatsApp bodies: 13 months. Whole records of people we never worked with: 6 years.
+  await rt.env.DB.prepare("UPDATE voice_calls SET transcript = NULL, recording_url = NULL WHERE created_at < ?").bind(cutoff).run();
+  await rt.env.DB.prepare("UPDATE whatsapp_messages SET body = NULL WHERE created_at < ?").bind(cutoff).run();
+  const sixYears = rt.now() - 6 * 365 * DAY;
+  const old = ((await rt.env.DB.prepare("SELECT id FROM leads WHERE updated_at < ? AND status != 'won' LIMIT 50").bind(sixYears).all<{ id: string }>()).results) || [];
+  const { eraseLead } = await import("../sales/erase");
+  for (const l of old) await eraseLead(rt, l.id);
   return { events: e.meta?.changes ?? 0, sessions: s.meta?.changes ?? 0 };
 }

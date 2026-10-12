@@ -54,7 +54,7 @@ export async function buildProfile(rt: Runtime, lead: Lead): Promise<Fact[]> {
 
   // Visits.
   const sessions = await db.prepare("SELECT COUNT(*) AS n, COUNT(DISTINCT device) AS devices FROM sessions WHERE lead_id = ? OR visitor_id = ?").bind(lead.id, lead.visitor_id || "").first<{ n: number; devices: number }>();
-  if ((sessions?.n || 0) >= 3) add({ key: "visits", text: `Visited ${sessions?.n} times.`, weight: 3, topics: ["call", "booking"], you: "You have come back to this a few times, which usually means the question is when, not whether." });
+  if ((sessions?.n || 0) >= 3) add({ key: "visits", text: `Visited ${sessions?.n} times.`, weight: 3, topics: ["call", "booking"] });
   if ((sessions?.devices || 0) >= 2) add({ key: "devices", text: "Used more than one device.", weight: 1, topics: [] });
 
   // VSL.
@@ -88,7 +88,7 @@ export async function buildProfile(rt: Runtime, lead: Lead): Promise<Fact[]> {
   const faqIds = new Set(by("faq_open").map((e) => String(props(e).id || "")).filter(Boolean));
   for (const f of FAQS) {
     if (!faqIds.has(f.id)) continue;
-    add({ key: `faq_${f.id}`, text: `Opened the FAQ "${f.q}".`, weight: 3, topics: f.topics, you: `You asked about this one on the page: ${f.q.replace(/\?$/, "").toLowerCase()}.` });
+    add({ key: `faq_${f.id}`, text: `Opened the FAQ "${f.q}".`, weight: 3, topics: f.topics, you: `A question founders often ask at this stage: ${f.q.replace(/\?$/, "").toLowerCase()}.` });
   }
 
   // Sections.

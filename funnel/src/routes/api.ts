@@ -1,6 +1,7 @@
 // Public API used by the funnel pages. Same-origin only; bodies are capped and validated.
 
 import { Hono } from "hono";
+import { setCookie } from "hono/cookie";
 import type { AppEnv, Ctx } from "../app";
 import { resolveIdentity, setConsentCookies } from "../lib/identity";
 import { kvIncr } from "../lib/kv";
@@ -52,6 +53,7 @@ api.use("*", async (c, next) => {
 });
 
 api.post("/e", async (c) => {
+  if (await rateLimited(c, "e", 120, 60_000)) return c.json({ error: "rate" }, 429);
   const body = await readJson<BeaconBody>(c, BEACON_MAX_BYTES);
   if (!body) return c.json({ error: "bad body" }, 400);
   const id = await resolveIdentity(c, { page: false });
@@ -61,6 +63,7 @@ api.post("/e", async (c) => {
 });
 
 api.post("/v", async (c) => {
+  if (await rateLimited(c, "v", 60, 60_000)) return c.json({ error: "rate" }, 429);
   const b = await readJson<Record<string, unknown>>(c, 4096);
   if (!b) return c.json({ error: "bad body" }, 400);
   const id = await resolveIdentity(c, { page: false });
@@ -78,10 +81,13 @@ api.post("/v", async (c) => {
 });
 
 api.post("/consent", async (c) => {
+  if (await rateLimited(c, "consent", 30, 10 * 60_000)) return c.json({ error: "rate" }, 429);
   const b = await readJson<{ consent?: string }>(c, 512);
   const v = b?.consent === "granted" ? "granted" : "denied";
   setConsentCookies(c, v);
   const id = await resolveIdentity(c, { page: false });
+  // With consent, the visitor id may persist across days.
+  if (v === "granted") setCookie(c, "_fv", id.visitorId, { path: "/", httpOnly: true, secure: new URL(c.req.url).protocol === "https:", sameSite: "Lax", maxAge: 400 * 86_400 });
   await c.env.DB.prepare("UPDATE visitors SET consent = ? WHERE id = ?").bind(v, id.visitorId).run();
   await track(c.get("rt"), whoFromIdentity(id, "/"), { name: "consent_set", props: { consent: v }, localOnly: true });
   return c.json({ ok: true, consent: v });
@@ -98,6 +104,7 @@ api.post("/apply/contact", async (c) => {
 });
 
 api.post("/apply/answers", async (c) => {
+  if (await rateLimited(c, "answers", 80, 10 * 60_000)) return c.json({ ok: false, error: "rate" }, 429);
   const b = await readJson<{ answers?: Record<string, unknown>; step?: number }>(c, 8192);
   if (!b) return c.json({ ok: false }, 400);
   const id = await resolveIdentity(c, { page: false });
@@ -114,6 +121,7 @@ api.post("/apply/submit", async (c) => {
 
 /** Calendly postMessage report from the browser. A claim: verified with the API when possible. */
 api.post("/booking/client", async (c) => {
+  if (await rateLimited(c, "booking", 10, 10 * 60_000)) return c.json({ ok: false, error: "rate" }, 429);
   const b = await readJson<{ event_uri?: string; invitee_uri?: string }>(c, 2048);
   const id = await resolveIdentity(c, { page: false });
   const rt = c.get("rt");

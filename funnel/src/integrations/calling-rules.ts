@@ -3,7 +3,7 @@
 // national public holidays (for AU numbers).
 
 import { AI_CALLER, TARGET_COUNTRIES } from "../config";
-import { callingZones, phoneCountry } from "../lib/phone";
+import { callableNumber, callingZones, phoneCountry } from "../lib/phone";
 import { localParts } from "./sequences";
 
 /** Anonymous Gregorian algorithm. Returns [month (1-12), day]. */
@@ -50,26 +50,27 @@ export function auHolidays(year: number): Set<string> {
   return out;
 }
 
-export function inCallingHours(t: number, tz: string): boolean {
+export function inCallingHours(t: number, tz: string, country?: string | null): boolean {
   const p = localParts(t, tz);
   const minutes = p.hh * 60 + p.mm;
   if (tz.startsWith("Australia/") && auHolidays(p.y).has(ymd(p.y, p.mo, p.d))) return false;
   if (p.dow === 0) return false;
-  const w = p.dow === 6 ? AI_CALLER.saturday : AI_CALLER.weekday;
+  const rules = (country && AI_CALLER.countryHours[country]) || AI_CALLER;
+  const w = p.dow === 6 ? rules.saturday : rules.weekday;
   return minutes >= w.start * 60 && minutes < w.end * 60;
 }
 
-export function allZonesOk(t: number, zones: string[]): boolean {
-  return zones.length > 0 && zones.every((z) => inCallingHours(t, z));
+export function allZonesOk(t: number, zones: string[], country?: string | null): boolean {
+  return zones.length > 0 && zones.every((z) => inCallingHours(t, z, country));
 }
 
 /** Earliest time ≥ t when every zone is within hours (15-minute steps, up to 8 days), or null. */
-export function nextCallingTime(t: number, zones: string[]): number | null {
+export function nextCallingTime(t: number, zones: string[], country?: string | null): number | null {
   if (!zones.length) return null;
   const step = 15 * 60_000;
   let x = Math.ceil(t / 60_000) * 60_000;
   for (let i = 0; i < 8 * 24 * 4; i++) {
-    if (allZonesOk(x, zones)) return x;
+    if (allZonesOk(x, zones, country)) return x;
     x = Math.ceil((x + 1) / step) * step;
   }
   return null;
@@ -77,5 +78,5 @@ export function nextCallingTime(t: number, zones: string[]): number | null {
 
 export function callableCountry(phone: string | null | undefined): boolean {
   const c = phoneCountry(phone);
-  return !!c && TARGET_COUNTRIES.includes(c) && callingZones(phone).length > 0;
+  return !!c && TARGET_COUNTRIES.includes(c) && callingZones(phone).length > 0 && callableNumber(phone);
 }

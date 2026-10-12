@@ -5,7 +5,7 @@ import { APPLICATION, CALL_CONSENT, DISPOSABLE_DOMAINS, TIER_VALUE, type Tier } 
 import type { Identity } from "../lib/identity";
 import { linkVisitorToLead } from "../lib/identity";
 import { newId, refCode } from "../lib/ids";
-import { kvGate } from "../lib/kv";
+import { kvGate, kvGet, kvIncr } from "../lib/kv";
 import { normalizePhone, countryTimezone } from "../lib/phone";
 import { clip } from "../lib/text";
 import { track, whoFromIdentity } from "../tracking/track";
@@ -96,7 +96,10 @@ export async function saveContact(rt: Runtime, id: Identity, input: ContactInput
 
   if (existing && existing.id !== linked?.id) {
     // An email address is not identity. Change nothing; send that inbox a link to continue.
-    if (await kvGate(rt.env, `continue:${existing.id}`, 10 * 60_000, now)) {
+    // At most one link an hour and three a day per lead, never to an unsubscribed inbox.
+    const day = `continue_day:${existing.id}:${new Date(now).toISOString().slice(0, 10)}`;
+    if (!existing.unsubscribed_at && Number((await kvGet(rt.env, day)) || 0) < 3 && (await kvGate(rt.env, `continue:${existing.id}`, 60 * 60_000, now))) {
+      await kvIncr(rt.env, day);
       await sendOneOff(rt, existing, "continue", "continue_link");
       await track(rt, { leadId: existing.id, visitorId: id.visitorId, sessionId: id.sessionId, isBot: id.isBot, path: "/apply" }, { name: "continue_link_sent", localOnly: true });
     }
@@ -105,6 +108,8 @@ export async function saveContact(rt: Runtime, id: Identity, input: ContactInput
 
   if (linked) {
     const patch: Partial<Lead> = { first_name: first, last_name: last || null, email, whatsapp_opt_in: input.whatsapp_opt_in ? 1 : linked.whatsapp_opt_in };
+    // An imported contact who proved their inbox (signed link) and is applying becomes a funnel lead.
+    if (linked.booking_source === "calendly-direct") patch.booking_source = "funnel";
     if (phone !== linked.phone) {
       // Consent is per number: a new number needs a fresh tick.
       patch.phone = phone;

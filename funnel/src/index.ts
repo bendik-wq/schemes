@@ -24,7 +24,7 @@ const app = new Hono<AppEnv>();
 const STRICT_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'self' https:; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 const PAGE_CSP =
-  "default-src 'self'; script-src 'self' https://connect.facebook.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https://*.facebook.com https://*.facebook.net; frame-src https://calendly.com https://*.calendly.com https://challenges.cloudflare.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'";
+  "default-src 'self'; script-src 'self' https://connect.facebook.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https://*.facebook.com https://*.facebook.net; frame-src https://calendly.com https://*.calendly.com https://challenges.cloudflare.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'";
 
 // Email previews: framed by Funnel HQ only, sandboxed, no scripts, inline styles allowed.
 const PREVIEW_CSP = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; frame-ancestors 'self'";

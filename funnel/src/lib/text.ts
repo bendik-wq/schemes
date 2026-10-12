@@ -64,7 +64,7 @@ export function quoteSafe(v: unknown, max = 280): string {
 
 /** Sanitise text for Slack/Discord: strip markup characters, break up links, no mentions. */
 export function chatSafe(v: unknown, max = 120): string {
-  return clip(v, max)
+  return clip(defang(v), max)
     .replace(/[<>\[\]|`*_~@#]/g, "")
     .replace(/:\/\//g, ": //")
     .replace(/\bwww\./gi, "www .");
@@ -82,5 +82,8 @@ export function safeFirstName(v: unknown, fallback = "there"): string {
 export function safeBusiness(v: unknown): string {
   const s = clip(v, 120);
   if (!s || hasContactBait(s) || /\d{3,}/.test(s)) return "";
-  return s.replace(/[{}<>\[\]`]/g, "");
+  // Letters, digits, spaces and light punctuation only: no quotes, braces or newlines that could
+  // break out of the quoted data in a voice prompt.
+  const clean = s.replace(/[^\p{L}\p{N} ,.&/-]/gu, "").replace(/\s+/g, " ").trim();
+  return clean.length >= 3 ? clean : "";
 }

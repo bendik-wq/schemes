@@ -247,7 +247,9 @@ export async function resolveIdentity(c: Ctx, opts: { page: boolean }): Promise<
   }
 
   if (opts.page || newVisitor || newSession) {
-    setCookie(c, COOKIE.visitor, visitorId, cookieOpts(c, VISITOR_TTL_S));
+    // Where consent is required and not given, the visitor id lives only for the browser session.
+    if (adsAllowed) setCookie(c, COOKIE.visitor, visitorId, cookieOpts(c, VISITOR_TTL_S));
+    else setCookie(c, COOKIE.visitor, visitorId, { path: "/", httpOnly: true, secure: new URL(c.req.url).protocol === "https:", sameSite: "Lax" });
   }
   setCookie(c, COOKIE.session, `${sessionId}.${now}`, cookieOpts(c, 2 * 3600));
   return id;

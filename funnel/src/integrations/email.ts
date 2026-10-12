@@ -202,8 +202,9 @@ export async function cancelAllEmails(rt: Runtime, leadId: string): Promise<void
 
 /** One-off email (continue link, voice link, test, behaviour trigger) sent right away. */
 export async function sendOneOff(rt: Runtime, lead: Lead, sequence: string, template: string, step?: number): Promise<string | null> {
-  if (lead.booking_source === "calendly-direct") return null;
-  if (lead.unsubscribed_at && sequence !== "continue") return null;
+  // Imported contacts only ever get the continue link they asked for by applying.
+  if (lead.booking_source === "calendly-direct" && sequence !== "continue") return null;
+  if (lead.unsubscribed_at) return null;
   const now = rt.now();
   const s = step ?? (await rt.env.DB.prepare("SELECT COALESCE(MAX(step), -1) + 1 AS n FROM emails WHERE lead_id = ? AND sequence = ?").bind(lead.id, sequence).first<{ n: number }>())?.n ?? 0;
   const id = newId("m");
@@ -269,8 +270,8 @@ async function processOne(rt: Runtime, row: EmailRow): Promise<Outcome> {
   const attempts = row.attempts + 1;
   const lead = await getLead(rt, row.lead_id);
   if (!lead) { await setStatus(rt, row.id, "cancelled", { error: "lead gone" }); return "cancelled"; }
-  if (lead.unsubscribed_at && row.sequence !== "continue") { await setStatus(rt, row.id, "cancelled", { error: "unsubscribed" }); return "cancelled"; }
-  if (lead.booking_source === "calendly-direct") { await setStatus(rt, row.id, "skipped", { error: "imported contact" }); return "skipped"; }
+  if (lead.unsubscribed_at) { await setStatus(rt, row.id, "cancelled", { error: "unsubscribed" }); return "cancelled"; }
+  if (lead.booking_source === "calendly-direct" && row.sequence !== "continue") { await setStatus(rt, row.id, "skipped", { error: "imported contact" }); return "skipped"; }
   const seq = SEQUENCES[row.sequence];
   if (seq?.stopIf(lead)) {
     await setStatus(rt, row.id, "cancelled", { error: "sequence goal met" });

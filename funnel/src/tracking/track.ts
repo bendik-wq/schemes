@@ -69,12 +69,13 @@ export async function track(rt: Runtime, who: Who, input: TrackInput): Promise<s
   const ts = rt.now();
   const props = { ...(input.props || {}) };
   if (input.value != null) props.value = input.value;
-  await rt.env.DB.prepare(
-    "INSERT INTO events (id, ts, name, visitor_id, session_id, lead_id, path, source, variant, is_bot, props) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+  const ins = await rt.env.DB.prepare(
+    "INSERT OR IGNORE INTO events (id, ts, name, visitor_id, session_id, lead_id, path, source, variant, is_bot, props) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
   ).bind(
     id, ts, input.name, who.visitorId ?? null, who.sessionId ?? null, who.leadId ?? null, (who.path || "").slice(0, 200) || null,
     input.source || "server", who.variant ?? null, who.isBot ? 1 : 0, cleanProps(props),
-  ).run();
+  ).run().then((r) => r);
+  if (input.eventId && !ins.meta?.changes) return id; // already recorded and forwarded
 
   const def = EVENTS[input.name];
   const forward = !input.localOnly && !who.isBot && !!def && !MICRO_EVENTS.has(input.name);

@@ -5,6 +5,7 @@ import type { Runtime } from "../app";
 import { effectiveTier, type Lead } from "../funnel/leads";
 import { chatSafe } from "../lib/text";
 import { getRep } from "../sales/reps";
+import { isHttps, validOutbound } from "../lib/outbound";
 
 export type NotifyKind =
   | "hot_lead" | "qualified" | "booked" | "rescheduled" | "cancelled" | "call_soon" | "no_show" | "showed" | "won" | "lost"
@@ -39,6 +40,7 @@ export function formatPing(kind: NotifyKind, lead: Pick<Lead, "id" | "first_name
 }
 
 async function post(url: string, body: unknown): Promise<boolean> {
+  if (!isHttps(url)) return false;
   try {
     const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     return r.ok;
@@ -53,8 +55,9 @@ export async function notifyTeam(rt: Runtime, kind: NotifyKind, lead: Lead | nul
   const p = formatPing(kind, lead, rt.origin, extra);
   const rep = lead ? await getRep(rt, lead.closer_id) : null;
   const win = WIN_KINDS.has(kind);
-  const slackUrl = (win && s.get("SLACK_WINS_WEBHOOK_URL")) || s.get("SLACK_WEBHOOK_URL");
-  const discordUrl = (win && s.get("DISCORD_WINS_WEBHOOK_URL")) || s.get("DISCORD_WEBHOOK_URL");
+  const pick = (k: string) => (validOutbound(k, s.get(k)) ? s.get(k) : "");
+  const slackUrl = (win && pick("SLACK_WINS_WEBHOOK_URL")) || pick("SLACK_WEBHOOK_URL");
+  const discordUrl = (win && pick("DISCORD_WINS_WEBHOOK_URL")) || pick("DISCORD_WEBHOOK_URL");
   const out = { slack: false, discord: false };
   if (slackUrl) {
     const mention = rep?.slack_user_id && /^[A-Z0-9]+$/.test(rep.slack_user_id) ? `<@${rep.slack_user_id}> ` : "";
@@ -80,6 +83,6 @@ export async function notifyTeam(rt: Runtime, kind: NotifyKind, lead: Lead | nul
 export async function notifyText(rt: Runtime, title: string, lines: string[]): Promise<void> {
   const s = rt.settings;
   const body = [title, ...lines.map((l) => chatSafe(l, 300))].join("\n");
-  if (s.get("SLACK_WEBHOOK_URL")) await post(s.get("SLACK_WEBHOOK_URL"), { text: body, unfurl_links: false });
-  if (s.get("DISCORD_WEBHOOK_URL")) await post(s.get("DISCORD_WEBHOOK_URL"), { content: body, allowed_mentions: { parse: [] } });
+  if (validOutbound("SLACK_WEBHOOK_URL", s.get("SLACK_WEBHOOK_URL")) && s.get("SLACK_WEBHOOK_URL")) await post(s.get("SLACK_WEBHOOK_URL"), { text: body, unfurl_links: false });
+  if (validOutbound("DISCORD_WEBHOOK_URL", s.get("DISCORD_WEBHOOK_URL")) && s.get("DISCORD_WEBHOOK_URL")) await post(s.get("DISCORD_WEBHOOK_URL"), { content: body, allowed_mentions: { parse: [] } });
 }

@@ -6,7 +6,7 @@ import type { Runtime } from "../app";
 import { AI_CALLER, BRAND, FAQS, OUTBOUND_FIRST_MESSAGE, inboundSystemPrompt, outboundSystemPrompt } from "../config";
 import { hmacHex, safeEqual } from "../lib/crypto";
 import { newId } from "../lib/ids";
-import { callingZones } from "../lib/phone";
+import { callingZones, phoneCountry } from "../lib/phone";
 import { safeBusiness, safeFirstName, clip } from "../lib/text";
 import { getLead, updateLead, effectiveTier, type Lead } from "../funnel/leads";
 import { getRep } from "../sales/reps";
@@ -54,24 +54,34 @@ export function isStale(lead: Lead, kind: CallKind, runAt: number, createdAt: nu
   return false;
 }
 
+/** Do-not-call belongs to the phone number, not the lead: a new application cannot undo it. */
+export async function numberOnDnc(rt: Runtime, phone: string | null): Promise<boolean> {
+  if (!phone) return false;
+  const r = await rt.env.DB.prepare("SELECT 1 AS x FROM leads WHERE phone = ? AND do_not_call_at IS NOT NULL LIMIT 1").bind(phone).first();
+  return !!r;
+}
+
 export async function queueCall(rt: Runtime, lead: Lead, kind: Exclude<CallKind, "test">): Promise<{ queued: boolean; reason?: string }> {
   const s = rt.settings;
   if (!s.bool(KIND_SETTING[kind])) return { queued: false, reason: "disabled" };
   const now = rt.now();
   const block = blockReason(lead, kind, now);
   if (block) return { queued: false, reason: block };
+  if (await numberOnDnc(rt, lead.phone)) return { queued: false, reason: "number on do-not-call" };
+  if (!/^\+\d{8,15}$/.test(s.get("AI_CALL_CALLBACK_NUMBER"))) return { queued: false, reason: "no callback number set" };
   const db = rt.env.DB;
   const live = await db.prepare("SELECT id FROM outbound_calls WHERE lead_id = ? AND kind = ? AND status IN ('queued','dialing')").bind(lead.id, kind).first();
   if (live) return { queued: false, reason: "already queued" };
   const week = await db.prepare("SELECT COUNT(*) AS n FROM outbound_calls WHERE phone = ? AND created_at > ? AND status != 'cancelled'").bind(lead.phone, now - 7 * 24 * H).first<{ n: number }>();
   if ((week?.n || 0) >= AI_CALLER.perNumberPerWeek) return { queued: false, reason: "weekly cap for this number" };
   const zones = callingZones(lead.phone);
-  const runAt = nextCallingTime(now + AI_CALLER.delays[kind] * MIN, zones);
+  const runAt = nextCallingTime(now + AI_CALLER.delays[kind] * MIN, zones, phoneCountry(lead.phone));
   if (!runAt) return { queued: false, reason: "no calling window" };
   if (isStale(lead, kind, runAt, now)) return { queued: false, reason: "would be stale" };
-  await db.prepare(
-    "INSERT INTO outbound_calls (id, lead_id, kind, phone, status, run_at, attempts, created_at, updated_at) VALUES (?,?,?,?, 'queued', ?, 0, ?, ?)",
+  const ins = await db.prepare(
+    "INSERT OR IGNORE INTO outbound_calls (id, lead_id, kind, phone, status, run_at, attempts, created_at, updated_at) VALUES (?,?,?,?, 'queued', ?, 0, ?, ?)",
   ).bind(newId("c"), lead.id, kind, lead.phone, runAt, now, now).run();
+  if (!ins.meta?.changes) return { queued: false, reason: "already queued" };
   await track(rt, { leadId: lead.id }, { name: "ai_call_queued", source: "server", props: { kind }, localOnly: true });
   return { queued: true };
 }
@@ -90,11 +100,13 @@ function opening(kind: CallKind, closer: string, callTime: string): string {
   return "This is a test call from Funnel HQ.";
 }
 
-function voicemail(kind: CallKind): string {
-  if (kind === "confirm") return "Calling to confirm your Operator call. Your confirmation email has the details.";
-  if (kind === "speed_to_lead") return "Calling about your Operator application. We've emailed you a link to book a time.";
-  if (kind === "rebook") return "Sorry we missed you. We've emailed you a link to pick a new time.";
-  return "This was a test call.";
+function voicemail(kind: CallKind, callback: string): string {
+  const who = "This is an automated message from Operator by Asym.";
+  const end = ` To reach us or to stop these calls, call ${callback}.`;
+  if (kind === "confirm") return `${who} Calling to confirm your call. Your confirmation email has the details.${end}`;
+  if (kind === "speed_to_lead") return `${who} Calling about your application. We have emailed you a link to book a time.${end}`;
+  if (kind === "rebook") return `${who} Sorry we missed you. We have emailed you a link to pick a new time.${end}`;
+  return `${who} This was a test call.${end}`;
 }
 
 export async function dynamicVariables(rt: Runtime, lead: Lead | null, kind: CallKind): Promise<Record<string, string>> {
@@ -115,8 +127,8 @@ export async function dynamicVariables(rt: Runtime, lead: Lead | null, kind: Cal
     business,
     tier: lead ? effectiveTier(lead) || "" : "",
     lead_ref: lead?.ref_code || "TEST",
-    callback_number: rt.settings.get("AI_CALL_CALLBACK_NUMBER") || "the number on your email",
-    voicemail_reason: voicemail(kind),
+    callback_number: rt.settings.get("AI_CALL_CALLBACK_NUMBER") || "the number in our email",
+    voicemail_reason: voicemail(kind, rt.settings.get("AI_CALL_CALLBACK_NUMBER") || "the number in our email"),
   };
 }
 
@@ -169,15 +181,17 @@ export async function processCallQueue(rt: Runtime): Promise<number> {
     const block = blockReason(lead, c.kind, now);
     if (block) { await fail("cancelled", block); continue; }
     if (lead.phone !== c.phone) { await fail("cancelled", "phone changed"); continue; }
+    if (await numberOnDnc(rt, c.phone)) { await fail("cancelled", "number on do-not-call"); continue; }
+    if (!/^\+\d{8,15}$/.test(rt.settings.get("AI_CALL_CALLBACK_NUMBER"))) { await fail("cancelled", "no callback number set"); continue; }
     if (isStale(lead, c.kind, now, c.created_at)) { await fail("cancelled", "stale"); continue; }
     const zones = callingZones(c.phone);
-    const next = nextCallingTime(now, zones);
+    const next = nextCallingTime(now, zones, phoneCountry(c.phone));
     if (next == null || next > now) {
       await db.prepare("UPDATE outbound_calls SET status='queued', attempts = attempts - 1, run_at = ?, updated_at = ? WHERE id = ?").bind(next ?? now + 24 * H, now, c.id).run();
       continue;
     }
     const today = await db.prepare("SELECT COUNT(*) AS n FROM outbound_calls WHERE status IN ('dialing','done') AND updated_at > ? AND (outcome IS NULL OR outcome != 'simulated')").bind(dayStart).first<{ n: number }>();
-    if ((today?.n || 0) > rt.settings.num("AI_CALL_DAILY_CAP", 40)) {
+    if ((today?.n || 0) >= rt.settings.num("AI_CALL_DAILY_CAP", 40)) {
       await db.prepare("UPDATE outbound_calls SET status='queued', attempts = attempts - 1, run_at = ?, updated_at = ? WHERE id = ?").bind(now + 2 * H, now, c.id).run();
       continue;
     }
@@ -283,7 +297,7 @@ export async function handlePostCall(rt: Runtime, body: PostCall): Promise<{ ok:
   if (!answered && call.attempts < AI_CALLER.maxAttempts && structured.do_not_call !== true) {
     const fresh = await getLead(rt, lead.id);
     if (fresh && !blockReason(fresh, call.kind, now)) {
-      const next = nextCallingTime(now + AI_CALLER.retryAfterMin * MIN, callingZones(fresh.phone));
+      const next = nextCallingTime(now + AI_CALLER.retryAfterMin * MIN, callingZones(fresh.phone), phoneCountry(fresh.phone));
       if (next && !isStale(fresh, call.kind, next, call.created_at)) {
         await db.prepare("UPDATE outbound_calls SET status='queued', run_at=?, updated_at=? WHERE id=?").bind(next, now, call.id).run();
       }

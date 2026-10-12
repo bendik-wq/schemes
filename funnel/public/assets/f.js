@@ -251,7 +251,7 @@
         w.fbq("init", String(cfg.pixel));
         w.fbq("track", "PageView", {}, cfg.pv ? { eventID: cfg.pv } : undefined);
       }
-      if (cfg.replay && cfg.replay.key) {
+      if (cfg.replay && cfg.replay.key && readConsent() === "granted") {
         var p = d.createElement("script"); p.async = true; p.src = "/ph/static/array.js";
         p.onload = function () {
           if (!w.posthog || !w.posthog.init) return;
@@ -261,10 +261,25 @@
         d.head.appendChild(p);
       }
     }
+    function clearAdCookies() {
+      var parts = location.hostname.split("."), domains = [""];
+      for (var i = parts.length - 2; i >= 0; i--) domains.push("; domain=." + parts.slice(i).join("."));
+      ["_fbp", "_fbc"].forEach(function (n) { domains.forEach(function (dm) { d.cookie = n + "=; Max-Age=0; path=/" + dm; }); });
+    }
     function send(v) {
+      var wasLoaded = loaded;
+      if (v === "denied") {
+        try { if (w.fbq) w.fbq("consent", "revoke"); } catch (e) {}
+        try { if (w.posthog && w.posthog.opt_out_capturing) w.posthog.opt_out_capturing(); } catch (e) {}
+        clearAdCookies();
+      }
       fetch("/api/consent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ consent: v }), credentials: "same-origin" })
         .catch(function () {})
-        .then(function () { cfg.consent = v; if (v === "granted") loadThirdParty(); });
+        .then(function () {
+          cfg.consent = v;
+          if (v === "granted") loadThirdParty();
+          else if (wasLoaded) location.reload(); // unload anything already running
+        });
     }
     var banner = null;
     function show() {
@@ -274,7 +289,7 @@
       banner.setAttribute("role", "dialog");
       banner.setAttribute("aria-label", "Cookie choices");
       var p = d.createElement("p");
-      p.appendChild(d.createTextNode("We use first-party cookies to run this site. With your permission we also use advertising cookies to measure our ads. "));
+      p.appendChild(d.createTextNode("We use our own cookies to run this site and to understand how it is used. With your permission we also remember your visit across days and use advertising cookies to measure our ads. "));
       var a = d.createElement("a"); a.href = "/privacy"; a.textContent = "Privacy policy"; p.appendChild(a);
       var row = d.createElement("div"); row.className = "row";
       var no = d.createElement("button"); no.type = "button"; no.className = "btn ghost"; no.textContent = "Decline";

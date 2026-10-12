@@ -183,8 +183,10 @@ async function upsertBookingRow(rt: Runtime, ev: CalendlyEvent, inv: CalendlyInv
 }
 
 /** Apply one invitee's state to the lead record (live webhook, sync or import). */
-export async function applyInvitee(rt: Runtime, ev: CalendlyEvent, inv: CalendlyInvitee, opts: { createDirect: boolean }): Promise<string> {
+export async function applyInvitee(rt: Runtime, ev: CalendlyEvent, inv: CalendlyInvitee, opts: { createDirect: boolean; ownBrowserLeadId?: string }): Promise<string> {
   let { lead, kind } = await matchLead(rt, inv);
+  // The lead's own linked browser reported this booking and Calendly confirms it: as good as the uuid.
+  if (lead && kind === "email" && opts.ownBrowserLeadId === lead.id) kind = "uuid";
   if (!lead && opts.createDirect) {
     lead = await createDirectLead(rt, inv);
     kind = lead ? "email" : null;
@@ -250,7 +252,7 @@ export async function verifyClientBooking(rt: Runtime, lead: Lead, eventUri: unk
   const uuidOk = inv.tracking?.salesforce_uuid === lead.id;
   const emailOk = inv.email === lead.email;
   if (!uuidOk && !emailOk) return "claimed";
-  await applyInvitee(rt, full.event, inv, { createDirect: false });
+  await applyInvitee(rt, full.event, inv, { createDirect: false, ownBrowserLeadId: lead.id });
   return "verified";
 }
 

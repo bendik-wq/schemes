@@ -761,3 +761,4 @@ audio { width: 100%; height: 36px; margin-top: 8px; }
 .card-head + .card-body { padding-top: 12px; }
 @media (max-width: 860px) { .input, .select, .textarea { font-size: 16px; height: 36px; } .textarea { height: auto; } .select.sm, .input.sm { font-size: 16px; height: 34px; } }
 .row.wrap > .input[type="search"] { flex: 1 1 280px; min-width: 0; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }

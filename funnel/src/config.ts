@@ -274,6 +274,11 @@ export const AI_CALLER = {
   weekday: { start: 9, end: 20 },
   saturday: { start: 9, end: 17 },
   sunday: null as null,
+  /** Stricter local rules: Canada (CRTC) weekends 10–18; UAE 9–18. */
+  countryHours: {
+    CA: { weekday: { start: 9, end: 20 }, saturday: { start: 10, end: 18 } },
+    AE: { weekday: { start: 9, end: 18 }, saturday: { start: 9, end: 18 } },
+  } as Record<string, { weekday: { start: number; end: number }; saturday: { start: number; end: number } }>,
   maxAttempts: 2,
   retryAfterMin: 45,
   perNumberPerWeek: 3,
