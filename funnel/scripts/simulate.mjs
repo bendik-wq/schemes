@@ -48,7 +48,8 @@ class Jar {
 async function visitor(i) {
   const jar = new Jar();
   const ua = rnd(UAS);
-  const headers = (extra = {}) => ({ "user-agent": ua, "accept-language": "en-GB,en;q=0.9", cookie: jar.header(), ...extra });
+  const ip = `203.0.113.${(i % 250) + 1}`; // documentation range; Cloudflare overwrites this header in production
+  const headers = (extra = {}) => ({ "user-agent": ua, "accept-language": "en-GB,en;q=0.9", "cf-connecting-ip": ip, cookie: jar.header(), ...extra });
   const api = async (path, body) => {
     const r = await fetch(BASE + path, { method: "POST", headers: headers({ "content-type": "application/json", "sec-fetch-site": "same-origin", origin: BASE }), body: JSON.stringify(body) });
     jar.set(r);

@@ -141,7 +141,7 @@ export async function applyLeadUpdate(
   const anchor = lead.call_at && lead.call_at < now ? lead.call_at : now;
   if (next !== prev) {
     if ((next === "showed" || next === "won" || next === "lost") && !lead.showed_at && lead.call_at && lead.call_at <= now) clean.showed_at = anchor;
-    if ((next === "won" || next === "lost") && !lead.closed_at) clean.closed_at = Math.max(anchor, lead.call_at || 0) || now;
+    if ((next === "won" || next === "lost") && !lead.closed_at) clean.closed_at = anchor; // never in the future
     if (next === "won" && !clean.revenue && !lead.revenue) clean.revenue = 0;
   }
   if (patch.do_not_call === true) clean.do_not_call_at = now;

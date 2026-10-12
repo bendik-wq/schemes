@@ -211,6 +211,11 @@ export async function dailyTrend(rt: Runtime, f: Filters) {
     since = Math.max(num(first?.t) || now - 30 * DAY, now - 365 * DAY);
   }
   if (f.range === "today") since = now - 14 * DAY; // a single point is not a trend
+  else if (f.range !== "all") {
+    // Start at the first full local day so the line does not open on a partial day.
+    const p = localParts(since + DAY, tz);
+    since = zonedTime(p.y, p.mo, p.d, 0, 0, tz);
+  }
   const off = tzOffset(now, tz);
   const day = (col: string) => `strftime('%Y-%m-%d', (${col} + ${Math.trunc(off)}) / 1000, 'unixepoch')`;
   const sd = sessDims(f, "s");
@@ -286,6 +291,11 @@ export async function funnelMapStats(rt: Runtime, f: Filters) {
     one<{ n: number }>(rt, `SELECT COUNT(DISTINCT e.visitor_id) AS n FROM events e WHERE e.name = 'page_view' AND e.path = '/breakout' AND e.is_bot = 0 AND e.ts >= ?`, [f.since]),
     one<{ n: number }>(rt, `SELECT COUNT(DISTINCT e.visitor_id) AS n FROM events e WHERE e.name = 'page_view' AND e.path = '/resources' AND e.is_bot = 0 AND e.ts >= ?`, [f.since]),
   ]);
+  const ch = await all<{ g: string; n: number }>(rt,
+    `SELECT CASE WHEN s.channel IN ('Paid Social','Paid Search','Paid Video','Paid Other') THEN 'paid'
+                 WHEN s.channel IN ('Organic Video') OR s.landing_query LIKE '%lk=%' THEN 'video'
+                 WHEN s.channel IN ('Direct','Email','SMS') THEN 'direct' ELSE 'organic' END AS g,
+       COUNT(DISTINCT s.visitor_id) AS n FROM sessions s WHERE s.is_bot = 0 AND s.started_at >= ?${sd.sql} GROUP BY g`, [f.since, ...sd.binds]);
   const em = Object.fromEntries(emails.map((r) => [r.sequence, num(r.n)]));
   const cl = Object.fromEntries(calls.map((r) => [r.kind, num(r.n)]));
   const counts: Record<string, number> = {
@@ -296,6 +306,7 @@ export async function funnelMapStats(rt: Runtime, f: Filters) {
     call_speed: cl.speed_to_lead || 0, call_confirm: cl.confirm || 0, call_rebook: cl.rebook || 0,
   };
   for (const [k, v] of Object.entries(em)) counts[`email_${k}`] = v;
+  for (const g of ["paid", "video", "organic", "direct"]) counts[`src_${g}`] = num(ch.find((r) => r.g === g)?.n);
   const rates: Record<string, number | null> = {
     visit_play: pct(c.plays, c.visitors),
     play_pitch: pct(c.pitch, c.plays),

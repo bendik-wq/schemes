@@ -9,7 +9,8 @@ import { links } from "./routes/links";
 import { hooks } from "./routes/hooks";
 import { landingPage, smartRoute, applyPage, bookPage, breakoutPage, resourcesPage, privacyPage } from "./funnel/pages";
 import { getAngle, getIndustry } from "./landers/catalog";
-import { processEmailQueue } from "./integrations/email";
+import { processEmailQueue, previewTemplate } from "./integrations/email";
+import { getLead } from "./funnel/leads";
 import { retryForwards } from "./tracking/forward";
 import { pingUpcomingCalls, maybeSendDigest } from "./sales/digest";
 import { processCallQueue } from "./integrations/elevenlabs";
@@ -24,6 +25,9 @@ const STRICT_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'self' https:; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 const PAGE_CSP =
   "default-src 'self'; script-src 'self' https://connect.facebook.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https://*.facebook.com https://*.facebook.net; frame-src https://calendly.com https://*.calendly.com https://challenges.cloudflare.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'";
+
+// Email previews: framed by Funnel HQ only, sandboxed, no scripts, inline styles allowed.
+const PREVIEW_CSP = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; frame-ancestors 'self'";
 
 // Runtime per request.
 app.use("*", async (c, next) => {
@@ -42,10 +46,12 @@ app.use("*", async (c, next) => {
   h.set("x-robots-tag", "noindex, nofollow");
   h.set("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=()");
   if (new URL(c.req.url).protocol === "https:") h.set("strict-transport-security", "max-age=31536000; includeSubDomains");
-  const strict = path === "/admin" || path.startsWith("/admin/") || path.startsWith("/u/");
+  const preview = path === "/admin/preview";
+  const strict = !preview && (path === "/admin" || path.startsWith("/admin/") || path.startsWith("/u/"));
   h.set("x-frame-options", strict ? "DENY" : "SAMEORIGIN");
   const type = h.get("content-type") || "";
-  if (strict) h.set("content-security-policy", STRICT_CSP);
+  if (preview) h.set("content-security-policy", PREVIEW_CSP);
+  else if (strict) h.set("content-security-policy", STRICT_CSP);
   else if (type.includes("text/html")) h.set("content-security-policy", PAGE_CSP);
   if (path.startsWith("/admin")) h.set("cache-control", "no-store");
   c.res = res;
@@ -102,6 +108,18 @@ app.post("/admin/logout", requireAdmin, async (c) => {
 });
 app.use("/admin", requireAdmin);
 app.get("/admin", (c) => asset(c, "/admin/index.html"));
+app.get("/admin/preview", requireAdmin, async (c) => {
+  const rt = c.get("rt");
+  const template = c.req.query("template") || "";
+  const leadId = c.req.query("lead") || "";
+  const lead = /^l[0-9a-z]{19}$/.test(leadId) ? await getLead(rt, leadId) : null;
+  try {
+    const r = await previewTemplate(rt, lead, template);
+    return c.html(r.html);
+  } catch {
+    return c.text("Unknown template", 404);
+  }
+});
 app.use("/admin/api/*", requireAdmin);
 app.route("/admin/api", adminApi);
 

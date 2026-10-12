@@ -723,3 +723,41 @@ audio { width: 100%; height: 36px; margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Swatches and stacks for categorical slots */
+.swatch.sw1 { background: var(--c1); }
+.swatch.sw2 { background: var(--c2); }
+.swatch.sw3 { background: var(--c3); }
+.swatch.sw4 { background: var(--c4); }
+.swatch.sw5 { background: var(--c5); }
+.swatch.sw6 { background: var(--c6); }
+.stack-bar .s5 { background: var(--c5); }
+.stack-bar .s6 { background: var(--c6); }
+.row > .spacer, .drawer-top > .spacer { flex: 1; }
+.drawer-title { min-width: 0; flex: 1; }
+.card-head > .badge { flex: none; margin-top: 1px; }
+.fm-arrow.auto { fill: var(--k-auto); opacity: 0.7; }
+.fm-arrow.data { fill: var(--k-data); opacity: 0.6; }
+.fm-arrow.custom { fill: var(--accent); opacity: 0.8; }
+.fm-arrow.hl { fill: var(--accent); opacity: 1; }
+.card-head { flex-wrap: wrap; }
+.card-head > div:first-child { flex: 1 1 220px; min-width: 0; }
+.seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg::-webkit-scrollbar { display: none; }
+.fm-panel-head { position: relative; padding-right: 44px; }
+.fm-panel-close { position: absolute; right: 10px; top: 10px; font-size: 18px; line-height: 1; }
+.card > .card-body.flush:last-child { border-radius: 0 0 var(--r-lg) var(--r-lg); overflow: hidden; }
+.card > .table-wrap:first-child, .card > .card-body.flush:only-child { border-radius: var(--r-lg); overflow: hidden; }
+.cell-bar > .tnum { min-width: 32px; text-align: right; }
+.section-title { margin-top: 24px; }
+.switch { align-items: flex-start; }
+.switch > span:last-child { display: flex; flex-direction: column; gap: 2px; line-height: 1.4; }
+.switch .switch-track { margin-top: 1px; }
+.setting { padding: 10px 16px; }
+.setting-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.setting-line .setting-value { margin-top: 2px; min-width: 0; }
+.setting-line .setting-key { flex: none; }
+.setting-head .row { gap: 10px; }
+.card-head + .card-body { padding-top: 12px; }
+@media (max-width: 860px) { .input, .select, .textarea { font-size: 16px; height: 36px; } .textarea { height: auto; } .select.sm, .input.sm { font-size: 16px; height: 34px; } }
+.row.wrap > .input[type="search"] { flex: 1 1 280px; min-width: 0; }

@@ -48,8 +48,8 @@ export async function renderTemplate(c: Ctx, file: string, fill: Fill, status = 
   for (const sel of fill.remove || []) rw.on(sel, { element(el) { el.remove(); } });
   if (fill.cfg) rw.on("script#op-cfg", { element(el) { el.setInnerContent(safeJson(fill.cfg), { html: true }); } });
   const out = rw.transform(new Response(res.body, { status, headers: { "content-type": "text/html; charset=utf-8" } }));
-  out.headers.set("cache-control", "private, no-store");
-  return out;
+  // c.newResponse keeps the cookies queued on the context (visitor, session, variant, lander, fbp/fbc).
+  return c.newResponse(out.body, status as 200, { "content-type": "text/html; charset=utf-8", "cache-control": "private, no-store" });
 }
 
 // ── Shared pieces ─────────────────────────────────────────────────────────────

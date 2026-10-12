@@ -19,9 +19,9 @@ export async function behaviourReport(rt: Runtime, f: Filters) {
   const b = (names: string[]) => [...names, f.since, ...vd.binds];
   const section = `COALESCE(${J("section")}, ${J("s")})`;
   const [clicks, rage, fields, exits, revisits, dwell, highlights, faqs, summary] = await Promise.all([
-    all<{ target: string; path: string; n: number; visitors: number }>(rt,
-      `SELECT COALESCE(${J("target")}, ${J("id")}, ${J("label")}, ${J("el")}, e.name) AS target, COALESCE(e.path, '/') AS path, COUNT(*) AS n, COUNT(DISTINCT e.visitor_id) AS visitors
-       ${base(["click", "cta_click"])} GROUP BY target, path ORDER BY n DESC LIMIT 40`, b(["click", "cta_click"])),
+    all<{ target: string; page: string; n: number; visitors: number }>(rt,
+      `SELECT COALESCE(${J("target")}, ${J("id")}, ${J("label")}, ${J("el")}, e.name) AS target, COALESCE(e.path, '/') AS page, COUNT(*) AS n, COUNT(DISTINCT e.visitor_id) AS visitors
+       ${base(["click", "cta_click"])} GROUP BY target, page ORDER BY n DESC LIMIT 40`, b(["click", "cta_click"])),
     all<{ target: string; n: number }>(rt,
       `SELECT COALESCE(${J("target")}, ${J("id")}, ${J("el")}, '(unknown)') AS target, COUNT(*) AS n ${base(["rage_click"])} GROUP BY target ORDER BY n DESC LIMIT 15`, b(["rage_click"])),
     all<{ field: string; n: number; ms: number; corrections: number; pasted: number; empty: number }>(rt,
@@ -35,7 +35,7 @@ export async function behaviourReport(rt: Runtime, f: Filters) {
     all<{ section: string; n: number; visitors: number }>(rt, `SELECT ${section} AS section, COUNT(*) AS n, COUNT(DISTINCT e.visitor_id) AS visitors ${base(["section_revisit"])} GROUP BY section ORDER BY n DESC LIMIT 30`, b(["section_revisit"])),
     all<{ section: string; n: number; ms: number }>(rt, `SELECT ${section} AS section, COUNT(*) AS n, AVG(COALESCE(${J("ms")}, 0)) AS ms ${base(["section_dwell"])} GROUP BY section ORDER BY ms DESC LIMIT 30`, b(["section_dwell"])),
     all<{ section: string; name: string; n: number }>(rt, `SELECT ${section} AS section, e.name AS name, COUNT(*) AS n ${base(["text_select", "text_copy"])} GROUP BY section, e.name`, b(["text_select", "text_copy"])),
-    all<{ id: string; n: number; visitors: number }>(rt, `SELECT ${J("id")} AS id, COUNT(*) AS n, COUNT(DISTINCT e.visitor_id) AS visitors ${base(["faq_open"])} GROUP BY id`, b(["faq_open"])),
+    all<{ faq_id: string; n: number; visitors: number }>(rt, `SELECT ${J("id")} AS faq_id, COUNT(*) AS n, COUNT(DISTINCT e.visitor_id) AS visitors ${base(["faq_open"])} GROUP BY faq_id`, b(["faq_open"])),
     all<{ name: string; n: number; visitors: number }>(rt,
       `SELECT e.name, COUNT(*) AS n, COUNT(DISTINCT e.visitor_id) AS visitors ${base(["cta_hover", "tab_return", "exit_intent", "rage_click", "text_select", "text_copy", "section_revisit", "faq_open", "app_back"])} GROUP BY e.name`,
       b(["cta_hover", "tab_return", "exit_intent", "rage_click", "text_select", "text_copy", "section_revisit", "faq_open", "app_back"])),
@@ -55,14 +55,14 @@ export async function behaviourReport(rt: Runtime, f: Filters) {
     hl.set(s, cur);
   }
   const faqRows = FAQS.map((fq) => {
-    const r = faqs.find((x) => String(x.id) === fq.id);
+    const r = faqs.find((x) => String(x.faq_id) === fq.id);
     return { id: fq.id, question: fq.q, opens: num(r?.n), visitors: num(r?.visitors) };
   }).sort((a, b2) => b2.opens - a.opens);
   const totalExits = exits.reduce((s, r) => s + num(r.n), 0);
   const S = Object.fromEntries(summary.map((r) => [r.name, { n: num(r.n), visitors: num(r.visitors) }]));
   return {
     summary: S,
-    clicks: clicks.map((r) => ({ target: cleanName(r.target, 60), path: cleanName(r.path, 60), n: num(r.n), visitors: num(r.visitors) })),
+    clicks: clicks.map((r) => ({ target: cleanName(r.target, 60), path: cleanName(r.page, 60), n: num(r.n), visitors: num(r.visitors) })),
     rage_clicks: rage.map((r) => ({ target: cleanName(r.target, 60), n: num(r.n) })),
     fields: fields.filter((r) => r.field != null).map((r) => {
       const id = cleanName(r.field, 40);

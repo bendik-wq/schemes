@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_NODE_IDS, LIMITS, MapError, TAB_IDS, validateCustom, validateLayout } from "../src/admin/map";
-import { readFileSync } from "node:fs";
+
+// Node's fs without pulling @types/node into the Worker tsconfig.
+const NODE_FS = "node:fs";
+async function readText(rel: string): Promise<string> {
+  const fs = (await import(/* @vite-ignore */ NODE_FS)) as { readFileSync(p: string, enc: string): string };
+  return fs.readFileSync(rel, "utf8");
+}
 
 const good = () => ({
   nodes: [
@@ -89,11 +95,11 @@ describe("map custom", () => {
     const c = good(); (c.edits as Record<string, unknown>).u_abcd1234 = { title: "x" }; rejects(() => validateCustom(c));
     const d = good(); (d.edits as Record<string, unknown>).vsl = { title: "x", html: "<b>" }; rejects(() => validateCustom(d));
   });
-  it("built-in ids and tabs match funnel-map.js and admin.js", () => {
-    const js = readFileSync(new URL("../public/assets/funnel-map.js", import.meta.url), "utf8");
+  it("built-in ids and tabs match funnel-map.js and admin.js", async () => {
+    const js = await readText("public/assets/funnel-map.js");
     const ids = [...js.matchAll(/\bid:\s*"([a-z_]+)"\s*,\s*kind:/g)].map((m) => m[1]);
     expect(ids.sort()).toEqual([...BUILTIN_NODE_IDS].sort());
-    const admin = readFileSync(new URL("../public/assets/admin.js", import.meta.url), "utf8");
+    const admin = await readText("public/assets/admin.js");
     for (const t of TAB_IDS) expect(admin).toContain(`id: "${t}"`);
   });
 });
