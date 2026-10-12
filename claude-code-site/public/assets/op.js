@@ -85,8 +85,8 @@
         .then(function (res) {
           if (!res.ok) throw new Error(res.j.error || T.fail);
           var r = res.j.result, L = NO ? ["byggedager med Claude Code", "Komponenter", "Build Day 1", "Build Day 2", "Risiko å planlegge for"] : ["build days with Claude Code", "Components", "Build Day 1", "Build Day 2", "Risks to plan for"];
-          out.innerHTML = "<div class=\"card\" style=\"margin-top:20px\"><span class=\"n\">" + esc(r.name) + "</span><h3>" + esc(r.summary) + "</h3>" +
-            "<p style=\"margin:10px 0 0\"><span class=\"grad\" style=\"font:400 40px/1 var(--serif)\">~" + esc(r.estimate_days) + "</span> " + L[0] + "</p>" +
+          out.innerHTML = "<div class=\"result\"><span class=\"eyebrow\">" + esc(r.name) + "</span><h3 style=\"margin-top:10px\">" + esc(r.summary) + "</h3>" +
+            "<p style=\"margin:10px 0 0\"><span class=\"amber\" style=\"font:400 44px/1 var(--serif)\">~" + esc(r.estimate_days) + "</span> " + L[0] + "</p>" +
             "<h3 style=\"margin-top:22px\">" + L[1] + "</h3>" + list(r.components) + "<h3 style=\"margin-top:22px\">" + L[2] + "</h3>" + list(r.day1) +
             "<h3 style=\"margin-top:22px\">" + L[3] + "</h3>" + list(r.day2) + "<h3 style=\"margin-top:22px\">" + L[4] + "</h3>" + list(r.risks) + "</div>";
         })

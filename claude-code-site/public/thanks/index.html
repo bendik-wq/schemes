@@ -3,12 +3,12 @@
 <title>Application received · Operator</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/op.css"></head>
-<body><header class="nav"><div class="wrap"><a class="logo" href="/"><i></i>Operator</a></div></header>
+<body><header class="nav"><div class="wrap" style="grid-template-columns:1fr"><a class="logo" href="/"><i></i><strong>OPER<span>A</span>TOR</strong></a></div></header>
 <div class="hero"><div class="wrap narrow">
-  <span class="pill"><b></b>Application received</span><h1 style="font-size:clamp(36px,6vw,64px)">Application received. <em>One step left.</em></h1>
-  <div id="book" style="display:none"><p class="sub">You look like a strong fit. Pick a time for your strategy call now and we'll hold your seat.</p><a class="btn" id="booklink" href="#" target="_blank" rel="noopener">Pick a time →</a></div>
-  <p class="sub" id="wait">We'll review your application and get back to you within one business day.</p>
-  <div class="grid g3" style="margin-top:40px;text-align:left"><div class="card"><span class="n">01</span><p style="color:var(--text)">Add the call to your calendar. Seats are limited; missed calls are released.</p></div><div class="card"><span class="n">02</span><p style="color:var(--text)">Before the call we review your website and current funnel. You keep the notes either way.</p></div><div class="card"><span class="n">03</span><p style="color:var(--text)">Bring your numbers: monthly agency, developer and SaaS spend, and your revenue goals.</p></div></div>
+  <h1 style="font-size:clamp(42px,7vw,76px)">Application received.<br><em>One step left.</em></h1>
+  <div id="book" style="display:none"><p class="tag">You look like a strong fit. Pick a time for your strategy call now and we'll hold your seat.</p><a class="btn" id="booklink" href="#" target="_blank" rel="noopener">Pick a time</a></div>
+  <p class="tag" id="wait">We'll review your application and get back to you within one business day.</p>
 </div></div>
+<section><div class="wrap"><div class="cards3"><div class="icard"><div class="ico">01</div><p style="color:var(--text)">Add the call to your calendar. Seats are limited and missed calls are released.</p></div><div class="icard"><div class="ico">02</div><p style="color:var(--text)">Before the call we review your website and current funnel. You keep the notes either way.</p></div><div class="icard"><div class="ico">03</div><p style="color:var(--text)">Bring your numbers: agency, developer and software spend, and your revenue goals.</p></div></div></div></section>
 <script>(function(){var q=new URLSearchParams(location.search),u=q.get("book");if(u&&/^https:\/\//.test(u)){document.getElementById("book").style.display="";document.getElementById("wait").style.display="none";document.getElementById("booklink").href=u;}})();</script>
 </body></html>
