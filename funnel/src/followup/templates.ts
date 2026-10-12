@@ -120,7 +120,7 @@ export const OBJECTION_COPY: Record<string, { subject: string; body: string[] }>
       "On the call, price was the sticking point. That is a fair thing to weigh carefully.",
       "The way I would look at it: put next to it what you pay each year for agencies, freelancers and software, and how much of that you will still be paying in two years.",
       "Operator is a one-off build that your team keeps. That does not make it the right call for everyone, but it is the comparison that matters.",
-      "If the number is the only thing in the way, reply and say so. We can talk about scope or a payment plan.",
+      "If the number is the only thing in the way, reply and say so. We can look at a smaller first scope.",
     ],
   },
   Timing: {
@@ -151,7 +151,7 @@ export const OBJECTION_COPY: Record<string, { subject: string; body: string[] }>
     subject: "If the money is the worry, let's look at it",
     body: [
       "On the call you were unsure about funding it right now. I would rather you said that than stretched.",
-      "There are ways to shape it: a smaller first scope, or a payment plan spread over the build. Neither changes what you own at the end.",
+      "There are ways to shape it, starting with a smaller first scope. That does not change what you own at the end.",
       "If now is genuinely not the time, that is fine too. The door stays open.",
     ],
   },
@@ -195,7 +195,7 @@ export const LOST_ANGLES: Record<string, string[][]> = {
     ["If the full scope was the issue, a smaller first build is possible. Pages and tracking first, the rest later."],
     ["Prices for rented tools rarely go down. If your spend has crept up since we spoke, it may be worth another look."],
     ["If budgets have changed since we last spoke, I am happy to look at scope with you again."],
-    ["The offer to look at a smaller scope or a payment plan stands, whenever it suits you."],
+    ["The offer to look at a smaller first scope stands, whenever it suits you."],
   ],
   Timing: [
     ["I understand the timing was not right. That is a good reason to wait."],
@@ -492,13 +492,11 @@ const POST_CALL: Record<string, Template> = {
       "Thank you for the time today. I enjoyed the conversation.",
       "We covered what you rent today, what you would want to own, and how the eight weeks would work with your team.",
       "The next step is your decision. If you have questions first, reply to this email and I will answer them directly.",
-      "When you are ready to go ahead, the link below takes you to the next step.",
-    ], { cta: { label: "Next step", path: "/go/join" } }),
+      "When you are ready to go ahead, reply to this email and I will send over the agreement and the kickoff dates.",
+    ]),
   fu_objection: (c) => {
     const o = c.d.objection ? OBJECTION_COPY[c.d.objection] : undefined;
-    return mk(o?.subject || "What might still be on your mind after our call", [hi(c), ...(o?.body || OBJECTION_FALLBACK)], {
-      cta: { label: "Next step", path: "/go/join" },
-    });
+    return mk(o?.subject || "What might still be on your mind after our call", [hi(c), ...(o?.body || OBJECTION_FALLBACK)]);
   },
   fu_numbers: (c) =>
     mk("The numbers behind what we discussed", [
@@ -543,8 +541,8 @@ const POST_CALL: Record<string, Template> = {
       hi(c),
       "I do not want to keep nudging you, so this is my last follow-up on our call.",
       "If the answer is not now, that is a perfectly good answer. A one-word reply helps me know where things stand.",
-      "If you want to go ahead, the link below takes you to the next step.",
-    ], { cta: { label: "Next step", path: "/go/join" } }),
+      "If you want to go ahead, reply and I will send over the agreement.",
+    ]),
 };
 
 // ── Cancelled ─────────────────────────────────────────────────────────────────

@@ -427,7 +427,7 @@ const tc: Record<string, Template> = {
 // ── Booked: confirmation and reminders ────────────────────────────────────────
 
 function joinLine(c: C): string {
-  return `When it is time, ${c.a("/go/join", "Join the call")}. If the time no longer works, you can ${c.a("/go/reschedule", "reschedule here")}.`;
+  return `When it is time, ${c.a("/go/join", "join the call here")}. If the time no longer works, you can ${c.a("/go/reschedule", "reschedule here")}.`;
 }
 
 const bk: Record<string, Template> = {
