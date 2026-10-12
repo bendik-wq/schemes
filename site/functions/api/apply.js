@@ -38,8 +38,8 @@ export async function onRequestPost({ request, env }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(lead),
-    });
-    if (!r.ok) return json({ error: "Kunne ikke lagre søknaden" }, 502);
+    }).catch(() => null);
+    if (!r || !r.ok) return json({ error: "Kunne ikke lagre søknaden" }, 502);
   } else if (!env.LEADS) {
     return json({ error: "Skjemaet er ikke koblet til ennå (WEBHOOK_URL mangler)" }, 500);
   }
