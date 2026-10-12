@@ -182,7 +182,7 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
 
   return renderTemplate(c, "index.html", {
     title: `${BRAND.name} · ${h1.replace(/[.:]$/, "")}`,
-    bodyClass: revealed ? "" : "gated",
+    bodyClass: [revealed ? "" : "gated", h1.length + h1b.length > 48 ? "long-h1" : ""].filter(Boolean).join(" "),
     text: {
       eyebrow, h1, h1b, sub,
       cta: lead?.app_completed_at ? "See your next step" : LANDING.ctaLabel,

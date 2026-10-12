@@ -357,3 +357,4 @@ body.plain { background: var(--paper); min-height: 100vh; display: grid; place-c
 
 .apply-foot { margin: 56px 0 0; font-size: 12px; color: var(--grey-2); }
 .apply-foot a, .apply-foot .linkish { color: var(--grey); font-size: 12px; }
+.page-landing.long-h1 .hero h1 { font-size: clamp(34px, 4.8vw, 58px); letter-spacing: -.04em; max-width: 920px; margin-inline: auto; }
