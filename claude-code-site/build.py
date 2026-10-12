@@ -1,349 +1,344 @@
-"""Bygger Operator-sidene (EN + NO) fra én mal. Struktur etter Daniel Iles' (viralcoach.com) rammeverk:
-rolig hero → tallkort → markedsskifte (ikke din feil) → video → «under ett tak» → prosess i 4 steg →
-bevisvegg → interaktivt bevis → hvem det er for → spørsmål → søknad → stor garanti med vannmerke.
-Kjør: python3 build.py
+"""Operator: produktside i Apple-tradisjon (EN + NO). Kjør: python3 build.py
+
+Struktur: hero med produktbilde (Claude Code bygger funnelen live) → fire tall → filmen (VSL) →
+stort utsagn → systemene som bento → åtte uker på en tidslinje → to garantier → byggeplan (Claude API) →
+for hvem + spørsmål → søknad → avslutning. Iles-posisjonering: rolig, selektiv, garantert.
 """
 from pathlib import Path
 
 HERE = Path(__file__).parent / "public"
+FONTS = "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
+LOGO = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="1" y="1" width="18" height="18" rx="5.5" fill="#1d1d1f"/><circle cx="10" cy="10" r="4.2" fill="none" stroke="#fff" stroke-width="2"/><circle cx="10" cy="10" r="1.3" fill="#2997ff"/></svg>'
 
 T = {
 "en": dict(
-  lang="en", path="", other="/no/", other_label="Norsk",
-  title="Operator · Run your business on Claude Code",
-  desc="A fully-built operating system for your business, on Claude Code: VSL funnels, server-side ad tracking, a Meta ads engine, a sales command centre and your own tools. Live in 56 days, guaranteed.",
-  strip="Applications are open for the next cohort · 8 seats",
-  nav=[("#system", "The system"), ("#process", "Process"), ("#faq", "FAQ")], nav_cta="See if you qualify",
-  h1='Run Your Business<br>On <em>Claude Code</em>',
-  tag="Fully-built operating system with guaranteed delivery.",
-  cta="See if you qualify", meta="7-day money-back guarantee · 8 seats per cohort · One company per industry",
-  stats=[("Speed", "Day 2", "Your VSL funnel and server-side tracking go live"),
-         ("Scope", "6", "Core growth systems, built under one roof"),
-         ("Savings", "$100k+", "Typical annual agency, developer and SaaS spend in scope"),
-         ("Risk", "7 days", "Full money-back window. No questions asked.")],
-  shift_h="Software is now written by AI.<br>Most businesses are still paying people to write it.",
-  shift=[("2×", "Your competitors are already building", "Searches for Claude Code doubled in the last 12 months (Google Trends, US). The companies learning it now will run with a fraction of the overhead."),
-         ("$", "Agencies sell hours. AI made hours cheap.", "Funnels, tracking, dashboards and internal tools that took an agency months now take days, when you know how to direct it."),
-         ("◎", "Most teams have tried AI. Few have a system.", "We run our own business on this exact stack. This page, its application and its AI build planner were built with it.")],
-  built_label="Built with", built=["Claude Code", "Cloudflare", "Meta Conversions API", "HubSpot", "Stripe", "Google Analytics 4"],
-  vsl_sound="Click for sound", vsl_title="The 9-minute briefing", vsl_small="Watch before you apply",
-  roof_eyebrow="The system", roof_h='Your Entire Growth Stack<br><em>Under One Roof</em>',
-  roof_lead="Six systems that usually live with six different vendors, built inside your business, connected to each other, and owned by you.",
-  nodes=[("01 · FOUNDATION", "Claude Code, set up"), ("02 · FUNNELS", "VSL & applications"), ("03 · TRACKING", "Pixel + Conversions API"),
-         ("04 · ADS", "Meta ads engine"), ("05 · SALES", "Sales command centre"), ("06 · SOFTWARE", "Your own tools")],
-  core='Your<br><i>business</i>',
-  badge=("New", "Founding cohort · 8 seats"),
-  sys_desc=["Your workspace, project memory, skill library and guardrails, set up properly. The part everyone skips.",
-            "Video sales pages, multi-step applications, qualification and booking. Live by Build Day 2.",
-            "Every lead, call and sale sent to Meta from your server. Ads optimise on revenue, not clicks.",
-            "New hooks and creatives every week, tested against each other, with a clear scale-or-kill report.",
-            "Show-up, close rate, cost per call and ROAS in one view. Claude reviews every call.",
-            "Client portals, quoting tools and dashboards that replace subscriptions and retainers."],
-  proc_eyebrow="Process", proc_h="How it works",
-  proc=[("01", "Identify bottlenecks", "We audit your funnel, tracking, tools and spend, and find exactly where money leaks."),
-        ("02", "Build your stack", "We set up Claude Code and build your funnels, tracking and dashboards live, with your team."),
-        ("03", "Launch, test & scale", "Ads go live on server-side tracking. We read the numbers and double down on what works."),
-        ("04", "Guaranteed delivery", "Everything live by day 56, or we keep building with you for free until it is.")],
-  wall_eyebrow="What you walk away with", wall_h="Systems, not slides.",
-  w_this=("BUILT WITH THE STACK", "this page", "The page you're reading, its five-step application and its Claude-powered build planner were built and deployed with the exact workflow you'll learn."),
-  w_funnel=("VSL FUNNEL", "day 2", "Video sales page, multi-step application, qualification and booking. Live by the end of Build Day 2."),
-  w_track=("TRACKING", "server-side", "Every lead, call and sale sent to Meta from your server, deduplicated and consented. Ads optimise on revenue, not clicks."),
-  w_sales=("SALES COMMAND CENTRE", "illustrative", "Show-up, close rate, cost per call and ROAS in one live view. Claude reviews every call and drafts the follow-up."),
-  w_ads=("ADS ENGINE", "weekly", "New hooks and creatives every week, tested against each other, with a report that tells you what to scale."),
-  w_tools=("YOUR OWN SOFTWARE", "owned", "Client portals, quoting tools and internal dashboards that replace subscriptions and retainers."),
-  ai_eyebrow="Try it · free", ai_h='Describe one tool you wish existed.<br><em>Get the build plan.</em>',
-  ai_lead="Powered by the Claude API, behind a function built with Claude Code.",
-  ai_company="Your company", ai_company_ph="e.g. 40-person logistics company", ai_users="Who will use it?", ai_users_ph="e.g. sales team and 200 clients",
-  ai_tool="The tool you want", ai_tool_ph="e.g. a client portal with shipment status, documents and invoices", ai_systems="Systems to connect (optional)", ai_systems_ph="e.g. HubSpot, Stripe, Google Sheets",
-  ai_email="Email", ai_btn="Generate my build plan",
-  for_h="This is for you if…", for_l=["Your business does $1M+ a year", "You spend $5k+ a month on agencies, developers or software", "You want to launch offers and test markets faster than your competitors", "You or one person on your team can commit 6 hours a week"],
-  not_h="It isn't if…", not_l=["You want to become a software engineer", "You want everything done for you without being involved", "You're pre-revenue or still looking for an idea"],
-  faq_h="You've got questions<br>We've got answers",
-  faq=[("What do you do?", "We install Claude Code in your business and build, with your team, the systems that drive growth: VSL funnels, server-side ad tracking, a Meta ads engine, a sales command centre, and the internal tools you currently pay others for. In eight weeks. You own all of it."),
-       ("Why Claude Code?", "It writes, runs and fixes real software from plain-language instructions. It's the most capable way we've found for a business to build its own tools, and it's what we run our own business on."),
-       ("How do I know this will work for me?", "Before you join, we map your funnel, tools and spend on a call and show you exactly what we'd build first. If we don't see a clear return, we'll tell you. Then you're covered by a 7-day money-back guarantee."),
-       ("How does the guarantee work?", "Two parts. First, if within 7 days of starting you're not convinced, you get a full refund, no questions asked. Second, your funnel, tracking and at least two internal tools are live by day 56, or we keep building with you for free. The build guarantee requires attendance at both Build Days and 6 of 8 weekly sessions."),
-       ("What makes this different from the other options?", "Agencies rent you their work. Courses give you videos. We build the systems with your team, inside your business, and you keep everything: the code, the tracking, the dashboards, and the skill to build the next one."),
+  lang="en", home="/", other="/no/", other_label="Norsk", thanks="/thanks/",
+  title="Operator", desc="We install Claude Code in your business and build your funnels, tracking, ads engine and internal tools with your team. Live in 56 days, guaranteed.",
+  nav=[("#film", "Film"), ("#system", "System"), ("#weeks", "Eight weeks"), ("#faq", "FAQ")], apply="Apply",
+  eyebrow="Operator for Claude Code",
+  h1='Own your growth.<br><span>Stop renting it.</span>',
+  sub="We install Claude Code inside your business and build your funnels, tracking, ads and internal tools with your team. Live in 56 days. Guaranteed.",
+  cta="Apply for the founding cohort", watch="Watch the film",
+  assure="Eight seats. One company per industry. 7-day money-back guarantee.",
+  term_title="claude — operator/funnel",
+  term=["Build our application funnel with Meta Conversions API and send qualified leads to HubSpot.",
+        ("c", "● Reading CLAUDE.md, skills/funnels, skills/meta-capi"),
+        ("c", "● Plan: landing page · 5-step application · /api/apply · CAPI events · HubSpot sync"),
+        ("ok", "✓ public/index.html"), ("ok", "✓ functions/api/apply.js"), ("ok", "✓ capi: Lead, Schedule, Purchase (server-side, deduplicated)"),
+        ("ok", "✓ 24 tests passed · security review clean"), ("hl", "→ Deployed to production")],
+  preview_title="See if you qualify.",
+  figures=[("Day 2", "Your funnel and server-side tracking are live."), ("6", "Growth systems, built inside your business."), ("56 days", "Everything in production, or we keep building free."), ("7 days", "Full refund if you're not convinced.")],
+  film_k="The film", film_h='Nine minutes.<br><span>Watch before you apply.</span>',
+  film_cap=("How Operator works", "From kickoff to a business that builds its own software."), sound="Sound on",
+  statement='Software is now written by AI. <span>Most companies still pay agencies, developers and subscriptions to do it for them. The ones that bring it in-house will run leaner, launch faster and keep the margin.</span>',
+  sys_k="The system", sys_h="Everything that drives growth.<br>Built in-house.",
+  t_a=("Funnels that ship in a day.", "Video sales pages, multi-step applications, qualification and booking. Live by the end of Build Day 2."),
+  t_b=("Tracking you can trust.", "Every lead, call and sale sent to Meta from your server."),
+  t_c=("An ads engine.", "New hooks every week, tested and scaled on revenue."),
+  t_d=("A sales command centre.", "Show-up, close rate and ROAS in one view. Claude reviews every call."),
+  t_e=("Claude Code, set up right.", "Project memory, skills and guardrails your whole team uses."),
+  t_f=("Software you own.", "Client portals, quoting tools and dashboards that replace subscriptions and retainers."),
+  ui_track=[("Lead", "server"), ("Schedule", "server"), ("Purchase", "server")], dedup="deduplicated",
+  ui_kpi=[("82%", "show-up"), ("31%", "close rate"), ("4.2×", "ROAS")], kpi_note="Illustrative",
+  ui_tools=[("Client portal", "Status, documents and invoices in one place."), ("Quoting tool", "Request in, branded proposal out."), ("Weekly report", "Pulled from CRM and ERP every Monday.")],
+  weeks_k="Eight weeks", weeks_h="From kickoff to running on your own.",
+  weeks=[("Week 0", "We set it up", "Environment, skills, tracking accounts and deployment. Done for you."),
+         ("Days 1–2", "Build Days", "Your funnel and server-side tracking go live."),
+         ("Weeks 2–4", "Go-to-market", "Ads engine, lead scoring, CRM sync and sales dashboard."),
+         ("Weeks 5–7", "Replace", "Your first internal tools ship. Retainers start coming down."),
+         ("Week 8", "Hand-over", "Security review, documentation and a 90-day roadmap.")],
+  g_k="The guarantee", g_h="We take the risk.<br><span>You keep the systems.</span>",
+  g=[("7", "days", "If you're not convinced within seven days of starting, you get every cent back. No questions.", "Request in writing within 7 days of your start date."),
+     ("56", "days", "Your funnel, tracking and at least two internal tools are live by day 56, or we keep building with you for free.", "Requires both Build Days and 6 of 8 weekly sessions.")],
+  plan_k="Try it", plan_h="Describe one tool you wish you had.",
+  plan_p="Get a two-day build plan in about twenty seconds. It runs on the Claude API, behind a function we built with Claude Code.",
+  plan_f=dict(company=("Company", "40-person logistics company"), users=("Who will use it", "Sales team and 200 clients"), tool=("The tool", "A client portal with shipment status, documents and invoices"), systems=("Connects to (optional)", "HubSpot, Stripe, Google Sheets"), email=("Email", "")),
+  plan_btn="Get the build plan",
+  fit_h="Questions", for_h="Built for", for_l=["Companies doing $1M+ a year", "Teams spending $5k+ a month on agencies, developers or software", "Founders who want to launch and test faster than their market"],
+  not_h="Not built for", not_l=["People who want to become software engineers", "Companies that want it done without being involved", "Pre-revenue ideas"],
+  faq=[("What do you actually do?", "We install Claude Code in your business and build, with your team, the systems that drive growth: funnels, server-side tracking, an ads engine, a sales command centre and the internal tools you pay others for today. You own all of it."),
+       ("I'm not technical. Will this work?", "Yes. You describe and review; Claude Code writes the software; our engineers review everything before it reaches production."),
+       ("How is this different from an agency or a course?", "Agencies rent you their work. Courses give you videos. We build the systems with your team, inside your business, and you keep the code, the tracking and the skill to build the next one."),
        ("What does it cost?", "It depends on your size and goals, so we share pricing on the call. It's typically less than a year of agency fees, and it's covered by the 7-day guarantee."),
-       ("What do I need to do next?", "Apply below. It takes two minutes. If you're a fit, you'll book a 45-minute strategy call."),
+       ("Is what we build secure?", "Every tool gets a security review before it goes live: secrets, access control, data handling and consent for tracking."),
        ("Are you affiliated with Anthropic?", "No. Claude Code is Anthropic's product. We're an independent team that builds with it every day.")],
-  ap_eyebrow="Apply", ap_h='See if you <em>qualify</em>', ap_lead="Five quick steps. If you're a fit, you'll book a 45-minute strategy call where we map exactly what you'll build.",
-  s=[("Step 1 of 5", "Who are you?"), ("Step 2 of 5", "Your business"), ("Step 3 of 5", "Your main goal"), ("Step 4 of 5", "What would you build first?"), ("Step 5 of 5", "Where should we reach you?")],
-  f_name="Full name", f_company="Company", f_site="Website", f_rev="Annual revenue", rev_opts=[("0-1m", "Under $1M"), ("1m-5m", "$1M–5M"), ("5m-20m", "$5M–20M"), ("20m+", "$20M+")],
-  f_spend="Monthly spend on agencies, developers and software", spend_opts=["Under $2k", "$2k–10k", "$10k–30k", "$30k+"],
-  goal_opts=["Cut software & agency costs", "Build a GTM machine and grow revenue", "Both"],
-  f_first="Describe it in a sentence or two", f_first_ph="e.g. replace our agency's funnels and get tracking we can trust",
-  f_ready="Can you start within 30 days if it's a fit?", ready_opts=[("yes", "Yes"), ("maybe", "Maybe, depends on timing"), ("no", "No, just exploring")],
-  f_email="Email", f_phone="Phone", consent="By applying you agree that we may contact you about your application. We never share your details.",
-  back="Back", nextb="Next", submit="Submit application", secure=["Two minutes", "No payment today", "7-day money-back guarantee"],
-  wm="56", close_h='Live in 56 Days<br><em>Guaranteed</em>', close_sub="Plus a 7-day money-back guarantee from the day you start.",
-  foot_l="© Operator by Asym", foot_r="Claude and Claude Code are trademarks of Anthropic. Operator is independent and not affiliated with or endorsed by Anthropic. Results vary and depend on effort, market and execution; no earnings or revenue are guaranteed. Dashboard figures shown are illustrative.",
+  ap_k="Apply", ap_h="Apply for the founding cohort.", ap_p="Five short steps. If it's a fit, you'll book a 45-minute call where we map exactly what we'll build first. If we don't see a clear return, we'll tell you.",
+  ap_assure=["Two minutes", "No payment today", "7-day money-back guarantee"],
+  s=[("1 of 5", "Who are you?"), ("2 of 5", "Your business"), ("3 of 5", "Your main goal"), ("4 of 5", "What would you build first?"), ("5 of 5", "Where can we reach you?")],
+  f=dict(name="Full name", company="Company", website="Website", revenue="Annual revenue", spend="Monthly spend on agencies, developers and software", first="Describe it in a sentence or two", first_ph="Replace our agency's funnels and get tracking we can trust", ready="Could you start within 30 days?", email="Email", phone="Phone"),
+  rev=[("0-1m", "Under $1M"), ("1m-5m", "$1M–5M"), ("5m-20m", "$5M–20M"), ("20m+", "$20M+")], spend=["Under $2k", "$2k–10k", "$10k–30k", "$30k+"],
+  goal=["Cut software and agency costs", "Build a go-to-market machine", "Both"], ready=[("yes", "Yes"), ("maybe", "Depends on timing"), ("no", "Just exploring")],
+  consent="We only use your details to respond to your application.", back="Back", next="Continue", submit="Submit application",
+  close_h="Live in 56 days.<br><span>Guaranteed.</span>", close_p="Plus a full refund in the first seven days.",
+  foot="Claude and Claude Code are trademarks of Anthropic. Operator is independent and is not affiliated with or endorsed by Anthropic. Results depend on effort, market and execution; no revenue is guaranteed. Dashboard figures are illustrative.",
+  th_title="Application received", th_h="Thank you.<br><span>One step left.</span>", th_book="You look like a strong fit. Pick a time for your call and we'll hold your seat.", th_btn="Choose a time", th_wait="We'll review your application and reply within one business day.",
+  th_tips=[("Add it to your calendar.", "Seats are limited, and missed calls are released."), ("We prepare.", "We review your site and funnel before the call. You keep the notes."), ("Bring your numbers.", "Agency, developer and software spend, and your revenue goals.")],
 ),
 "no": dict(
-  lang="nb", path="no/", other="/", other_label="English",
-  title="Operator · Driv bedriften din på Claude Code",
-  desc="Et ferdig bygget operativsystem for bedriften din, på Claude Code: VSL-funnels, server-side-sporing, Meta-annonsemotor, salgssentral og egne verktøy. I drift på 56 dager, garantert.",
-  strip="Søknadene er åpne for neste kull · 8 plasser",
-  nav=[("#system", "Systemet"), ("#process", "Prosess"), ("#faq", "Spørsmål")], nav_cta="Se om du kvalifiserer",
-  h1='Driv Bedriften Din<br>På <em>Claude Code</em>',
-  tag="Ferdig bygget operativsystem med garantert levering.",
-  cta="Se om du kvalifiserer", meta="7 dager pengene tilbake · 8 plasser per kull · Én bedrift per bransje",
-  stats=[("Fart", "Dag 2", "VSL-funnel og server-side-sporing er i drift"),
-         ("Omfang", "6", "Kjernesystemer for vekst, bygget under ett tak"),
-         ("Besparelse", "1 MNOK+", "Typiske årlige byrå-, utvikler- og programvarekostnader i spill"),
-         ("Risiko", "7 dager", "Full pengene-tilbake-periode. Ingen spørsmål.")],
-  shift_h="Programvare skrives nå av AI.<br>De fleste bedrifter betaler fortsatt folk for å skrive den.",
-  shift=[("2×", "Konkurrentene dine bygger allerede", "Søkene på Claude Code har doblet seg de siste 12 månedene (Google Trends, USA). Bedriftene som lærer det nå, vil drive med en brøkdel av kostnadene."),
-         ("kr", "Byråer selger timer. AI gjorde timer billige.", "Funnels, sporing, dashboard og interne verktøy som tok et byrå måneder, tar nå dager, når du vet hvordan du styrer det."),
-         ("◎", "De fleste har prøvd AI. Få har et system.", "Vi driver vår egen bedrift på akkurat denne stacken. Denne siden, søknaden og AI-byggeplanleggeren er bygget med den.")],
-  built_label="Bygget med", built=["Claude Code", "Cloudflare", "Meta Conversions API", "HubSpot", "Stripe", "Google Analytics 4"],
-  vsl_sound="Klikk for lyd", vsl_title="Gjennomgangen på 9 minutter", vsl_small="Se den før du søker",
-  roof_eyebrow="Systemet", roof_h='Hele Vekstmaskinen Din<br><em>Under Ett Tak</em>',
-  roof_lead="Seks systemer som vanligvis ligger hos seks ulike leverandører, bygget inne i bedriften din, koblet sammen og eid av dere.",
-  nodes=[("01 · FUNDAMENT", "Claude Code, satt opp"), ("02 · FUNNELS", "VSL og søknader"), ("03 · SPORING", "Pixel + Conversions API"),
-         ("04 · ANNONSER", "Meta-annonsemotor"), ("05 · SALG", "Salgssentral"), ("06 · PROGRAMVARE", "Egne verktøy")],
-  core='Din<br><i>bedrift</i>',
-  badge=("Nytt", "Founding-kull · 8 plasser"),
-  sys_desc=["Arbeidsmiljø, prosjektminne, skills-bibliotek og sikkerhetsrammer, satt opp riktig. Delen alle hopper over.",
-            "Salgssider med video, søknader i flere steg, kvalifisering og booking. I drift innen Build Day 2.",
-            "Hvert lead, hver samtale og hvert salg sendes til Meta fra deres server. Annonsene optimaliserer på omsetning.",
-            "Nye hooks og kreativer hver uke, testet mot hverandre, med en tydelig rapport om hva som skal skaleres.",
-            "Oppmøte, lukkerate, kostnad per samtale og ROAS i én visning. Claude går gjennom hver samtale.",
-            "Kundeportaler, tilbudsverktøy og dashboard som erstatter abonnementer og retainere."],
-  proc_eyebrow="Prosess", proc_h="Slik fungerer det",
-  proc=[("01", "Finn flaskehalsene", "Vi går gjennom funnel, sporing, verktøy og kostnader, og finner nøyaktig hvor pengene lekker."),
-        ("02", "Bygg stacken", "Vi setter opp Claude Code og bygger funnels, sporing og dashboard live, sammen med teamet ditt."),
-        ("03", "Lanser, test og skaler", "Annonsene går live med server-side-sporing. Vi leser tallene og dobler ned på det som virker."),
-        ("04", "Garantert levering", "Alt i drift innen dag 56, ellers fortsetter vi å bygge med dere gratis til det er det.")],
-  wall_eyebrow="Dette sitter du igjen med", wall_h="Systemer, ikke lysbilder.",
-  w_this=("BYGGET MED STACKEN", "denne siden", "Siden du leser, søknaden i fem steg og den Claude-drevne byggeplanleggeren ble bygget og deployet med akkurat arbeidsflyten du skal lære."),
-  w_funnel=("VSL-FUNNEL", "dag 2", "Salgsside med video, søknad i flere steg, kvalifisering og booking. I drift innen slutten av Build Day 2."),
-  w_track=("SPORING", "server-side", "Hvert lead, hver samtale og hvert salg sendes til Meta fra deres server, deduplisert og med samtykke. Annonsene optimaliserer på omsetning, ikke klikk."),
-  w_sales=("SALGSSENTRAL", "illustrasjon", "Oppmøte, lukkerate, kostnad per samtale og ROAS i én visning. Claude går gjennom hver samtale og skriver oppfølgingen."),
-  w_ads=("ANNONSEMOTOR", "ukentlig", "Nye hooks og kreativer hver uke, testet mot hverandre, med en rapport som sier hva du skal skalere."),
-  w_tools=("EGEN PROGRAMVARE", "eid", "Kundeportaler, tilbudsverktøy og interne dashboard som erstatter abonnementer og retainere."),
-  ai_eyebrow="Prøv · gratis", ai_h='Beskriv ett verktøy du skulle ønske fantes.<br><em>Få byggeplanen.</em>',
-  ai_lead="Drevet av Claude API, bak en funksjon bygget med Claude Code.",
-  ai_company="Bedriften din", ai_company_ph="f.eks. logistikkselskap med 40 ansatte", ai_users="Hvem skal bruke det?", ai_users_ph="f.eks. salgsteamet og 200 kunder",
-  ai_tool="Verktøyet du vil ha", ai_tool_ph="f.eks. en kundeportal med sporing av forsendelser, dokumenter og fakturaer", ai_systems="Systemer det skal kobles til (valgfritt)", ai_systems_ph="f.eks. HubSpot, Tripletex, Google Sheets",
-  ai_email="E-post", ai_btn="Lag byggeplanen min",
-  for_h="Dette er for deg hvis…", for_l=["Bedriften din omsetter for 10 MNOK+ i året", "Du bruker 50 000 kr+ i måneden på byråer, utviklere eller programvare", "Du vil lansere tilbud og teste markeder raskere enn konkurrentene", "Du eller én i teamet kan sette av 6 timer i uka"],
-  not_h="Det er ikke det hvis…", not_l=["Du vil bli utvikler", "Du vil at alt skal gjøres for deg uten at du er involvert", "Du har ingen omsetning ennå eller leter etter en idé"],
-  faq_h="Du har spørsmål<br>Vi har svarene",
-  faq=[("Hva gjør dere?", "Vi installerer Claude Code i bedriften din og bygger, sammen med teamet ditt, systemene som driver vekst: VSL-funnels, server-side-sporing av annonser, en Meta-annonsemotor, en salgssentral og de interne verktøyene dere i dag betaler andre for. På åtte uker. Dere eier alt."),
-       ("Hvorfor Claude Code?", "Det skriver, kjører og retter ekte programvare ut fra instruksjoner på vanlig språk. Det er den mest kapable måten vi har funnet for en bedrift å bygge egne verktøy på, og det er det vi driver vår egen bedrift på."),
-       ("Hvordan vet jeg at dette fungerer for meg?", "Før du blir med, kartlegger vi funnel, verktøy og kostnader i en samtale og viser nøyaktig hva vi ville bygget først. Ser vi ikke en tydelig gevinst, sier vi det. Deretter er du dekket av 7 dagers pengene-tilbake-garanti."),
-       ("Hvordan fungerer garantien?", "To deler. Først: er du ikke overbevist innen 7 dager etter oppstart, får du alt tilbake, uten spørsmål. Deretter: funnel, sporing og minst to interne verktøy er i drift innen dag 56, ellers fortsetter vi å bygge med dere gratis. Byggegarantien forutsetter deltakelse på begge Build Days og 6 av 8 ukentlige økter."),
-       ("Hva gjør dette annerledes enn alternativene?", "Byråer leier ut arbeidet sitt til deg. Kurs gir deg videoer. Vi bygger systemene med teamet ditt, inne i bedriften, og dere beholder alt: koden, sporingen, dashboardene og ferdigheten til å bygge det neste."),
+  lang="nb", home="/no/", other="/", other_label="English", thanks="/no/takk/",
+  title="Operator", desc="Vi installerer Claude Code i bedriften din og bygger funnels, sporing, annonsemotor og interne verktøy sammen med teamet ditt. I drift på 56 dager, garantert.",
+  nav=[("#film", "Film"), ("#system", "System"), ("#weeks", "Åtte uker"), ("#faq", "Spørsmål")], apply="Søk",
+  eyebrow="Operator for Claude Code",
+  h1='Eie veksten.<br><span>Slutt å leie den.</span>',
+  sub="Vi installerer Claude Code i bedriften din og bygger funnels, sporing, annonser og interne verktøy sammen med teamet ditt. I drift på 56 dager. Garantert.",
+  cta="Søk om plass i founding-kullet", watch="Se filmen",
+  assure="Åtte plasser. Én bedrift per bransje. 7 dager pengene tilbake.",
+  term_title="claude — operator/funnel",
+  term=["Bygg søknadsfunnelen vår med Meta Conversions API og send kvalifiserte leads til HubSpot.",
+        ("c", "● Leser CLAUDE.md, skills/funnels, skills/meta-capi"),
+        ("c", "● Plan: landingsside · søknad i 5 steg · /api/apply · CAPI-hendelser · HubSpot-synk"),
+        ("ok", "✓ public/index.html"), ("ok", "✓ functions/api/apply.js"), ("ok", "✓ capi: Lead, Schedule, Purchase (server-side, deduplisert)"),
+        ("ok", "✓ 24 tester grønne · sikkerhetsgjennomgang ok"), ("hl", "→ Deployet til produksjon")],
+  preview_title="Se om du kvalifiserer.",
+  figures=[("Dag 2", "Funnel og server-side-sporing er i drift."), ("6", "Vekstsystemer, bygget inne i bedriften."), ("56 dager", "Alt i produksjon, ellers bygger vi videre gratis."), ("7 dager", "Alle pengene tilbake om du ikke er overbevist.")],
+  film_k="Filmen", film_h='Ni minutter.<br><span>Se den før du søker.</span>',
+  film_cap=("Slik fungerer Operator", "Fra oppstart til en bedrift som bygger sin egen programvare."), sound="Lyd på",
+  statement='Programvare skrives nå av AI. <span>De fleste bedrifter betaler fortsatt byråer, utviklere og abonnementer for å gjøre det for seg. De som tar det inn i huset, vil drive slankere, lansere raskere og beholde marginen.</span>',
+  sys_k="Systemet", sys_h="Alt som driver vekst.<br>Bygget internt.",
+  t_a=("Funnels i drift på én dag.", "Salgssider med video, søknader i flere steg, kvalifisering og booking. I drift innen slutten av Build Day 2."),
+  t_b=("Sporing du kan stole på.", "Hvert lead, hver samtale og hvert salg sendes til Meta fra deres server."),
+  t_c=("En annonsemotor.", "Nye hooks hver uke, testet og skalert på omsetning."),
+  t_d=("En salgssentral.", "Oppmøte, lukkerate og ROAS i én visning. Claude går gjennom hver samtale."),
+  t_e=("Claude Code, satt opp riktig.", "Prosjektminne, skills og sikkerhetsrammer hele teamet bruker."),
+  t_f=("Programvare dere eier.", "Kundeportaler, tilbudsverktøy og dashboard som erstatter abonnementer og retainere."),
+  ui_track=[("Lead", "server"), ("Schedule", "server"), ("Purchase", "server")], dedup="deduplisert",
+  ui_kpi=[("82%", "oppmøte"), ("31%", "lukkerate"), ("4,2×", "ROAS")], kpi_note="Illustrasjon",
+  ui_tools=[("Kundeportal", "Status, dokumenter og fakturaer på ett sted."), ("Tilbudsverktøy", "Forespørsel inn, ferdig tilbud ut."), ("Ukesrapport", "Hentet fra CRM og ERP hver mandag.")],
+  weeks_k="Åtte uker", weeks_h="Fra oppstart til at dere driver det selv.",
+  weeks=[("Uke 0", "Vi setter det opp", "Arbeidsmiljø, skills, sporingskontoer og deploy. Ferdig for dere."),
+         ("Dag 1–2", "Build Days", "Funnel og server-side-sporing går live."),
+         ("Uke 2–4", "Salgsmaskinen", "Annonsemotor, lead-scoring, CRM-synk og salgsdashboard."),
+         ("Uke 5–7", "Erstatt", "De første interne verktøyene lanseres. Retainerne går ned."),
+         ("Uke 8", "Overlevering", "Sikkerhetsgjennomgang, dokumentasjon og en 90-dagers plan.")],
+  g_k="Garantien", g_h="Vi tar risikoen.<br><span>Dere beholder systemene.</span>",
+  g=[("7", "dager", "Er du ikke overbevist innen sju dager etter oppstart, får du hver krone tilbake. Ingen spørsmål.", "Krav sendes skriftlig innen 7 dager etter oppstart."),
+     ("56", "dager", "Funnel, sporing og minst to interne verktøy er i drift innen dag 56, ellers bygger vi videre med dere gratis.", "Forutsetter begge Build Days og 6 av 8 ukentlige økter.")],
+  plan_k="Prøv selv", plan_h="Beskriv ett verktøy du skulle ønske du hadde.",
+  plan_p="Få en byggeplan for to dager på rundt tjue sekunder. Den kjører på Claude API, bak en funksjon vi bygget med Claude Code.",
+  plan_f=dict(company=("Bedrift", "Logistikkselskap med 40 ansatte"), users=("Hvem skal bruke det", "Salgsteamet og 200 kunder"), tool=("Verktøyet", "En kundeportal med sporing, dokumenter og fakturaer"), systems=("Kobles til (valgfritt)", "HubSpot, Tripletex, Google Sheets"), email=("E-post", "")),
+  plan_btn="Få byggeplanen",
+  fit_h="Spørsmål", for_h="Laget for", for_l=["Bedrifter som omsetter for 10 MNOK+ i året", "Team som bruker 50 000 kr+ i måneden på byråer, utviklere eller programvare", "Gründere som vil lansere og teste raskere enn markedet"],
+  not_h="Ikke laget for", not_l=["De som vil bli utviklere", "Bedrifter som vil ha det gjort uten å være involvert", "Ideer uten omsetning"],
+  faq=[("Hva gjør dere egentlig?", "Vi installerer Claude Code i bedriften din og bygger, sammen med teamet ditt, systemene som driver vekst: funnels, server-side-sporing, annonsemotor, salgssentral og de interne verktøyene dere betaler andre for i dag. Dere eier alt."),
+       ("Jeg er ikke teknisk. Fungerer dette?", "Ja. Du beskriver og godkjenner, Claude Code skriver programvaren, og ingeniørene våre går gjennom alt før det går i produksjon."),
+       ("Hvordan skiller dette seg fra et byrå eller et kurs?", "Byråer leier ut arbeidet sitt. Kurs gir deg videoer. Vi bygger systemene med teamet ditt, inne i bedriften, og dere beholder koden, sporingen og ferdigheten til å bygge det neste."),
        ("Hva koster det?", "Det avhenger av størrelse og mål, så vi deler prisen i samtalen. Det er typisk mindre enn ett år med byråhonorarer, og det er dekket av 7-dagersgarantien."),
-       ("Hva gjør jeg nå?", "Søk under. Det tar to minutter. Passer dere, booker du en 45-minutters strategisamtale."),
+       ("Er det vi bygger sikkert?", "Hvert verktøy får en sikkerhetsgjennomgang før det går live: hemmeligheter, tilgangsstyring, datahåndtering og samtykke for sporing."),
        ("Er dere tilknyttet Anthropic?", "Nei. Claude Code er Anthropics produkt. Vi er et uavhengig team som bygger med det hver dag.")],
-  ap_eyebrow="Søk", ap_h='Se om du <em>kvalifiserer</em>', ap_lead="Fem raske steg. Passer dere, booker du en 45-minutters strategisamtale der vi kartlegger nøyaktig hva dere skal bygge.",
-  s=[("Steg 1 av 5", "Hvem er du?"), ("Steg 2 av 5", "Bedriften din"), ("Steg 3 av 5", "Hovedmålet ditt"), ("Steg 4 av 5", "Hva ville du bygget først?"), ("Steg 5 av 5", "Hvor når vi deg?")],
-  f_name="Fullt navn", f_company="Bedrift", f_site="Nettside", f_rev="Årlig omsetning", rev_opts=[("0-10", "Under 10 MNOK"), ("10-50", "10–50 MNOK"), ("50-200", "50–200 MNOK"), ("200+", "200+ MNOK")],
-  f_spend="Månedlig kostnad til byråer, utviklere og programvare", spend_opts=["Under 20 000 kr", "20–100 000 kr", "100–300 000 kr", "Over 300 000 kr"],
-  goal_opts=["Kutte programvare- og byråkostnader", "Bygge en salgsmaskin og øke omsetningen", "Begge deler"],
-  f_first="Beskriv det med en setning eller to", f_first_ph="f.eks. erstatte byråets funnels og få sporing vi kan stole på",
-  f_ready="Kan dere starte innen 30 dager hvis det passer?", ready_opts=[("ja", "Ja"), ("kanskje", "Kanskje, avhenger av timing"), ("nei", "Nei, bare nysgjerrig")],
-  f_email="E-post", f_phone="Telefon", consent="Ved å søke godtar du at vi kontakter deg om søknaden. Vi deler aldri opplysningene dine.",
-  back="Tilbake", nextb="Neste", submit="Send søknad", secure=["To minutter", "Ingen betaling i dag", "7 dager pengene tilbake"],
-  wm="56", close_h='I Drift På 56 Dager<br><em>Garantert</em>', close_sub="Pluss 7 dager pengene tilbake fra dagen du starter.",
-  foot_l="© Operator by Asym", foot_r="Claude og Claude Code er varemerker for Anthropic. Operator er uavhengig og ikke tilknyttet eller godkjent av Anthropic. Resultater varierer og avhenger av innsats, marked og gjennomføring. Ingen inntekt eller omsetning er garantert. Tall i dashboard-eksemplene er illustrasjoner.",
+  ap_k="Søk", ap_h="Søk om plass i founding-kullet.", ap_p="Fem korte steg. Passer det, booker du en 45-minutters samtale der vi kartlegger nøyaktig hva vi bygger først. Ser vi ikke en tydelig gevinst, sier vi det.",
+  ap_assure=["To minutter", "Ingen betaling i dag", "7 dager pengene tilbake"],
+  s=[("1 av 5", "Hvem er du?"), ("2 av 5", "Bedriften din"), ("3 av 5", "Hovedmålet ditt"), ("4 av 5", "Hva ville du bygget først?"), ("5 av 5", "Hvor når vi deg?")],
+  f=dict(name="Fullt navn", company="Bedrift", website="Nettside", revenue="Årlig omsetning", spend="Månedlig kostnad til byråer, utviklere og programvare", first="Beskriv det med en setning eller to", first_ph="Erstatte byråets funnels og få sporing vi kan stole på", ready="Kan dere starte innen 30 dager?", email="E-post", phone="Telefon"),
+  rev=[("0-10", "Under 10 MNOK"), ("10-50", "10–50 MNOK"), ("50-200", "50–200 MNOK"), ("200+", "200+ MNOK")], spend=["Under 20 000 kr", "20–100 000 kr", "100–300 000 kr", "Over 300 000 kr"],
+  goal=["Kutte programvare- og byråkostnader", "Bygge en salgsmaskin", "Begge deler"], ready=[("ja", "Ja"), ("kanskje", "Avhenger av timing"), ("nei", "Bare nysgjerrig")],
+  consent="Vi bruker opplysningene kun til å svare på søknaden.", back="Tilbake", next="Fortsett", submit="Send søknad",
+  close_h="I drift på 56 dager.<br><span>Garantert.</span>", close_p="Pluss alle pengene tilbake de første sju dagene.",
+  foot="Claude og Claude Code er varemerker for Anthropic. Operator er uavhengig og ikke tilknyttet eller godkjent av Anthropic. Resultater avhenger av innsats, marked og gjennomføring. Ingen omsetning er garantert. Tall i dashboard-eksemplene er illustrasjoner.",
+  th_title="Søknad mottatt", th_h="Takk.<br><span>Ett steg igjen.</span>", th_book="Dere ser ut som en god match. Velg tidspunkt for samtalen, så holder vi av plassen.", th_btn="Velg tidspunkt", th_wait="Vi går gjennom søknaden og svarer innen én virkedag.",
+  th_tips=[("Legg det i kalenderen.", "Plassene er få, og uteblir du, går plassen videre."), ("Vi forbereder oss.", "Vi går gjennom nettsiden og funnelen før samtalen. Notatene får du."), ("Ha tallene klare.", "Kostnader til byrå, utviklere og programvare, og målene for omsetning.")],
 ),
 }
 
-def li(items): return "".join(f"<li>{x}</li>" for x in items)
 
-def page(t):
-    no = t["lang"] == "nb"
-    nav = "".join(f'<a href="{h}">{l}</a>' for h, l in t["nav"])
-    stats = "".join(f'<div class="stat"><div class="k">{k}</div><div class="v">{v}</div><p>{p}</p></div>' for k, v, p in t["stats"])
-    cols = "".join(f'<div class="col rv"><div class="num">{i}</div><h3>{h}</h3><p>{p}</p></div>' for i, h, p in t["shift"])
-    built = "".join(f"<b>{b}</b>" for b in t["built"])
-    sysg = "".join(f'<div class="rv"><span class="n">{a.split(" · ")[0]}</span><h3>{b}</h3><p>{d}</p></div>' for (a, b), d in zip(t["nodes"], t["sys_desc"]))
-    steps = "".join(f'<div class="rv"><div class="dot">{n}</div><h3>{h}</h3><p>{p}</p></div>' for n, h, p in t["proc"])
-    cmd = "Bygg en VSL-side med søknad i 5 steg og Meta CAPI" if no else "Build a VSL page with a 5-step application and Meta CAPI"
-    mock_this = f'<div class="mock"><span class="b">❯</span> {cmd}<br><span class="d">● {"leser" if no else "reading"} CLAUDE.md · skills/funnels</span><br><span class="g">✓</span> public/index.html<br><span class="g">✓</span> functions/api/apply.js<br><span class="g">✓</span> functions/api/claude.js<br><span class="b">→ {"deployet til produksjon" if no else "deployed to production"}</span></div>'
-    mock_track = f'<div class="mock"><div class="row"><span>Lead</span><span class="g">server ✓</span></div><div class="row"><span>Schedule</span><span class="g">server ✓</span></div><div class="row"><span>Purchase</span><span class="g">server ✓</span></div><div class="row"><span class="d">{"deduplisert" if no else "deduplicated"}</span><span class="b">event_id ✓</span></div></div>'
-    mock_sales = f'<div class="mock" style="background:#fbfaf7"><div class="kpis"><div><b>82%</b><span>{"oppmøte" if no else "show-up"}</span></div><div><b>31%</b><span>{"lukkerate" if no else "close rate"}</span></div><div><b>4.2×</b><span>ROAS</span></div></div><div class="spark"></div></div>'
-    def pcard(t3, mock, feature=False):
-        h, tag, txt = t3
-        return f'<div class="pcard rv{" feature" if feature else ""}"><div class="h"><span>{h}</span><span>{tag}</span></div>{mock}<p>{txt}</p></div>'
-    proof = pcard(t["w_this"], mock_this, True) + pcard(t["w_track"], mock_track) + pcard(t["w_sales"], mock_sales)
-    faq = "".join(f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in t["faq"])
-    rev = "".join(f'<option value="{v}">{l}</option>' for v, l in t["rev_opts"])
-    spend = "".join(f"<option>{o}</option>" for o in t["spend_opts"])
-    goal = "".join(f'<label><input type="radio" name="goal" value="{o}" required> {o}</label>' for o in t["goal_opts"])
-    ready = "".join(f'<label><input type="radio" name="ready" value="{v}" required> {l}</label>' for v, l in t["ready_opts"])
-    secure = "".join(f"<span>{x}</span>" for x in t["secure"])
-    meta = "".join(f"<span>{m.strip()}</span>" for m in t["meta"].split("·"))
-    s = t["s"]
-    return f"""<!doctype html>
+def head(t, title, noindex=False):
+    robots = '<meta name="robots" content="noindex">\n' if noindex else ""
+    return f'''<!doctype html>
 <html lang="{t["lang"]}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{t["title"]}</title>
-<meta name="description" content="{t["desc"]}">
-<meta property="og:title" content="{t["title"]}">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{title}</title>
+{robots}<meta name="description" content="{t["desc"]}">
+<meta property="og:title" content="{title}">
 <meta property="og:description" content="{t["desc"]}">
-<meta name="theme-color" content="#f7f6f2">
+<meta name="theme-color" content="#ffffff">
 <link rel="alternate" hreflang="en" href="/">
 <link rel="alternate" hreflang="nb" href="/no/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="{FONTS}" rel="stylesheet">
 <link rel="stylesheet" href="/assets/op.css">
+<script>document.documentElement.classList.add("js")</script>
 </head>
 <body>
-<div class="strip"><a href="#apply">{t["strip"].split("·")[0].strip()} · <b>{t["strip"].split("·")[1].strip()}</b> →</a></div>
-<header class="nav"><div class="wrap">
-  <a class="logo" href="/{t["path"]}"><i></i><strong>OPERATOR</strong></a>
-  <nav class="l">{nav}</nav>
-  <div class="r"><a class="lang" href="{t["other"]}">{t["other_label"]}</a><a class="btn sm" href="#apply">{t["nav_cta"]}</a></div>
+<header class="nav"><div class="wide">
+  <a class="brand" href="{t["home"]}">{LOGO}Operator</a>
+  <nav>{"".join(f'<a href="{h}">{l}</a>' for h, l in t["nav"])}</nav>
+  <div class="end"><a class="lang" href="{t["other"]}">{t["other_label"]}</a><a class="btn sm" href="{t["home"]}#apply">{t["apply"]}</a></div>
 </div></header>
+'''
 
-<div class="hero"><div class="wrap">
-  <span class="badge"><b>{t["badge"][0]}</b>{t["badge"][1]}</span>
+
+def li(xs): return "".join(f"<li>{x}</li>" for x in xs)
+
+
+def page(t):
+    lines = [f'<div class="l" style="animation-delay:.3s"><span class="p">❯ </span>{t["term"][0]}</div>']
+    delay = 0.6
+    for cls, txt in t["term"][1:]:
+        lines.append(f'<div class="l" style="animation-delay:{delay:.2f}s"><span class="{cls}">{txt}</span></div>')
+        delay += 0.28
+    lines.append(f'<div class="l" style="animation-delay:{delay:.2f}s"><span class="p">❯ </span><span class="caret"></span></div>')
+    figures = "".join(f'<div class="rv"><b>{a}</b><p>{b}</p></div>' for a, b in t["figures"])
+    track = "".join(f'<div class="row"><span>{a}</span><span class="ok">{b} ✓</span></div>' for a, b in t["ui_track"])
+    kpi = "".join(f"<div><b>{a}</b><span>{b}</span></div>" for a, b in t["ui_kpi"])
+    tools = "".join(f'<div class="card"><b>{a}</b><span class="muted">{b}</span></div>' for a, b in t["ui_tools"])
+    weeks = "".join(f'<div class="rv"><span class="w">{w}</span><h3>{h}</h3><p>{p}</p></div>' for w, h, p in t["weeks"])
+    g = "".join(f'<div class="rv"><div class="big">{n}</div><div class="unit">{u}</div><p>{p}</p><p class="fine">{fine}</p></div>' for n, u, p, fine in t["g"])
+    faq = "".join(f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in t["faq"])
+    pf = t["plan_f"]; f = t["f"]; s = t["s"]
+    rev = "".join(f'<option value="{v}">{l}</option>' for v, l in t["rev"])
+    spend = "".join(f"<option>{o}</option>" for o in t["spend"])
+    goal = "".join(f'<label><input type="radio" name="goal" value="{o}" required> {o}</label>' for o in t["goal"])
+    ready = "".join(f'<label><input type="radio" name="ready" value="{v}" required> {l}</label>' for v, l in t["ready"])
+    assure = "".join(f"<span>{x}</span>" for x in t["ap_assure"])
+    return head(t, t["title"]) + f'''
+<main>
+<section class="hero"><div class="wrap">
+  <p class="eyebrow">{t["eyebrow"]}</p>
   <h1>{t["h1"]}</h1>
-  <p class="tag">{t["tag"]}</p>
-  <a class="btn" href="#apply">{t["cta"]} <span class="arr">→</span></a>
-  <div class="meta">{meta}</div>
-</div></div>
+  <p class="sub">{t["sub"]}</p>
+  <div class="ctas"><a class="btn" href="#apply">{t["cta"]}</a><a class="link" href="#film">{t["watch"]}</a></div>
+  <p class="assure">{t["assure"]}</p>
+</div>
+<div class="shot"><div class="win">
+  <div class="chrome"><i></i><i></i><i></i><span>{t["term_title"]}</span></div>
+  <div class="body">
+    <div class="term">{"".join(lines)}</div>
+    <div class="preview" aria-hidden="true"><div class="pt">{t["preview_title"]}</div><div class="pv"><i></i></div><div class="bars"><span></span><span></span><span></span><span></span><span></span></div><div class="pf"></div><div class="pf"></div><div class="pb"></div></div>
+  </div>
+</div></div></section>
 
-<div class="vsl-wrap"><div class="wrap">
-  <div class="vsl rv">
+<div class="wrap"><div class="figures">{figures}</div></div>
+
+<section class="dark film" id="film"><div class="wrap">
+  <p class="kicker">{t["film_k"]}</p>
+  <h2>{t["film_h"]}</h2>
+  <div class="player rv" role="button" tabindex="0" aria-label="{t["film_cap"][0]}">
     <!-- VSL: lim inn Cloudflare Stream / Vimeo iframe her (manus: copy/vsl-operator.md) -->
-    <span class="sound">🔈 {t["vsl_sound"]}</span>
-    <div class="ph"><div><div class="play"></div><strong>{t["vsl_title"]}</strong><small>{t["vsl_small"]}</small></div></div>
-  </div>
-  <div class="stats rv">{stats}</div>
-</div></div>
-
-<section><div class="wrap">
-  <div class="sec-head"><h2 class="rv">{t["shift_h"]}</h2></div>
-  <div class="cols3">{cols}</div>
-  <div class="built rv"><span class="lab">{t["built_label"]}</span>{built}</div>
-</div></section>
-
-<section class="alt" id="system"><div class="wrap">
-  <div class="sec-head"><span class="eyebrow">{t["roof_eyebrow"]}</span><h2 class="rv">{t["roof_h"]}</h2><p class="lead rv">{t["roof_lead"]}</p></div>
-  <div class="sys">{sysg}</div>
-</div></section>
-
-<section id="process"><div class="wrap">
-  <div class="sec-head"><span class="eyebrow">{t["proc_eyebrow"]}</span><h2 class="rv">{t["proc_h"]}</h2></div>
-  <div class="steps">{steps}</div>
-</div></section>
-
-<section class="alt"><div class="wrap">
-  <div class="sec-head"><span class="eyebrow">{t["wall_eyebrow"]}</span><h2 class="rv">{t["wall_h"]}</h2></div>
-  <div class="proof">{proof}</div>
-  <p class="center" style="margin-top:44px"><a class="btn" href="#apply">{t["cta"]} <span class="arr">→</span></a></p>
-</div></section>
-
-<section id="plan"><div class="wrap narrow">
-  <div class="sec-head"><span class="eyebrow">{t["ai_eyebrow"]}</span><h2 class="rv">{t["ai_h"]}</h2><p class="lead">{t["ai_lead"]}</p></div>
-  <div class="panel rv"><form data-ai novalidate>
-    <input class="hp" name="website_hp" tabindex="-1" autocomplete="off">
-    <div class="two"><div class="field"><label>{t["ai_company"]}</label><input name="company" required maxlength="160" placeholder="{t["ai_company_ph"]}"></div>
-    <div class="field"><label>{t["ai_users"]}</label><input name="users" required maxlength="160" placeholder="{t["ai_users_ph"]}"></div></div>
-    <div class="field"><label>{t["ai_tool"]}</label><textarea name="tool" rows="3" required maxlength="600" placeholder="{t["ai_tool_ph"]}"></textarea></div>
-    <div class="two"><div class="field"><label>{t["ai_systems"]}</label><input name="systems" maxlength="300" placeholder="{t["ai_systems_ph"]}"></div>
-    <div class="field"><label>{t["ai_email"]}</label><input type="email" name="email" required autocomplete="email"></div></div>
-    <p class="err" aria-live="polite"></p>
-    <button class="btn" type="submit">{t["ai_btn"]}</button>
-  </form></div>
-  <div data-ai-out></div>
-</div></section>
-
-<section class="tight"><div class="wrap">
-  <div class="fit">
-    <div class="rv"><h3>{t["for_h"]}</h3><ul class="ticks">{li(t["for_l"])}</ul></div>
-    <div class="rv"><h3>{t["not_h"]}</h3><ul class="ticks x">{li(t["not_l"])}</ul></div>
+    <span class="snd">{t["sound"]}</span>
+    <div class="pl"><div class="pb"></div></div>
+    <div class="cap"><b>{t["film_cap"][0]}</b>{t["film_cap"][1]}</div>
   </div>
 </div></section>
 
-<section id="faq"><div class="wrap narrow">
-  <div class="sec-head"><h2 class="rv">{t["faq_h"]}</h2></div>
+<section class="statement"><div class="wrap"><p class="rv">{t["statement"]}</p></div></section>
+
+<section class="paper sys" id="system"><div class="wide">
+  <header><p class="kicker">{t["sys_k"]}</p><h2 class="rv">{t["sys_h"]}</h2></header>
+  <div class="bento">
+    <div class="tile t-a rv"><h3>{t["t_a"][0]}</h3><p>{t["t_a"][1]}</p>
+      <div class="ui"><div class="page-mock"><div class="v"><i></i></div><div class="f"><div class="t1"></div><span></span><span></span><span></span></div></div></div></div>
+    <div class="tile t-b d rv"><h3>{t["t_b"][0]}</h3><p>{t["t_b"][1]}</p>
+      <div class="ui">{track}<div class="row"><span class="muted">{t["dedup"]}</span><span class="ok">event_id ✓</span></div></div></div>
+    <div class="tile t-c rv"><h3>{t["t_c"][0]}</h3><p>{t["t_c"][1]}</p>
+      <div class="ui"><div class="ads"><div data-ctr="1.8%"></div><div class="win2" data-ctr="3.4%"></div><div data-ctr="2.1%"></div></div></div></div>
+    <div class="tile t-d rv"><h3>{t["t_d"][0]}</h3><p>{t["t_d"][1]}</p>
+      <div class="ui"><div class="kpi">{kpi}</div><div class="chart"></div><p class="fine" style="margin:8px 0 0">{t["kpi_note"]}</p></div></div>
+    <div class="tile t-e d rv"><h3>{t["t_e"][0]}</h3><p>{t["t_e"][1]}</p>
+      <div class="ui"><div class="chips"><span>CLAUDE.md</span><span>skills/funnels</span><span>skills/meta-capi</span><span>skills/ads</span><span>skills/sales</span><span>hooks/review</span></div></div></div>
+    <div class="tile t-f rv"><h3>{t["t_f"][0]}</h3><p>{t["t_f"][1]}</p>
+      <div class="ui"><div class="wide-ui">{tools}</div></div></div>
+  </div>
+</div></section>
+
+<section class="timeline" id="weeks"><div class="wrap">
+  <header><p class="kicker">{t["weeks_k"]}</p><h2 class="rv">{t["weeks_h"]}</h2></header>
+  <div class="track">{weeks}</div>
+</div></section>
+
+<section class="dark guarantee"><div class="wrap">
+  <header><p class="kicker">{t["g_k"]}</p><h2 class="rv">{t["g_h"]}</h2></header>
+  <div class="gpair">{g}</div>
+</div></section>
+
+<section class="paper" id="plan"><div class="wrap split">
+  <div class="stick"><p class="kicker">{t["plan_k"]}</p><h2 class="rv" style="font-size:clamp(34px,4.4vw,52px)">{t["plan_h"]}</h2><p class="sub" style="margin:20px 0 0;font-size:19px">{t["plan_p"]}</p></div>
+  <div>
+    <form class="card-form" data-ai novalidate>
+      <input class="hp" name="website_hp" tabindex="-1" autocomplete="off">
+      <div class="two"><div class="field"><label for="ai-co">{pf["company"][0]}</label><input id="ai-co" name="company" required maxlength="160" placeholder="{pf["company"][1]}"></div>
+      <div class="field"><label for="ai-us">{pf["users"][0]}</label><input id="ai-us" name="users" required maxlength="160" placeholder="{pf["users"][1]}"></div></div>
+      <div class="field"><label for="ai-tool">{pf["tool"][0]}</label><textarea id="ai-tool" name="tool" rows="3" required maxlength="600" placeholder="{pf["tool"][1]}"></textarea></div>
+      <div class="two"><div class="field"><label for="ai-sys">{pf["systems"][0]}</label><input id="ai-sys" name="systems" maxlength="300" placeholder="{pf["systems"][1]}"></div>
+      <div class="field"><label for="ai-em">{pf["email"][0]}</label><input id="ai-em" type="email" name="email" required autocomplete="email"></div></div>
+      <p class="err" aria-live="polite"></p>
+      <button class="btn" type="submit">{t["plan_btn"]}</button>
+    </form>
+    <div data-ai-out></div>
+  </div>
+</div></section>
+
+<section id="faq"><div class="wrap split">
+  <div class="stick"><h2 class="rv">{t["fit_h"]}</h2>
+    <div class="fit"><div><h3>{t["for_h"]}</h3><ul class="ticks">{li(t["for_l"])}</ul></div><div><h3>{t["not_h"]}</h3><ul class="ticks x">{li(t["not_l"])}</ul></div></div></div>
   <div class="faq">{faq}</div>
 </div></section>
 
-<section id="apply" class="alt"><div class="wrap narrow">
-  <div class="sec-head"><span class="eyebrow">{t["ap_eyebrow"]}</span><h2 class="rv">{t["ap_h"]}</h2><p class="lead">{t["ap_lead"]}</p></div>
-  <div class="panel"><form data-apply novalidate>
+<section class="paper" id="apply"><div class="wrap split">
+  <div class="stick"><p class="kicker">{t["ap_k"]}</p><h2 class="rv" style="font-size:clamp(34px,4.4vw,52px)">{t["ap_h"]}</h2><p class="sub" style="margin:20px 0 0;font-size:19px">{t["ap_p"]}</p><div class="assure-row">{assure}</div></div>
+  <form class="card-form" data-apply novalidate>
     <input type="hidden" name="offer" value="operator">
     <input class="hp" name="website_hp" tabindex="-1" autocomplete="off">
     <div class="progress"><i></i><i></i><i></i><i></i><i></i></div>
     <div class="step"><span class="stepno">{s[0][0]}</span><h3>{s[0][1]}</h3>
-      <div class="field"><label>{t["f_name"]}</label><input name="name" required autocomplete="name"></div>
-      <div class="field"><label>{t["f_company"]}</label><input name="company" required autocomplete="organization"></div>
-      <div class="field"><label>{t["f_site"]}</label><input name="website" placeholder="https://"></div></div>
+      <div class="field"><label for="a-name">{f["name"]}</label><input id="a-name" name="name" required autocomplete="name"></div>
+      <div class="field"><label for="a-co">{f["company"]}</label><input id="a-co" name="company" required autocomplete="organization"></div>
+      <div class="field"><label for="a-web">{f["website"]}</label><input id="a-web" name="website" placeholder="https://"></div></div>
     <div class="step"><span class="stepno">{s[1][0]}</span><h3>{s[1][1]}</h3>
-      <div class="field"><label>{t["f_rev"]}</label><select name="revenue" required><option value="">—</option>{rev}</select></div>
-      <div class="field"><label>{t["f_spend"]}</label><select name="spend" required><option value="">—</option>{spend}</select></div></div>
+      <div class="field"><label for="a-rev">{f["revenue"]}</label><select id="a-rev" name="revenue" required><option value="">—</option>{rev}</select></div>
+      <div class="field"><label for="a-sp">{f["spend"]}</label><select id="a-sp" name="spend" required><option value="">—</option>{spend}</select></div></div>
     <div class="step"><span class="stepno">{s[2][0]}</span><h3>{s[2][1]}</h3><div class="opts">{goal}</div></div>
     <div class="step"><span class="stepno">{s[3][0]}</span><h3>{s[3][1]}</h3>
-      <div class="field"><label>{t["f_first"]}</label><textarea name="pain" rows="3" required placeholder="{t["f_first_ph"]}"></textarea></div>
-      <div class="field"><label>{t["f_ready"]}</label><div class="opts">{ready}</div></div></div>
+      <div class="field"><label for="a-first">{f["first"]}</label><textarea id="a-first" name="pain" rows="3" required placeholder="{f["first_ph"]}"></textarea></div>
+      <div class="field"><label>{f["ready"]}</label><div class="opts">{ready}</div></div></div>
     <div class="step"><span class="stepno">{s[4][0]}</span><h3>{s[4][1]}</h3>
-      <div class="field"><label>{t["f_email"]}</label><input type="email" name="email" required autocomplete="email"></div>
-      <div class="field"><label>{t["f_phone"]}</label><input type="tel" name="phone" required autocomplete="tel"></div>
+      <div class="field"><label for="a-em">{f["email"]}</label><input id="a-em" type="email" name="email" required autocomplete="email"></div>
+      <div class="field"><label for="a-ph">{f["phone"]}</label><input id="a-ph" type="tel" name="phone" required autocomplete="tel"></div>
       <p class="consent">{t["consent"]}</p></div>
     <p class="err" aria-live="polite"></p>
-    <div class="formnav"><button class="btn ghost sm" data-prev>← {t["back"]}</button><button class="btn sm" data-next>{t["nextb"]} →</button><button class="btn" type="submit" data-submit>{t["submit"]}</button></div>
-  </form></div>
-  <div class="secure">{secure}</div>
+    <div class="formnav"><button class="btn ghost" data-prev>{t["back"]}</button><button class="btn" data-next>{t["next"]}</button><button class="btn" type="submit" data-submit>{t["submit"]}</button></div>
+  </form>
 </div></section>
 
-<section class="closer"><div class="wrap">
-  <div class="wm" aria-hidden="true">{t["wm"]}</div>
+<section class="dark closer"><div class="wrap">
+  <div class="n" aria-hidden="true">56</div>
   <h2>{t["close_h"]}</h2>
-  <p class="lead">{t["close_sub"]}</p>
-  <a class="btn" href="#apply">{t["cta"]} <span class="arr">→</span></a>
+  <p class="sub">{t["close_p"]}</p>
+  <div class="ctas"><a class="btn light" href="#apply">{t["cta"]}</a></div>
 </div></section>
+</main>
 
-<footer><div class="wrap"><div><strong>OPERATOR</strong><br>{t["foot_l"]}</div><div>{t["foot_r"]}</div></div></footer>
+<footer><div class="wide"><span>© Operator by Asym</span><p>{t["foot"]}</p></div></footer>
 <script src="/assets/op.js"></script>
 </body>
 </html>
-"""
-
-THANKS = {
-  "en": dict(lang="en", file="thanks/index.html", home="/", title="Application received", h="Application received.<br><em>One step left.</em>",
-             book="You look like a strong fit. Pick a time for your strategy call now and we'll hold your seat.", bookbtn="Pick a time",
-             wait="We'll review your application and get back to you within one business day.",
-             tips=[("01", "Add the call to your calendar. Seats are limited and missed calls are released."), ("02", "Before the call we review your website and current funnel. You keep the notes either way."), ("03", "Bring your numbers: agency, developer and software spend, and your revenue goals.")]),
-  "no": dict(lang="nb", file="no/takk/index.html", home="/no/", title="Søknad mottatt", h="Søknad mottatt.<br><em>Ett steg igjen.</em>",
-             book="Dere ser ut som en god match. Velg tidspunkt for strategisamtalen nå, så holder vi av plassen.", bookbtn="Velg tidspunkt",
-             wait="Vi går gjennom søknaden og tar kontakt innen én virkedag.",
-             tips=[("01", "Legg samtalen i kalenderen. Plassene er få, og uteblir du, går plassen videre."), ("02", "Før samtalen går vi gjennom nettsiden og dagens funnel. Notatene får du uansett."), ("03", "Ha tallene klare: kostnader til byrå, utviklere og programvare, og målene for omsetning.")]),
-}
-
-def thanks(t):
-    tips = "".join(f'<div class="col"><div class="num">{n}</div><p>{x}</p></div>' for n, x in t["tips"])
-    return f'''<!doctype html>
-<html lang="{t["lang"]}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
-<title>{t["title"]} · Operator</title>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/op.css"></head>
-<body><header class="nav"><div class="wrap"><a class="logo" href="{t["home"]}"><i></i><strong>OPERATOR</strong></a></div></header>
-<div class="hero"><div class="wrap narrow">
-  <h1 style="font-size:clamp(42px,7vw,76px)">{t["h"]}</h1>
-  <div id="book" style="display:none"><p class="tag">{t["book"]}</p><a class="btn" id="booklink" href="#" target="_blank" rel="noopener">{t["bookbtn"]}</a></div>
-  <p class="tag" id="wait">{t["wait"]}</p>
-</div></div>
-<section><div class="wrap"><div class="cols3">{tips}</div></div></section>
-<script>(function(){{var q=new URLSearchParams(location.search),u=q.get("book");if(u&&/^https:\\/\\//.test(u)){{document.getElementById("book").style.display="";document.getElementById("wait").style.display="none";document.getElementById("booklink").href=u;}}}})();</script>
-</body></html>
 '''
 
-for t in T.values():
-    out = HERE / t["path"] / "index.html"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(page(t), encoding="utf-8")
-for t in THANKS.values():
-    out = HERE / t["file"]
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(thanks(t), encoding="utf-8")
+
+def thanks(t):
+    tips = "".join(f'<div><h3>{a}</h3><p class="muted" style="margin:8px 0 0">{b}</p></div>' for a, b in t["th_tips"])
+    return head(t, f'{t["th_title"]} · Operator', noindex=True) + f'''
+<main>
+<section class="hero" style="padding-block:110px 60px"><div class="wrap">
+  <h1>{t["th_h"]}</h1>
+  <div id="book" hidden><p class="sub">{t["th_book"]}</p><div class="ctas"><a class="btn" id="booklink" href="#" target="_blank" rel="noopener">{t["th_btn"]}</a></div></div>
+  <p class="sub" id="wait">{t["th_wait"]}</p>
+</div></section>
+<section style="padding-block:20px 120px"><div class="wrap"><div class="fit thanks-tips">{tips}</div></div></section>
+</main>
+<footer><div class="wide"><span>© Operator by Asym</span></div></footer>
+<script>(function(){{var q=new URLSearchParams(location.search),u=q.get("book");if(u&&/^https:\\/\\//.test(u)){{document.getElementById("book").hidden=false;document.getElementById("wait").hidden=true;document.getElementById("booklink").href=u;}}}})();</script>
+</body>
+</html>
+'''
+
+
+for key, t in T.items():
+    base = HERE if key == "en" else HERE / "no"
+    base.mkdir(parents=True, exist_ok=True)
+    (base / "index.html").write_text(page(t), encoding="utf-8")
+    th = HERE / t["thanks"].strip("/")
+    th.mkdir(parents=True, exist_ok=True)
+    (th / "index.html").write_text(thanks(t), encoding="utf-8")
 print("built")
