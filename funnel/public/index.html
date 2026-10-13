@@ -12,12 +12,13 @@
 <script src="/assets/f.js" defer></script>
 <noscript><style>body.gated .reveal{display:block!important}.locked{display:none!important}</style></noscript>
 <script src="/assets/vsl.js" defer></script>
+<script src="/assets/apply.js" defer></script>
 <title>Operator</title>
 </head>
 <body class="page-landing">
 <header class="nav"><div class="wide">
   <a class="brand" href="/" aria-label="Operator home"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor"/><path d="M7.5 12a4.5 4.5 0 1 0 9 0 4.5 4.5 0 1 0-9 0Z" fill="none" stroke="#fff" stroke-width="2.2"/></svg><strong>Operator</strong></a>
-  <a class="btn sm gated-show" data-apply href="/apply">Apply</a>
+  <a class="btn sm gated-show" data-apply href="#apply">Apply</a>
 </div></header>
 
 <main>
@@ -41,82 +42,32 @@
         <button class="listen" type="button" hidden><span class="listen-icon" aria-hidden="true"></span><span>Click to listen</span></button>
         <div class="bar" aria-hidden="true"><i></i></div>
       </div>
-      <p class="locked" data-slot="locked">The rest of the page opens as the film reaches the offer.</p>
+      <p class="locked" data-slot="locked">The application opens as the film reaches the offer.</p>
       <div class="cta-block reveal" data-section="book_cta">
-        <a class="btn lg" data-apply href="/apply"><span data-slot="cta">Apply for a strategy call</span></a>
+        <a class="btn lg" data-apply href="#apply">Apply for a strategy call</a>
         <p class="assure" data-slot="ctaSub">Takes about three minutes. We read every application.</p>
       </div>
     </div>
   </section>
 
-  <div class="reveal">
-    <section class="figures">
-      <div class="wrap"><div class="figs" data-slot="figures"></div></div>
-    </section>
-
-    <section class="statement">
-      <div class="wrap"><p data-slot="statement"></p></div>
-    </section>
-
-    <section class="paper" id="system">
-      <div class="wide">
-        <header class="sec-head"><p class="kicker">The system</p><h2>Six parts. <span>All of them yours.</span></h2></header>
-        <div class="bento" data-slot="system"></div>
-        <p class="ui-note">Interfaces and figures shown in the tiles are illustrative.</p>
+  <section class="apply-sec reveal" id="apply" data-section="application">
+    <div class="wrap">
+      <div class="apply-card">
+        <div class="progress inline" aria-hidden="true"><i></i></div>
+        <form class="apply" novalidate autocomplete="on">
+          <div class="steps" aria-live="polite"></div>
+          <noscript><p class="err">The application needs JavaScript. Please enable it, or message us and we will help.</p></noscript>
+        </form>
       </div>
-    </section>
-
-    <section id="weeks">
-      <div class="wrap">
-        <header class="sec-head"><p class="kicker">How it runs</p><h2>Eight weeks. <span>Then it is yours to run.</span></h2></header>
-        <ol class="weeks" data-slot="weeks"></ol>
-      </div>
-    </section>
-
-    <section class="black guarantee" data-section="guarantee">
-      <div class="wrap">
-        <span class="watermark" aria-hidden="true">7</span>
-        <header class="sec-head"><p class="kicker">The guarantees</p><h2>Two promises, <span>in writing.</span></h2></header>
-        <div class="g-grid">
-          <div class="g"><h3>Seven-day money-back</h3><p data-slot="guarantee"></p></div>
-          <div class="g"><h3>Delivery guarantee</h3><p data-slot="deliveryGuarantee"></p></div>
-        </div>
-      </div>
-    </section>
-
-    <section data-section="testimonials" class="paper"><div class="wrap"><h2>In their words</h2></div></section>
-
-    <section id="fit">
-      <div class="wrap">
-        <header class="sec-head"><p class="kicker">Fit</p><h2>Who this is for.</h2></header>
-        <div class="fit" data-slot="fit"></div>
-      </div>
-    </section>
-
-    <section class="paper" data-section="faq" id="faq">
-      <div class="wrap narrow">
-        <header class="sec-head"><p class="kicker">Questions</p><h2>Asked often.</h2></header>
-        <div class="faqs" data-slot="faq"></div>
-      </div>
-    </section>
-
-    <section class="closer black" data-section="book_cta">
-      <div class="wrap">
-        <h2>Own the machine.<br><span>Stop paying rent on it.</span></h2>
-        <div class="ctas"><a class="btn lg light" data-apply href="/apply">Apply for a strategy call</a></div>
-        <p class="assure on-dark">Price is covered on the call, once we know the scope.</p>
-      </div>
-    </section>
-
-    <section class="wa" data-section="whatsapp">
-      <div class="wrap"><p>Rather ask a question first? <a data-wa href="/go/wa">Message Bendik on WhatsApp</a></p></div>
-    </section>
-  </div>
+      <p class="assure apply-assure" data-slot="applyAssure"></p>
+      <p class="wa-line" data-section="whatsapp">Rather ask a question first? <a data-wa href="/go/wa">Message Bendik on WhatsApp</a></p>
+    </div>
+  </section>
 </main>
 <footer class="foot"><div class="wrap">
   <p class="legal" data-slot="disclaimer">Operator is an independent program by Asym. Not affiliated with or endorsed by Anthropic.</p>
   <p class="foot-row"><span>© <span data-slot="year">2026</span> <span data-slot="company">Asym</span></span><a href="/privacy">Privacy</a><button type="button" class="linkish" data-cookie-settings>Cookie settings</button></p>
 </div></footer>
-<div class="sticky-cta reveal" aria-hidden="false"><a class="btn" data-apply href="/apply">Apply for a call</a></div>
+<div class="sticky-cta reveal"><a class="btn" data-apply href="#apply">Apply for a call</a></div>
 </body>
 </html>

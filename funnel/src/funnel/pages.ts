@@ -58,33 +58,6 @@ function faqHtml(faqs: Faq[]): string {
   return faqs.map((f) => `<details class="faq" data-faq="${escHtml(f.id)}"><summary>${escHtml(f.q)}</summary><p>${escHtml(f.a)}</p></details>`).join("");
 }
 
-function figuresHtml(): string {
-  return LANDING.figures.map((f) => `<div class="fig"><div class="fig-v">${escHtml(f.value)}<span>${escHtml(f.unit)}</span></div><p>${escHtml(f.label)}</p></div>`).join("");
-}
-
-// Static mini interfaces that show each deliverable (trusted markup, no lead data).
-const TILE_UI: Record<string, string> = {
-  pages: `<div aria-hidden="true" class="tile-ui ui-browser"><div class="chrome"><i></i><i></i><i></i></div><div class="l h"></div><div class="l h2"></div><div class="l s"></div><div class="pill"></div></div>`,
-  tracking: `<div aria-hidden="true" class="tile-ui ui-rows"><div><b>Lead</b><span class="ok">server · deduped</span></div><div><b>QualifiedLead</b><span class="val">value 3,000</span></div><div><b>Schedule</b><span class="ok">matched 8/9 keys</span></div><div><b>Purchase</b><span class="val">value 30,000</span></div></div>`,
-  dashboard: `<div aria-hidden="true" class="tile-ui ui-dash"><div class="k"><span>Applied</span><b>48</b></div><div class="k"><span>Show rate</span><b>82%</b></div><div class="k"><span>Cash</span><b>$90k</b></div><div class="bars"><i style="height:30%"></i><i style="height:42%"></i><i style="height:38%"></i><i style="height:55%"></i><i style="height:48%"></i><i class="on" style="height:72%"></i><i class="on" style="height:88%"></i></div></div>`,
-  followup: `<div aria-hidden="true" class="tile-ui ui-rows"><div><b>I read your application</b><span>2h</span></div><div><b>About the agency retainer</b><span>1d</span></div><div><b>What we would build first</b><span>2d</span></div><div><b>Your call is tomorrow</b><span>24h</span></div></div>`,
-  tools: `<div aria-hidden="true" class="tile-ui ui-term"><div><span class="p">~/ops $</span> claude</div><div><span class="pr">›</span> build a quote tool from our price sheet</div><div class="ok">✓ quote.ts created</div><div class="ok">✓ deployed to tools.yourdomain.com</div></div>`,
-  skills: `<div aria-hidden="true" class="tile-ui ui-team"><div class="row"><span class="av">AL</span><span class="meter"><i style="width:86%"></i></span></div><div class="row"><span class="av">JM</span><span class="meter"><i style="width:64%"></i></span></div><div class="row"><span class="av">SK</span><span class="meter"><i style="width:48%"></i></span></div></div>`,
-};
-
-function systemHtml(): string {
-  return LANDING.system.map((s) => `<article class="tile" data-tile="${escHtml(s.key)}">${TILE_UI[s.key] || `<div class="tile-ui" aria-hidden="true"></div>`}<h3>${escHtml(s.title)}</h3><p>${escHtml(s.body)}</p></article>`).join("");
-}
-
-function weeksHtml(): string {
-  return LANDING.weeks.map((w) => `<li><span class="wk">${escHtml(w.label)}</span><div><h3>${escHtml(w.title)}</h3><p>${escHtml(w.body)}</p></div></li>`).join("");
-}
-
-function fitHtml(): string {
-  const li = (arr: string[]) => arr.map((x) => `<li>${escHtml(x)}</li>`).join("");
-  return `<div class="fit-col yes"><h3>A fit if</h3><ul>${li(LANDING.fit.yes)}</ul></div><div class="fit-col no"><h3>Not a fit if</h3><ul>${li(LANDING.fit.no)}</ul></div>`;
-}
-
 function videoCfg(rt: Runtime, id: VideoId, resume: number) {
   const key = id === "main" ? "VSL_MAIN" : id === "breakout" ? "VSL_BREAKOUT" : "VSL_PRECALL";
   const src = rt.settings.get(`${key}_SRC`);
@@ -185,23 +158,20 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
     bodyClass: [revealed ? "" : "gated", h1.length + h1b.length > 48 ? "long-h1" : ""].filter(Boolean).join(" "),
     text: {
       eyebrow, h1, h1b, sub,
-      cta: lead?.app_completed_at ? "See your next step" : LANDING.ctaLabel,
       ctaSub: LANDING.ctaSub,
       locked: LANDING.lockedNote,
-      statement: LANDING.statement,
-      guarantee: BRAND.guarantee,
-      deliveryGuarantee: BRAND.deliveryGuarantee,
+      applyAssure: `${BRAND.guarantee} Price is covered on the call, once we know the scope.`,
       disclaimer: BRAND.disclaimer,
       year: String(new Date().getFullYear()),
       company: BRAND.company,
     },
-    html: { figures: figuresHtml(), system: systemHtml(), weeks: weeksHtml(), fit: fitHtml(), faq: faqHtml(FAQS) },
     attrs: [
       ...(wa ? [{ sel: "a[data-wa]", attr: "href", value: "/go/wa?c=question" }] : []),
       ...(lead?.app_completed_at && lead.route ? [{ sel: "a[data-apply]", attr: "href", value: lead.route }] : []),
     ],
     remove,
-    cfg: { ...commonCfg(rt, id, "landing", pv), video, revealed, variant: id.variant, lander: id.lander },
+    // The application lives on this page, under the film.
+    cfg: { ...commonCfg(rt, id, "landing", pv), ...applicationCfg(rt, id, lead), embedded: true, video, revealed, variant: id.variant, lander: id.lander },
   });
 }
 
@@ -215,28 +185,33 @@ export async function smartRoute(c: Ctx): Promise<Response> {
 
 // ── Apply ─────────────────────────────────────────────────────────────────────
 
-export async function applyPage(c: Ctx): Promise<Response> {
-  const rt = c.get("rt");
-  const id = await resolveIdentity(c, { page: true });
-  const pv = await pageView(c, id, "/apply");
-  const lead = await getLead(rt, id.leadId);
-  if (lead?.app_completed_at && lead.route) return c.redirect(lead.route, 302);
+/** Everything apply.js needs: the questions, consent text, Turnstile key and any saved answers. */
+function applicationCfg(rt: Runtime, id: Identity, lead: Lead | null) {
   const questions = APPLICATION.map((q) => ({
     id: q.id, type: q.type, title: q.title, help: q.help || "", placeholder: q.placeholder || "", optional: !!q.optional, minLength: q.minLength || 0,
     options: (q.options || []).map((o) => ({ value: o.value, label: o.label })),
   }));
   const answers: Record<string, unknown> = {};
   if (lead) { try { Object.assign(answers, JSON.parse(lead.answers || "{}")); } catch { /* ignore */ } }
+  return {
+    questions,
+    consent: { label: CALL_CONSENT.label, version: CALL_CONSENT.version },
+    turnstile: rt.settings.get("TURNSTILE_SITE_KEY") || null,
+    lead: lead ? { first: lead.first_name || "", last: lead.last_name || "", email: lead.email, phone: lead.phone || "", callConsent: !!lead.call_consent_at, step: lead.step_reached, answers } : null,
+    done: lead?.app_completed_at && lead.route ? { route: lead.route } : null,
+    country: id.geo.country,
+  };
+}
+
+export async function applyPage(c: Ctx): Promise<Response> {
+  const rt = c.get("rt");
+  const id = await resolveIdentity(c, { page: true });
+  const pv = await pageView(c, id, "/apply");
+  const lead = await getLead(rt, id.leadId);
+  if (lead?.app_completed_at && lead.route) return c.redirect(lead.route, 302);
   return renderTemplate(c, "apply.html", {
     title: `Apply · ${BRAND.name}`,
-    cfg: {
-      ...commonCfg(rt, id, "apply", pv),
-      questions,
-      consent: { label: CALL_CONSENT.label, version: CALL_CONSENT.version },
-      turnstile: rt.settings.get("TURNSTILE_SITE_KEY") || null,
-      lead: lead ? { first: lead.first_name || "", last: lead.last_name || "", email: lead.email, phone: lead.phone || "", callConsent: !!lead.call_consent_at, step: lead.step_reached, answers } : null,
-      country: id.geo.country,
-    },
+    cfg: { ...commonCfg(rt, id, "apply", pv), ...applicationCfg(rt, id, lead) },
   });
 }
 

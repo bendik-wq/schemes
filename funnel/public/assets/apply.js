@@ -31,6 +31,15 @@
     var answers = (lead && lead.answers) || {};
     var keys = "ABCDEFGH";
     var idx = 0, busy = false, dir = 1;
+    // Embedded under the film on the landing page: never steal focus or scroll on load.
+    var embedded = !!cfg.embedded, firstRender = true;
+    var titleTag = embedded ? "h2" : "h1";
+    function focusSoon(el) { if (!el || (embedded && firstRender)) return; setTimeout(function () { el.focus({ preventScroll: embedded }); }, 60); }
+    function toTop() {
+      if (!embedded) { w.scrollTo({ top: 0, behavior: "smooth" }); return; }
+      var sec = d.getElementById("apply");
+      if (sec && sec.getBoundingClientRect().top < 0) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 
     // Resume at the first unanswered question for a returning applicant.
     if (lead) {
@@ -47,7 +56,7 @@
 
     function frame(q, body, foot) {
       var n = el("p", { class: "step-n", text: String(idx + 1).padStart(2, "0") + " / " + String(qs.length).padStart(2, "0") });
-      var h = el("h1", { id: "q-title", text: q.title });
+      var h = el(titleTag, { id: "q-title", class: "q-title", text: q.title });
       var kids = [n, h];
       if (q.help) kids.push(el("p", { class: "help", text: q.help }));
       kids.push(body);
@@ -81,7 +90,7 @@
       if (delta < 0) track("app_back", { from: qs[idx].id });
       idx = Math.max(0, Math.min(qs.length - 1, idx + delta));
       render();
-      w.scrollTo({ top: 0, behavior: "smooth" });
+      toTop();
     }
 
     // ── contact ──
@@ -116,7 +125,7 @@
       if (ts && !w.turnstile) {
         var s = d.createElement("script"); s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js"; s.async = true; d.head.appendChild(s);
       }
-      setTimeout(function () { (L.first ? f.email.input : f.first_name.input).focus(); }, 60);
+      focusSoon(L.first ? f.email.input : f.first_name.input);
 
       function setErr(name, text) {
         Object.keys(f).forEach(function (k) { f[k].wrap.classList.remove("bad"); f[k].msg.textContent = ""; });
@@ -170,7 +179,7 @@
       }
       root._keys = function (k) { var i = keys.indexOf(k.toUpperCase()); if (i < 0) i = Number(k) - 1; if (i >= 0 && q.options[i]) pick(q.options[i].value); };
       root.closest("form").onsubmit = function (e) { e.preventDefault(); if (answers[q.id]) next(); };
-      setTimeout(function () { (btns.filter(function (b) { return b.getAttribute("aria-pressed") === "true"; })[0] || btns[0]).focus(); }, 60);
+      focusSoon(btns.filter(function (b) { return b.getAttribute("aria-pressed") === "true"; })[0] || btns[0]);
     }
 
     // ── multi choice ──
@@ -206,7 +215,7 @@
       var wrap = el("div", { class: "field full" }, [input, msg]);
       var btn = el("button", { class: "btn lg", type: "submit", text: idx === qs.length - 1 ? "Submit application" : "Continue" });
       frame(q, el("div", { class: "fields" }, [wrap]), footer({ button: btn, hint: long ? (q.optional ? "Optional · ⌘ Enter" : "⌘ Enter") : "Enter ↵" }));
-      setTimeout(function () { input.focus(); }, 60);
+      focusSoon(input);
       input.addEventListener("keydown", function (e) {
         if (long && e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); root.closest("form").requestSubmit ? root.closest("form").requestSubmit() : root.closest("form").onsubmit(e); }
       });
@@ -228,7 +237,7 @@
       if (bar) bar.style.width = "100%";
       var items = ["Reading your answers", "Checking fit with the program", "Finding the right next step"].map(function (t) { return el("li", { text: t }); });
       root.innerHTML = "";
-      root.appendChild(el("div", { class: "step analysing" }, [el("div", { class: "spinner", "aria-hidden": "true" }), el("h1", { text: "One moment." }), el("ul", {}, items)]));
+      root.appendChild(el("div", { class: "step analysing" }, [el("div", { class: "spinner", "aria-hidden": "true" }), el(titleTag, { class: "q-title", text: "One moment." }), el("ul", {}, items)]));
       items.forEach(function (li, i) { setTimeout(function () { li.classList.add("done"); }, 600 + i * 700); });
       var started = Date.now();
       post("/api/apply/submit", {}).then(function (r) {
@@ -239,12 +248,12 @@
           var at = missing ? qs.map(function (q) { return q.id; }).indexOf(missing) : -1;
           if (at >= 0) { idx = at; render(); root.querySelector(".step").appendChild(notice("Please answer this one to finish.", true)); return; }
           root.innerHTML = "";
-          root.appendChild(el("div", { class: "step" }, [el("h1", { text: "That did not go through." }), notice("Please try again in a moment. Your answers are saved.", true),
+          root.appendChild(el("div", { class: "step" }, [el(titleTag, { class: "q-title", text: "That did not go through." }), notice("Please try again in a moment. Your answers are saved.", true),
             el("div", { class: "step-foot" }, [el("span"), el("button", { class: "btn", type: "button", text: "Try again", onclick: finish })])]));
         }, wait);
       }).catch(function () {
         root.innerHTML = "";
-        root.appendChild(el("div", { class: "step" }, [el("h1", { text: "Network problem." }), notice("Your answers are saved. Please try again.", true),
+        root.appendChild(el("div", { class: "step" }, [el(titleTag, { class: "q-title", text: "Network problem." }), notice("Your answers are saved. Please try again.", true),
           el("div", { class: "step-foot" }, [el("span"), el("button", { class: "btn", type: "button", text: "Try again", onclick: finish })])]));
       });
     }
@@ -252,6 +261,17 @@
     function render() {
       var q = qs[idx];
       root._keys = null;
+      if (cfg.done && cfg.done.route) {
+        // Applied already: no form, just the way to the next step.
+        root.innerHTML = "";
+        root.appendChild(el("div", { class: "step" }, [
+          el(titleTag, { class: "q-title", text: "Your application is in." }),
+          el("p", { class: "help", text: "Thank you. Your next step is ready." }),
+          el("div", { class: "step-foot" }, [el("span"), el("a", { class: "btn lg", href: cfg.done.route, text: "See your next step" })]),
+        ]));
+        if (bar) bar.style.width = "100%";
+        return;
+      }
       if (q.type === "contact") return renderContact(q);
       if (!lead) { idx = 0; return renderContact(qs[0]); }
       if (q.type === "single") return renderSingle(q);
@@ -268,6 +288,7 @@
     });
 
     render();
+    firstRender = false;
   }
 
   if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", boot); else boot();

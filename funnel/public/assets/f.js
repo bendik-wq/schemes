@@ -196,6 +196,9 @@
       var e = en[0];
       d.body.classList.toggle("cta-out", !e.isIntersecting && e.boundingClientRect.top < 0);
     }).observe(cta);
+    // Hide it again while the application itself is on screen, so it never covers the form.
+    var form = d.getElementById("apply");
+    if (form) new IntersectionObserver(function (en) { d.body.classList.toggle("apply-in", en[0].isIntersecting); }).observe(form);
   })();
 
   // FAQ opens (the server only trusts ids that exist).

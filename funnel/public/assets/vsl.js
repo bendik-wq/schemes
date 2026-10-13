@@ -60,6 +60,8 @@
       bar.style.width = (Math.pow(p, 0.55) * 100).toFixed(2) + "%";
     }
 
+    // If the film cannot load, never keep the application locked behind it.
+    video.addEventListener("error", function () { player.classList.remove("has-src"); reveal(); });
     video.addEventListener("loadedmetadata", function () { if (isFinite(video.duration) && video.duration > 0) duration = video.duration; });
     video.addEventListener("play", function () {
       if (!played) { played = true; beat(true); }
