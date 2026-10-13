@@ -94,14 +94,16 @@ export function setCurrentUser(c: Ctx, u: AdminUser): void {
 // ── Role gates ───────────────────────────────────────────────────────────────
 
 const LID = "l[0-9a-z]{19}";
-/** Paths (relative to /admin/api) a closer or setter may use. Lead-level scoping happens in the handlers. */
+/** Paths (relative to /admin/api) a closer or setter may use. Lead-level scoping happens in the handlers.
+ *  Deliberately manager-only: the test-data toggle, confirm-booking, reassign, merge, erase and every setting. */
 const REP_ALLOW: Array<[string, RegExp]> = [
-  ["GET", /^\/(me|filters|alerts\/open|today|pipeline|sales|leads|receivables)$/],
+  ["GET", /^\/(me|filters|alerts\/open|today|pipeline|sales|leads|receivables|metrics)$/],
   ["GET", new RegExp(`^/leads/${LID}(/preview)?$`)],
   ["PATCH", new RegExp(`^/leads/${LID}$`)],
   ["POST", new RegExp(`^/leads/${LID}/(payments|touches)$`)],
   ["DELETE", new RegExp(`^/leads/${LID}/payments/p[0-9a-z]{19}$`)],
-  ["POST", /^\/(sales\/outcome|pipeline\/move|logout)$/],
+  ["PUT", new RegExp(`^/leads/${LID}/plan$`)],
+  ["POST", /^\/(sales\/outcome|pipeline\/move|calls\/held|logout)$/],
   ["POST", /^\/receivables\/rv[0-9a-z]{19}\/paid$/],
 ];
 /** Reads a viewer may not make: settings, people, keys, raw exports and recordings. */

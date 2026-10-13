@@ -29,6 +29,7 @@ import {
 } from "../integrations/calendly";
 import { inlineBookingOn } from "../growth/experiments";
 import { recordSmsConsent } from "../integrations/sms";
+import { classifyNewLead } from "../admin/testdata";
 
 
 // RFC 5322 atext, minus characters that have no business in a real address and break HTML contexts.
@@ -119,7 +120,7 @@ export interface ContactInput {
 }
 
 export type ContactResult =
-  | { ok: true; leadId: string; ref: string; created: boolean; phoneCallable: boolean }
+  | { ok: true; leadId: string; ref: string; created: boolean; phoneCallable: boolean; /** Ticked, but not stored (number shared with another lead). */ consentDropped?: boolean }
   | { ok: false; status: 400 | 409 | 403; code: string; field?: string; message: string };
 
 async function lastTouch(rt: Runtime, id: Identity) {
@@ -230,6 +231,7 @@ export async function saveContact(
   ).run();
   await linkVisitorToLead(rt, id.visitorId, leadId);
   id.leadId = leadId;
+  await classifyNewLead(rt, { id: leadId, email, visitor_id: id.visitorId });
   if (emailSuppressed) await updateLead(rt, leadId, { unsubscribed_at: now });
   const lead = (await getLead(rt, leadId))!;
   if (input.sms_consent === true || input.sms_consent === "on") await recordSmsConsent(rt, leadId, phone, true);
@@ -237,11 +239,11 @@ export async function saveContact(
     // Stored only: no ad platform, CRM or sequence hears of it until the inbox confirms (confirmNojsLead).
     await kvSet(rt.env, `nojs_unverified:${leadId}`, String(now));
     await track(rt, { ...who, leadId }, { name: "lead_captured", props: { step: 1, nojs: true }, localOnly: true, eventId: nojsCaptureId(leadId) });
-    return { ok: true, leadId, ref, created: true, phoneCallable };
+    return { ok: true, leadId, ref, created: true, phoneCallable, consentDropped: consent && !consentOk };
   }
   await track(rt, { ...who, leadId }, { name: "lead_captured", props: { step: 1 } });
   await enqueueSequence(rt, lead, "abandoned");
-  return { ok: true, leadId, ref, created: true, phoneCallable };
+  return { ok: true, leadId, ref, created: true, phoneCallable, consentDropped: consent && !consentOk };
 }
 
 /** Validate one answer against the question definition. Returns the clean value or null. */

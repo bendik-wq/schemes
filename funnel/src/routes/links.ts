@@ -151,10 +151,6 @@ for (const [path, field] of [["/go/join", "booking_join_url"], ["/go/reschedule"
 
 type ConfirmLead = Lead & { attendance_confirmed_at?: number | null; attendance_call_at?: number | null };
 
-export async function confirmSig(rt: Runtime, leadId: string): Promise<string> {
-  return signShort(await signingSecret(rt.env), `c|${leadId}`);
-}
-
 function isBooked(lead: Lead | null): lead is Lead {
   return !!lead && lead.status === "booked" && !!lead.call_at && !lead.booking_cancelled_at;
 }
@@ -173,7 +169,10 @@ async function markAttendance(rt: Runtime, lead: Lead): Promise<void> {
 async function confirmedPage(rt: Runtime, lead: Lead): Promise<string> {
   const when = lead.call_at ? formatCallTime(lead.call_at, await leadTimezone(rt, lead)) : "";
   const first = lead.first_name ? `, ${escHtml(lead.first_name)}` : "";
-  return unsubPage("You're confirmed", `Thank you${first}. We'll see you${when ? ` on ${escHtml(when)}` : ""}. If anything changes, you can <a href="/go/reschedule">reschedule here</a>.</p><p><a class="btn" href="/breakout">Open the pre-call page</a>`, null);
+  // The booking's own reschedule link, so it works in a browser without our cookie; hidden when there is none.
+  const resched = safeExternalUrl(lead.booking_reschedule_url);
+  const change = resched ? ` If anything changes, you can <a href="${escHtml(resched)}">reschedule here</a>.` : "";
+  return unsubPage("You're confirmed", `Thank you${first}. We'll see you${when ? ` on ${escHtml(when)}` : ""}.${change}</p><p><a class="btn" href="/breakout">Open the pre-call page</a>`, null);
 }
 
 function confirmForm(action: string, lead: Lead, when: string): string {
@@ -199,29 +198,6 @@ links.post("/go/confirm", async (c) => {
   if (!isBooked(lead)) return c.redirect("/breakout", 303);
   await markAttendance(rt, lead);
   return c.redirect("/breakout", 303);
-});
-
-// Signed variant for channels without our cookie (SMS, WhatsApp, a forwarded email): /go/confirm/<lead>/<sig>.
-links.get("/go/confirm/:lead/:sig", async (c) => {
-  const rt = c.get("rt");
-  const leadId = c.req.param("lead");
-  if (!LEAD_ID.test(leadId) || !(await verifyShort(await signingSecret(rt.env), `c|${leadId}`, c.req.param("sig")))) return c.redirect("/", 302);
-  const lead = await getLead(rt, leadId);
-  if (!isBooked(lead)) return c.html(unsubPage("No call booked", "We can't find an upcoming call for this link. The latest email from us has the current details.", null), 404);
-  if (attendanceConfirmed(lead as ConfirmLead)) return c.html(await confirmedPage(rt, lead));
-  if (userNavigation(c)) { await markAttendance(rt, lead); return c.html(await confirmedPage(rt, lead)); }
-  return c.html(confirmForm(`/go/confirm/${leadId}/${c.req.param("sig")}`, lead, formatCallTime(lead.call_at as number, await leadTimezone(rt, lead))));
-});
-
-links.post("/go/confirm/:lead/:sig", async (c) => {
-  if (!sameOrigin(c)) return c.text("Cross-site request refused", 403);
-  const rt = c.get("rt");
-  const leadId = c.req.param("lead");
-  if (!LEAD_ID.test(leadId) || !(await verifyShort(await signingSecret(rt.env), `c|${leadId}`, c.req.param("sig")))) return c.text("Invalid link", 400);
-  const lead = await getLead(rt, leadId);
-  if (!isBooked(lead)) return c.redirect("/breakout", 303);
-  await markAttendance(rt, lead);
-  return c.html(await confirmedPage(rt, lead));
 });
 
 // ── Requalify: a C-tier lead whose business has changed reopens the application with every answer kept ──

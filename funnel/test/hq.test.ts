@@ -494,7 +494,7 @@ describe("small fixes", () => {
     expect(triggerWhen("t_vsl_no_apply", 30)).toBe("30 min after watching half the film");
     const subj = templateSubjects();
     expect(subj.size).toBe(Object.keys(TEMPLATES).length);
-    expect(subj.get("fu_recap")).toBe("Thanks for the call today");
+    expect(subj.get("fu_recap")).toBe("Thanks for your time on the call");
     const q = groupQueue([
       { email: "ada+1@x.io", name: "Ada", template: "ta_1", send_at: 0 },
       { email: "ada+2@x.io", name: "Ada", template: "ta_1", send_at: 60_000 },

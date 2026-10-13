@@ -22,6 +22,8 @@ export interface EmailCtx {
   closerName: string;
   /** Escaped signature name. */
   sigName: string;
+  /** Which films are configured (VSL_BREAKOUT_SRC / VSL_PRECALL_SRC). Absent: treated as none, so no email promises a video. */
+  hasVideo?: { breakout: boolean; precall: boolean };
   now: number;
 }
 

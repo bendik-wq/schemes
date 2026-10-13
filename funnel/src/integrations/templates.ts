@@ -26,6 +26,9 @@ function closer(c: C): string {
 function withCloser(c: C): string {
   return closer(c) === "me" ? "with me" : `with ${c.closerName}`;
 }
+const breakoutFilm = (c: C) => !!c.hasVideo?.breakout;
+const precallFilm = (c: C) => !!c.hasVideo?.precall;
+
 function callOn(c: C): string {
   return c.callTime ? `our call on ${c.callTime}` : "our call";
 }
@@ -40,7 +43,7 @@ function yours(c: C): string {
 
 /** A short quote of what they sell, or "". */
 function bizQuote(c: C): string {
-  return c.d.business ? `You described the business as &ldquo;${c.d.business}&rdquo;.` : "";
+  return c.d.business ? `You described the business as “${c.d.business}”.` : "";
 }
 
 const GOAL_LINE: Record<string, string> = {
@@ -77,6 +80,11 @@ const BLOCKER_PHRASE: Record<string, string> = {
 function hasBlocker(c: C, v: string): boolean {
   return c.d.blockers.some((b) => b.value === v);
 }
+/** Like joinAnd, but with semicolons, for items that carry their own commas. */
+function joinList(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join("; ")}; and ${items[items.length - 1]}`;
+}
 function joinAnd(items: string[]): string {
   if (items.length <= 1) return items.join("");
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
@@ -106,7 +114,7 @@ function firstBuildLine(c: C): string {
 }
 
 function whyNowLine(c: C): string {
-  return c.d.whyNow ? `You wrote that this matters now because &ldquo;${c.d.whyNow}&rdquo;. I'll keep that in mind.` : "";
+  return c.d.whyNow ? `You wrote that this matters now because “${c.d.whyNow}”. I'll keep that in mind.` : "";
 }
 
 /**
@@ -285,7 +293,7 @@ const ta: Record<string, Template> = {
 // ── Tier B: softer, breakout first ────────────────────────────────────────────
 
 const tb: Record<string, Template> = {
-  tb_1: (c) => ({
+  tb_1: (c) => (breakoutFilm(c) ? {
     subject: "Thanks for applying. One short video first",
     preheader: "Five minutes that answer the usual questions.",
     paragraphs: body(c,
@@ -295,6 +303,16 @@ const tb: Record<string, Template> = {
       "Watch it when you have five minutes. If it still makes sense afterwards, you can pick a time on the same page.",
     ),
     cta: { label: "Watch the short video", path: "/breakout" },
+  } : {
+    subject: "Thanks for applying. Your next step",
+    preheader: "What the call covers, and how to pick a time.",
+    paragraphs: body(c,
+      "Thanks for your application. It came through, and I'll read it properly before we speak.",
+      bizQuote(c),
+      "The next step is a strategy call. On it we cover what most founders ask first: what it costs, how much time it takes, and whether it fits your business.",
+      "If that sounds useful, pick a time that suits you on the next-step page.",
+    ),
+    cta: { label: "See the next step", path: "/breakout" },
   }),
   tb_2: (c) => ({
     subject: "What the strategy call is, and what it is not",
@@ -314,7 +332,7 @@ const tb: Record<string, Template> = {
       "That is fine. Talking months before you start is a sensible way to understand what owning your growth stack would involve.",
       "A call now commits you to nothing. It just means that when the timing is right, you already know the shape of it.",
     ),
-    cta: { label: "Watch the five-minute video", path: "/breakout" },
+    cta: breakoutFilm(c) ? { label: "Watch the five-minute video", path: "/breakout" } : { label: "See the next step", path: "/breakout" },
   }),
   tb_4: (c) => ({
     subject: "When someone else signs off",
@@ -322,9 +340,9 @@ const tb: Record<string, Template> = {
     paragraphs: body(c,
       "Decisions like this are often not made by one person. A partner, a co-founder or a board usually has a say.",
       "If that is true for you, bring them to the call. It saves you explaining it twice, and they can ask their own questions.",
-      "The short video is a good thing to share with them beforehand.",
+      breakoutFilm(c) ? "The short video is a good thing to share with them beforehand." : "Forward them this email so they know what the call covers beforehand.",
     ),
-    cta: { label: "Open the video page", path: "/breakout" },
+    cta: breakoutFilm(c) ? { label: "Open the video page", path: "/breakout" } : { label: "See what the call covers", path: "/breakout" },
   }),
   tb_5: (c) => ({
     subject: "Starting smaller is allowed",
@@ -364,7 +382,7 @@ const tb: Record<string, Template> = {
     paragraphs: body(c,
       "This is my last note for now about booking a call.",
       "If it isn't the right time, that is fine. Nothing expires, and there is no countdown.",
-      "If it is the right time, the video and the calendar are where they were.",
+      breakoutFilm(c) ? "If it is the right time, the video and the calendar are where they were." : "If it is the right time, the calendar is where it was.",
     ),
     cta: { label: "Go to the call page", path: c.bookPath },
   }),
@@ -448,14 +466,17 @@ function joinLine(c: C): string {
 const bk: Record<string, Template> = {
   bk_confirm: (c) => ({
     subject: "Confirmed: your strategy call",
-    preheader: "The time, what to prepare and a short video.",
+    preheader: precallFilm(c) ? "The time, what to prepare and a short video." : "The time and what to prepare.",
     paragraphs: body(c,
-      `You're booked. Our call is ${callAt(c)}, ${withCloser(c)}.`,
-      `To get the most from it, it helps to ${joinAnd(prepList)}.`,
-      `There is a short pre-call video on ${c.a("/breakout", "the pre-call page")}. It explains how the call runs, so we can spend the time on your business.`,
+      // "Our call" only when the sender is the one on it; otherwise the closer is named.
+      closer(c) === "me" ? `You're booked. Our call is ${callAt(c)}.` : `You're booked. Your call is ${callAt(c)}, ${withCloser(c)}.`,
+      `To get the most from it, it helps to ${joinList(prepList)}.`,
+      precallFilm(c)
+        ? `There is a short pre-call video on ${c.a("/breakout", "the pre-call page")}. It explains how the call runs, so we can spend the time on your business.`
+        : `${c.a("/breakout", "The pre-call page")} has these notes and the answers to common questions, so we can spend the time on your business.`,
       joinLine(c),
     ),
-    cta: { label: "Watch the pre-call video", path: "/breakout" },
+    cta: precallFilm(c) ? { label: "Watch the pre-call video", path: "/breakout" } : { label: "Open the pre-call page", path: "/breakout" },
   }),
   bk_48h: (c) => ({
     subject: "Two days until we talk",
@@ -650,17 +671,21 @@ const triggers: Record<string, Template> = {
     ),
     cta: { label: "See available times", path: c.bookPath },
   }),
+  // Only sent when the breakout film exists (src/personalize/triggers.ts); the copy still never claims one that doesn't.
   t_breakout_done: (c) => ({
-    subject: "The next step after the short video",
+    subject: breakoutFilm(c) ? "The next step after the short video" : "The next step, when it makes sense",
     preheader: "If it made sense, here is where to go.",
     paragraphs: body(c,
-      "The short video covers cost, time and what to bring. If it answered your questions, the next step is simply to pick a time.",
+      breakoutFilm(c)
+        ? "The short video covers cost, time and what to bring. If it answered your questions, the next step is simply to pick a time."
+        : "The next-step page covers cost, time and what to bring. If it answered your questions, the next step is simply to pick a time.",
       "If it raised new questions, those are exactly what the call is for. Bring them.",
       timelineLine(c),
     ),
     cta: { label: "Pick a time", path: c.bookPath },
   }),
-  t_watch_prep: (c) => ({
+  // Only sent when the pre-call film exists (src/personalize/triggers.ts); the fallback copy is for previews.
+  t_watch_prep: (c) => (precallFilm(c) ? {
     subject: "Five minutes before we speak",
     preheader: "A short video that makes the call more useful.",
     paragraphs: body(c,
@@ -669,6 +694,14 @@ const triggers: Record<string, Template> = {
       "If you only have time for one thing beforehand, make it this.",
     ),
     cta: { label: "Watch the pre-call video", path: "/breakout" },
+  } : {
+    subject: "Five minutes before we speak",
+    preheader: "Three things that make the call more useful.",
+    paragraphs: body(c,
+      `Before ${callOn(c)}, ${c.a("/breakout", "the pre-call page")} lists what is worth having to hand.`,
+      "It takes a couple of minutes to read. It means we can spend our time on your business rather than on the basics.",
+    ),
+    cta: { label: "Open the pre-call page", path: "/breakout" },
   }),
 };
 

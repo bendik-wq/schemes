@@ -165,7 +165,7 @@ api.post("/apply/contact", async (c) => {
   const id = await resolveIdentity(c, { page: false });
   const r = await saveContact(c.get("rt"), id, b);
   if (!r.ok) return c.json(r, r.status);
-  return c.json({ ok: true, ref: r.ref, phone_callable: r.phoneCallable });
+  return c.json({ ok: true, ref: r.ref, phone_callable: r.phoneCallable, ...(r.consentDropped ? { call_consent_dropped: true } : {}) });
 });
 
 api.post("/apply/answers", async (c) => {

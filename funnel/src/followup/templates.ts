@@ -517,7 +517,7 @@ const POST_CALL: Record<string, Template> = {
           `It is yours whether or not we work together. ${c.a(`/plan/for/${c.lead.id}`, "Open your plan")}.`,
           "If anything in it is not right, reply to this email and it gets corrected.",
         ], { cta: { label: "Open your plan", path: `/plan/for/${c.lead.id}` } })
-      : mk("Thanks for the call today", [
+      : mk("Thanks for your time on the call", [
           hi(c),
           "Thank you for the time on the call.",
           "We covered what you rent today, what you would want to own, and how the eight weeks would work with your team.",

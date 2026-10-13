@@ -28,6 +28,9 @@
 /* Fields */
 .field input[aria-invalid="true"], .field textarea[aria-invalid="true"] { border-color: var(--red); }
 .field .msg.ok { color: var(--green); }
+/* The phone line ("Your number: …" / an error) appears on blur, right above the consent box: keep its line
+   reserved so the box does not move between mousedown and mouseup (the first click would miss). */
+.field #m-phone { min-height: 1.5em; line-height: 1.5; }
 .field .hint-line { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
 .field .hint-line:empty { display: none; }
 .field .suggest { color: var(--blue); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
@@ -70,4 +73,6 @@
 .nojs { display: grid; gap: 14px; }
 .nojs label { display: grid; gap: 6px; font-size: 14px; font-weight: 500; }
 .nojs input:not([type=checkbox]) { height: 48px; padding: 0 14px; border: 1px solid var(--hair); border-radius: 12px; font: inherit; }
+.nojs-msg { margin: 0 0 14px; padding: 12px 14px; border-radius: 12px; background: #fdecec; color: #8a1c1c; font-size: 15px; }
+.nojs-msg.ok { background: #e8f6ee; color: #14532d; }
 .nojs .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }

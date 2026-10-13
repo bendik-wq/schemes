@@ -12,7 +12,7 @@ import { localParts, zonedTime } from "../integrations/sequences";
 import { salesTz } from "../admin/stats";
 import { NOSHOW_LABELS } from "./noshow";
 import { followUpsDue, paymentsDue } from "./followups";
-import { listReps } from "./reps";
+import { listRepsNamed } from "./reps";
 import { businessMs, escalationState, inSalesHours, salesHours, slaLevel } from "./escalation";
 
 const DAY = 86_400_000;
@@ -101,7 +101,7 @@ export async function todayView(rt: Runtime, rep: string | null | undefined) {
   if (rep === null) return { scoped: true, linked: false, calls: [], fresh: [], follow_ups: [], payments_due: [], stats: { calls: 0, fresh: 0, follow_ups: 0, payments_due: 0 }, tz };
   const scope = " AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)" + (rep ? " AND (l.closer_id = ? OR l.setter_id = ?)" : "");
   const sb = rep ? [rep, rep] : [];
-  const reps = await listReps(rt);
+  const reps = await listRepsNamed(rt);
   const repName = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name || id : null);
   const [callRows, freshRows, fu, pay] = await Promise.all([
     db.prepare(
@@ -116,7 +116,7 @@ export async function todayView(rt: Runtime, rep: string | null | undefined) {
     db.prepare(
       `SELECT l.id, l.ref_code, l.first_name, l.last_name, l.email, l.phone, COALESCE(l.tier_override, l.tier) AS tier, l.score, l.status, l.app_completed_at, l.closer_id, l.setter_id, l.do_not_call_at, l.visitor_id
        FROM leads l
-       WHERE l.app_completed_at >= ? AND COALESCE(l.tier_override, l.tier) IN ('A','B') AND l.status IN ('applied','booked','nurture')
+       WHERE l.app_completed_at >= ? AND COALESCE(l.tier_override, l.tier) IN ('A','B') AND l.status IN ('applied','nurture')
          AND l.booking_source = 'funnel' AND NOT EXISTS (SELECT 1 FROM touches t WHERE t.lead_id = l.id)${scope}
        ORDER BY l.app_completed_at DESC LIMIT 60`,
     ).bind(now - 7 * DAY, ...sb).all<Record<string, unknown>>(),
@@ -224,7 +224,7 @@ export async function salesActivity(rt: Runtime, since: number, rep?: string | n
        FROM leads WHERE setter_id IS NOT NULL AND booked_at >= ? GROUP BY setter_id`,
     ).bind(now, now, since).all<{ rep_id: string; sets: number; held_or_missed: number; showed: number }>(),
   ]);
-  const reps = await listReps(rt);
+  const reps = await listRepsNamed(rt);
   const ids = new Set<string>();
   for (const r of [...(first.results || []), ...(acts.results || []), ...(sets.results || [])]) ids.add(r.rep_id || "");
   const all = (first.results || []).map((r) => r.at - r.app_completed_at);

@@ -7,13 +7,14 @@ export function escHtml(v: unknown): string {
   return String(v ?? "").replace(/[&<>"']/g, (c) => HTML_ESC[c]);
 }
 
+const NAMED: Record<string, string> = {
+  lt: "<", gt: ">", quot: '"', "#39": "'", "#x27": "'", amp: "&",
+  ldquo: "\u201c", rdquo: "\u201d", lsquo: "\u2018", rsquo: "\u2019", mdash: "\u2014", ndash: "\u2013", hellip: "\u2026", nbsp: " ",
+};
+
+/** Decode the entities our own templates and escHtml produce, in one pass (so "&amp;lt;" stays "&lt;"). */
 export function unescHtml(v: string): string {
-  return v
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, "&");
+  return v.replace(/&(#39|#x27|lt|gt|quot|amp|ldquo|rdquo|lsquo|rsquo|mdash|ndash|hellip|nbsp);/g, (_m, k: string) => NAMED[k]);
 }
 
 const URL_RE = /\b(?:https?:\/\/|ftp:\/\/|www\.)[^\s<>"']+/gi;

@@ -8,7 +8,7 @@ import { newId } from "../lib/ids";
 import { getLead, type Lead } from "../funnel/leads";
 import { all, leadDims, salesTz, type Filters } from "../admin/stats";
 import { localParts } from "../integrations/sequences";
-import { ValidationError, applyLeadUpdate } from "./outcomes";
+import { NOT_YET, OutcomeError, ValidationError, applyLeadUpdate, callNotYet } from "./outcomes";
 import { PlanError, savePlan, type PlanRow } from "./plan";
 
 const DAY = 86_400_000;
@@ -49,6 +49,7 @@ const planGiven = (p: unknown): p is Record<string, unknown> =>
  * the deal, and the plan when one was written. Returns the fresh lead and the plan.
  */
 export async function logHeldCall(rt: Runtime, lead: Lead, body: Record<string, unknown>, by: string): Promise<{ lead: Lead; plan: PlanRow | null }> {
+  if ((lead.status === "booked" || lead.status === "no_show") && callNotYet(lead, rt.now())) throw new CallError(NOT_YET);
   const review = cleanReview(body);
   // Validate the plan before anything is written.
   if (planGiven(body.plan)) {
@@ -63,6 +64,7 @@ export async function logHeldCall(rt: Runtime, lead: Lead, body: Record<string, 
     try {
       fresh = await applyLeadUpdate(rt, lead, patch, { source: "admin" });
     } catch (e) {
+      if (e instanceof OutcomeError) throw new CallError(e.message);
       if (e instanceof ValidationError) throw new CallError(`Invalid ${e.message}`);
       throw e;
     }

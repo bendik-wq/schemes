@@ -2,7 +2,7 @@
 
 import type { Runtime } from "../app";
 import { STATUSES } from "../config";
-import { listReps, type Rep } from "../sales/reps";
+import { listReps, listRepsNamed, type Rep } from "../sales/reps";
 import { all, leadDims, num, one, pct, type Filters } from "./stats";
 import { closerStats, objectionsByWeek, type CloserKpis } from "../sales/calls";
 
@@ -81,7 +81,7 @@ function repName(reps: Rep[], id: string | null): string | null {
 
 export async function callLog(rt: Runtime, f: Filters): Promise<CallRow[]> {
   const ld = leadDims(f, "l");
-  const reps = await listReps(rt);
+  const reps = await listRepsNamed(rt);
   const rows = await all<Record<string, unknown>>(rt,
     `SELECT l.id, l.ref_code, l.first_name, l.last_name, l.email, COALESCE(l.tier_override, l.tier) AS tier, l.call_at, l.status, l.closer_id,
        l.revenue, l.cash_collected, l.booking_source, l.lost_reason
@@ -98,7 +98,7 @@ export async function callLog(rt: Runtime, f: Filters): Promise<CallRow[]> {
 /** Calls in the last 30 days that happened but still say "booked". */
 export async function needsOutcome(rt: Runtime): Promise<CallRow[]> {
   const now = rt.now();
-  const reps = await listReps(rt);
+  const reps = await listRepsNamed(rt);
   const rows = await all<Record<string, unknown>>(rt,
     `SELECT l.id, l.ref_code, l.first_name, l.last_name, l.email, COALESCE(l.tier_override, l.tier) AS tier, l.call_at, l.status, l.closer_id,
        l.revenue, l.cash_collected, l.booking_source, l.lost_reason
@@ -162,7 +162,7 @@ export async function listLeads(rt: Runtime, f: Filters, lq: LeadQuery) {
   const [rows, total, reps] = await Promise.all([
     all<Record<string, unknown>>(rt, `SELECT ${LIST_COLS} FROM leads l WHERE ${w.sql} ORDER BY ${order} LIMIT ? OFFSET ?`, [...w.binds, PER_PAGE, (page - 1) * PER_PAGE]),
     one<{ n: number }>(rt, `SELECT COUNT(*) AS n FROM leads l WHERE ${w.sql}`, w.binds),
-    listReps(rt),
+    listRepsNamed(rt),
   ]);
   const n = num(total?.n);
   return {
@@ -199,7 +199,7 @@ export const CSV_COLUMNS = [
 export async function leadsCsv(rt: Runtime, f: Filters, lq: LeadQuery): Promise<string> {
   const w = leadWhere(f, lq);
   const order = LEAD_SORTS[lq.sort || ""] || LEAD_SORTS.created;
-  const reps = await listReps(rt);
+  const reps = await listRepsNamed(rt);
   const rows = await all<Record<string, unknown>>(rt,
     `SELECT l.*, COALESCE(l.tier_override, l.tier) AS eff_tier FROM leads l WHERE ${w.sql} ORDER BY ${order} LIMIT 10000`, w.binds);
   return toCsv(CSV_COLUMNS, rows.map((r) => [

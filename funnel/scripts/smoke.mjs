@@ -19,8 +19,10 @@ if (BASE.startsWith("https")) ok(!!home.headers.get("strict-transport-security")
 const html = await home.text();
 ok(html.includes('id="op-cfg"') && !html.includes('id="op-cfg" type="application/json">{}<'), "config injected");
 
-for (const p of ["/apply", "/breakout", "/resources", "/privacy", "/for/dental", "/for/dental/tracking", "/m?ind=law"]) ok((await get(p)).status === 200, `${p} renders`);
+for (const p of ["/apply", "/privacy", "/for/dental", "/for/dental/tracking", "/m?ind=law"]) ok((await get(p)).status === 200, `${p} renders`);
 ok((await get("/book")).status === 302, "/book redirects without a lead");
+// Personal pages: a visitor without an application goes home (email links sign in through /r first).
+for (const p of ["/breakout", "/resources"]) { const r = await get(p); ok(r.status === 302 && r.headers.get("location") === "/", `${p} redirects home without a lead`); }
 ok((await (await get("/robots.txt")).text()).includes("Disallow: /"), "robots disallows all");
 ok((await get("/health")).status === 200, "health");
 

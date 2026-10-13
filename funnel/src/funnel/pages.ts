@@ -109,6 +109,22 @@ export function previewMeta(o: { title: string; description: string; url: string
   ].join("\n");
 }
 
+const NOJS_MESSAGES: Record<string, string> = {
+  confirm: "Check your inbox: we sent you a link to continue.",
+  continue_sent: "You have applied before with this email. We just sent you a link to pick up where you left off.",
+  email: "Please enter a valid email address.",
+  email_disposable: "Please use your work or personal email, not a temporary one.",
+  email_domain: "We couldn't find a mail server for that email address. Please check the spelling.",
+  first_name: "Please enter your name.",
+  phone: "Please enter a mobile number with country code, e.g. +47 912 34 567.",
+  rate: "Too many applications right now. Please try again later.",
+  bad: "Something went wrong. Please try again.",
+};
+/** The message for the no-JS form's redirect code; unknown codes get a generic line. */
+export function nojsMessage(code: string): string {
+  return NOJS_MESSAGES[code] || "Something went wrong. Please check your details and try again.";
+}
+
 export async function renderTemplate(c: Ctx, file: string, fill: Fill, status = 200): Promise<Response> {
   const res = await c.env.ASSETS.fetch(new Request(new URL(`/${file}`, c.req.url).toString()));
   if (!res.ok) return c.text("Template missing", 500);
@@ -144,6 +160,13 @@ export async function renderTemplate(c: Ctx, file: string, fill: Fill, status = 
   });
   for (const a of fill.attrs || []) rw.on(a.sel, { element(el) { el.setAttribute(a.attr, a.value); } });
   for (const sel of fill.remove || []) rw.on(sel, { element(el) { el.remove(); } });
+  // No-JS form result (/apply?nojs=<code>): written inside the <noscript> block, so only a browser without
+  // JavaScript shows it. Prepending to the element works whether or not the parser reads its content as text.
+  const nojs = new URL(c.req.url).searchParams.get("nojs");
+  if (nojs !== null) {
+    const msg = nojsMessage(nojs);
+    rw.on("noscript[data-nojs]", { element(el) { el.prepend(`<p class="nojs-msg${nojs === "confirm" ? " ok" : ""}" role="status">${escHtml(msg)}</p>`, { html: true }); } });
+  }
   if (fill.cfg) {
     const cfg = { ...fill.cfg, v };
     rw.on("script#op-cfg", { element(el) { el.setInnerContent(safeJson(cfg), { html: true }); } });
@@ -468,7 +491,9 @@ export function applicationCfg(rt: Runtime, id: Identity, lead: Lead | null, sms
     smsConsent: /^(1|true|yes|on)$/i.test(rt.settings.get("SMS_REMINDERS") || "") ? { label: SMS_CONSENT.label, version: SMS_CONSENT.version } : null,
     founder: BRAND.founder,
     turnstile: rt.settings.get("TURNSTILE_SITE_KEY") || null,
-    lead: lead ? { first: lead.first_name || "", last: lead.last_name || "", email: lead.email, phone: lead.phone || "", callConsent: !!lead.call_consent_at, smsConsent, step: lead.step_reached, answers } : null,
+    lead: lead ? { first: lead.first_name || "", last: lead.last_name || "", email: lead.email, phone: lead.phone || "", callConsent: !!lead.call_consent_at, smsConsent, step: lead.step_reached, answers,
+      // Reopened after a full submit (/go/requalify): start again at the first question, answers prefilled.
+      restart: !lead.app_completed_at && lead.step_reached > APPLICATION.length } : null,
 
     done: lead?.app_completed_at && lead.route ? { route: lead.route } : null,
     country: id.geo.country,
@@ -581,11 +606,15 @@ export async function breakoutPage(c: Ctx): Promise<Response> {
   const rt = c.get("rt");
   const id = await resolveIdentity(c, { page: true });
   const lead = await getLead(rt, id.leadId);
-  const pv = pageView(c, id, "/breakout");
+  // Personal page: a visitor with no application has nothing here (email links sign in through /r first).
+  if (!lead) return c.redirect("/", 302);
   const [lv, rep, cohort] = await Promise.all([
     leadView(rt, lead), lead ? getRep(rt, lead.closer_id) : Promise.resolve(null), nextCohort(rt).catch(() => null),
   ]);
   const booked = !!lv?.booked;
+  if (!booked && !lead.app_completed_at) return c.redirect("/apply", 302);
+  if (!booked && effectiveTier(lead) === "C") return c.redirect("/resources", 302);
+  const pv = pageView(c, id, "/breakout");
   const confirmed = booked && attendanceConfirmed(lead as Lead & { attendance_confirmed_at?: number | null; attendance_call_at?: number | null });
   const video = videoCfg(rt, booked ? "precall" : "breakout", 0);
   const wa = waLink(rt, lead, booked ? "booked" : "question");
@@ -671,6 +700,14 @@ export async function resourcesPage(c: Ctx): Promise<Response> {
   const rt = c.get("rt");
   const id = await resolveIdentity(c, { page: true });
   const lead = await getLead(rt, id.leadId);
+  if (!lead) return c.redirect("/", 302);
+  if (!lead.app_completed_at) return c.redirect("/apply", 302);
+  // The "not the right time" page is for C. A or B leads still in the funnel go to their next step; after a
+  // call (emails link the kit to lost and won leads too) they get the kit under a neutral heading.
+  const cTier = effectiveTier(lead) === "C";
+  if (!cTier && ["applied", "booked", "partial"].includes(lead.status)) {
+    return c.redirect(lead.status === "booked" && lead.call_at && !lead.booking_cancelled_at ? "/breakout" : effectiveTier(lead) === "A" ? "/book" : "/breakout", 302);
+  }
   const pv = pageView(c, id, "/resources");
   const wa = waLink(rt, lead, "resources");
   const role = parseAnswers(lead).role;
@@ -689,10 +726,10 @@ export async function resourcesPage(c: Ctx): Promise<Response> {
   return renderTemplate(c, "resources.html", {
     title: `Resources · ${BRAND.name}`,
     text: {
-      first: lead?.first_name ? `${lead.first_name}, thank you for applying.` : "Thank you for applying.",
-      h1: RESOURCES_PAGE.h1,
+      first: !cTier ? (lead.first_name ? `${lead.first_name}, for your team.` : "For your team.") : lead.first_name ? `${lead.first_name}, thank you for applying.` : "Thank you for applying.",
+      h1: cTier ? RESOURCES_PAGE.h1 : RESOURCES_PAGE.h1Neutral,
       h1b: kit ? RESOURCES_PAGE.h1b : RESOURCES_PAGE.h1bEmpty,
-      sub: resourcesSub(lead),
+      sub: cTier ? resourcesSub(lead) : RESOURCES_PAGE.subNeutral,
       empty: RESOURCES_PAGE.empty,
       again: RESOURCES_PAGE.again,
       review: RESOURCES_PAGE.review,

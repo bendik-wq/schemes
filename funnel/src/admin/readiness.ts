@@ -34,7 +34,8 @@ export async function cacheDnsResult(rt: Runtime, r: { domain: string | null; ch
 }
 
 /** Pure: the cue-point check. Observed = the longest duration players reported for the main film. */
-export function ctaCheck(ctaRevealAt: number, configured: number, observed: number | null): { ok: boolean; detail: string } {
+export function ctaCheck(ctaRevealAt: number, configured: number, observed: number | null, hasFilm = true): { ok: boolean; detail: string } {
+  if (!hasFilm) return { ok: false, detail: "No film uploaded yet, so there is nothing to unlock. Upload the film (VSL_MAIN_SRC), then check ctaRevealAt against it." };
   if (!(ctaRevealAt > 0)) return { ok: false, detail: "ctaRevealAt is 0: the offer never unlocks. Set it in src/config.ts to the second the offer starts." };
   if (ctaRevealAt >= configured) return { ok: false, detail: `ctaRevealAt (${ctaRevealAt}s) is after the end of the film (${configured}s in config).` };
   if (observed && observed > 30) {
@@ -57,7 +58,7 @@ export async function readiness(rt: Runtime) {
     spendBetween(rt, now - 7 * DAY, now),
   ]);
   const main = VIDEOS.main;
-  const cta = ctaCheck(main.ctaRevealAt, main.duration, observed?.d ? Number(observed.d) : null);
+  const cta = ctaCheck(main.ctaRevealAt, main.duration, observed?.d ? Number(observed.d) : null, has(rt, "VSL_MAIN_SRC"));
   const publicUrl = s.get("PUBLIC_URL");
   const resourcesOk = (RESOURCES as unknown as Array<Record<string, unknown>>).every((r) => typeof r.url === "string" && /^https?:\/\//.test(r.url as string))
     || ["RESOURCE_URLS", "RESOURCE_URL_1"].some((k) => s.has(k));

@@ -73,7 +73,7 @@ interface Row {
 }
 
 /** Signals as of `asOf` per lead (emails and confirm calls before that moment). */
-async function signalRows(rt: Runtime, where: string, binds: unknown[], asOfCall: boolean): Promise<Row[]> {
+async function signalRows(rt: Runtime, where: string, binds: unknown[], asOfCall: boolean, limit: number): Promise<Row[]> {
   const ref = asOfCall ? "l.call_at" : "?1";
   const sql = `SELECT l.id, l.booked_at, l.call_at, l.email, COALESCE(l.tier_override, l.tier) AS tier, l.status,
       (SELECT COUNT(*) FROM emails e WHERE e.lead_id = l.id AND e.sequence IN ('booked','precall') AND e.status = 'sent' AND e.sent_at < ${ref}) AS sent,
@@ -81,7 +81,8 @@ async function signalRows(rt: Runtime, where: string, binds: unknown[], asOfCall
       (SELECT COUNT(*) FROM outbound_calls o WHERE o.lead_id = l.id AND o.kind = 'confirm' AND o.outcome = 'answered' AND o.created_at < ${ref}) AS confirm_answered,
       (SELECT COUNT(*) FROM outbound_calls o WHERE o.lead_id = l.id AND o.kind = 'confirm' AND (o.outcome IN ('no_answer','voicemail') OR o.status = 'failed') AND o.created_at < ${ref}) AS confirm_missed,
       (SELECT v.buckets FROM vsl_views v WHERE v.video = 'main' AND (v.lead_id = l.id OR v.visitor_id = l.visitor_id) ORDER BY v.last_at DESC LIMIT 1) AS buckets
-    FROM leads l WHERE (${where}) AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)`;
+    FROM leads l WHERE (${where}) AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)
+    LIMIT ${Math.max(1, Math.floor(limit))}`;
   return ((await rt.env.DB.prepare(sql).bind(...binds).all<Row>()).results) || [];
 }
 
@@ -109,8 +110,8 @@ export async function activeNoShowModel(rt: Runtime): Promise<{ model: LogisticM
 export async function fitNoShowModel(rt: Runtime): Promise<{ fitted: boolean; n: number; auc: number | null }> {
   const now = rt.now();
   const rows = await signalRows(rt,
-    "l.booking_source = 'funnel' AND l.booked_at IS NOT NULL AND l.call_at < ?2 AND l.call_at > ?3 AND l.status IN ('showed','won','lost','no_show') LIMIT 20000",
-    [now, now - H, now - 365 * DAY], true);
+    "l.booking_source = 'funnel' AND l.booked_at IS NOT NULL AND l.call_at < ?2 AND l.call_at > ?3 AND l.status IN ('showed','won','lost','no_show')",
+    [now, now - H, now - 365 * DAY], true, 20000);
   if (rows.length < MIN_OUTCOMES) return { fitted: false, n: rows.length, auc: null };
   const data: Sample[] = rows.map((r) => ({ x: noShowFeatures(toInput(r)), y: r.status === "no_show" ? 1 : 0 }));
   const m = fitLogistic([...NOSHOW_FEATURES], data, { l2: 5, priorWeights: NOSHOW_PRIOR.weights, iterations: 1500 });
@@ -131,8 +132,8 @@ export async function scoreUpcomingCalls(rt: Runtime, force = false): Promise<nu
   if (!force && !(await kvGate(rt.env, "gate:noshow", 55 * 60_000, now))) return 0;
   const { model } = await activeNoShowModel(rt);
   const rows = await signalRows(rt,
-    "l.status = 'booked' AND l.booking_cancelled_at IS NULL AND l.booking_source = 'funnel' AND l.call_at > ?1 AND l.call_at <= ?2 LIMIT 500",
-    [now, now + 72 * H], false);
+    "l.status = 'booked' AND l.booking_cancelled_at IS NULL AND l.booking_source = 'funnel' AND l.call_at > ?1 AND l.call_at <= ?2",
+    [now, now + 72 * H], false, 500);
   const stmt = rt.env.DB.prepare(
     `INSERT INTO lead_revops (lead_id, noshow_risk, noshow_reasons, noshow_scored_at, updated_at) VALUES (?,?,?,?,?)
      ON CONFLICT(lead_id) DO UPDATE SET noshow_risk = excluded.noshow_risk, noshow_reasons = excluded.noshow_reasons, noshow_scored_at = excluded.noshow_scored_at, updated_at = excluded.updated_at`,

@@ -86,6 +86,27 @@ export async function setTestFlag(rt: Runtime, leadId: string, isTest: boolean, 
 }
 
 /**
+ * At lead insert: apply the rules now (not only on the next cron sweep), so the browser behind a test lead is out
+ * of visitor-level rates from its first application. Never throws: a failure leaves it to the sweep.
+ */
+export async function classifyNewLead(rt: Runtime, lead: { id: string; email: string | null; visitor_id: string | null }): Promise<boolean> {
+  try {
+    const why = await testReason(rt, lead);
+    if (!why) return false;
+    await rt.env.DB.prepare(
+      `INSERT INTO lead_revops (lead_id, is_test, test_reason, updated_at) VALUES (?,1,?,?)
+       ON CONFLICT(lead_id) DO UPDATE SET is_test = 1, test_reason = excluded.test_reason, updated_at = excluded.updated_at WHERE lead_revops.is_test IS NULL`,
+    ).bind(lead.id, why, rt.now()).run();
+    const r = await one<{ is_test: number | null }>(rt, "SELECT is_test FROM lead_revops WHERE lead_id = ?", [lead.id]);
+    if (r?.is_test === 1) await markTestVisitor(rt, lead.visitor_id, "test_lead");
+    return r?.is_test === 1;
+  } catch (e) {
+    console.error("classifyNewLead", e);
+    return false;
+  }
+}
+
+/**
  * Cron (every run, cheap): apply the rules to leads nobody has decided on yet, and keep test_visitors in
  * step (browsers of test leads, ?test=1 first touches, internal IPs). Returns how many leads it marked.
  */

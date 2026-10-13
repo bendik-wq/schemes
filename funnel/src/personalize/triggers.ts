@@ -5,7 +5,7 @@ import type { Runtime } from "../app";
 import { effectiveTier, type Lead } from "../funnel/leads";
 import { kvGet, kvSet } from "../lib/kv";
 import { popcount } from "../tracking/vsl";
-import { sendOneOff } from "../integrations/email";
+import { sendOneOff, videosConfigured } from "../integrations/email";
 import { track } from "../tracking/track";
 
 const MIN = 60_000;
@@ -25,6 +25,8 @@ export interface TriggerState {
   costInterestAt: number | null;
   mainWatchedAt: number | null;
   breakoutWatchedAt: number | null;
+  /** Which films are configured. Rules about watching a film never fire without one. */
+  films?: { breakout: boolean; precall: boolean };
 }
 
 export interface Rule {
@@ -58,9 +60,9 @@ export const RULES: Rule[] = [
   { template: "t_book_nudge", label: "Opened the booking page, didn't book", delayMin: 30,
     when: (s) => (s.bookPageViewAt && qualified(s) && !booked(s) ? s.bookPageViewAt : null) },
   { template: "t_breakout_done", label: "Watched the breakout video, didn't book", delayMin: 30,
-    when: (s) => (s.breakoutWatchedPct >= 70 && !booked(s) && open(s) ? s.breakoutWatchedAt : null) },
+    when: (s) => (s.films?.breakout && s.breakoutWatchedPct >= 70 && !booked(s) && open(s) ? s.breakoutWatchedAt : null) },
   { template: "t_watch_prep", label: "Booked 12h+ ago, hasn't watched the prep video", delayMin: 0,
-    when: (s, now) => (s.lead.status === "booked" && s.lead.booked_at && now - s.lead.booked_at > 12 * H && !s.precallPlayed && (s.lead.call_at || 0) - now > 2 * H ? s.lead.booked_at + 12 * H : null) },
+    when: (s, now) => (s.films?.precall && s.lead.status === "booked" && s.lead.booked_at && now - s.lead.booked_at > 12 * H && !s.precallPlayed && (s.lead.call_at || 0) - now > 2 * H ? s.lead.booked_at + 12 * H : null) },
 ];
 
 export const DAILY_CAP = 8;
@@ -107,6 +109,7 @@ async function loadState(rt: Runtime, lead: Lead): Promise<TriggerState> {
     costInterestAt: agg?.cost || null,
     mainWatchedAt: main?.last_at || null,
     breakoutWatchedAt: bo?.last_at || null,
+    films: videosConfigured(rt),
   };
 }
 

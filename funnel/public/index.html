@@ -71,7 +71,7 @@
         <form class="apply" novalidate autocomplete="on">
           <div class="steps" aria-live="polite"></div>
         </form>
-        <noscript><form class="nojs" method="post" action="/api/apply/nojs">
+        <noscript data-nojs><form class="nojs" method="post" action="/api/apply/nojs">
           <p>The full application needs JavaScript. Leave your details and we will send you a link to finish it.</p>
           <label>Name <input name="name" autocomplete="name" required></label>
           <label>Work email <input name="email" type="email" autocomplete="email" required></label>
@@ -127,6 +127,6 @@
   <p class="legal" data-slot="disclaimer">Asymmetrical AI Solutions is an independent company. Not affiliated with or endorsed by Anthropic.</p>
   <p class="foot-row"><span>© <span data-slot="year">2026</span> <span data-slot="company">Asym</span></span><a href="/privacy">Privacy</a><button type="button" class="linkish" data-cookie-settings>Cookie settings</button></p>
 </div></footer>
-<div class="sticky-cta reveal"><a class="btn" data-apply href="#apply">Apply for a call</a></div>
+<div class="sticky-cta reveal"><a class="btn" data-apply data-slot="ctaLabel" href="#apply">Apply for a strategy call</a></div>
 </body>
 </html>

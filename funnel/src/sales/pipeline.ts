@@ -12,7 +12,7 @@ import type { Runtime } from "../app";
 import { ECONOMICS, type Tier } from "../config";
 import { MIN_CELL, parseStageValues, type StageValues } from "./values";
 import { planCount, scheduledBetween } from "./receivables";
-import { listReps } from "./reps";
+import { listRepsNamed } from "./reps";
 import { localParts, zonedTime } from "../integrations/sequences";
 import { salesTz } from "../admin/stats";
 
@@ -219,7 +219,7 @@ export function forecastMonth(m: { key: string; from: number; to: number }, part
 
 export async function pipelineReport(rt: Runtime, rep?: string | null) {
   const now = rt.now();
-  const [rows, probs, reps] = await Promise.all([boardRows(rt, rep), loadStageProbs(rt), listReps(rt)]);
+  const [rows, probs, reps] = await Promise.all([boardRows(rt, rep), loadStageProbs(rt), listRepsNamed(rt)]);
   const name = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name || id : null);
   const cards = rows.map((r) => toCard(rowToLead(r) as never, probs, now, name)).filter((c): c is Card => !!c);
   const columns = PIPE_STAGES.map((s) => {

@@ -79,6 +79,12 @@ export function bookPathFor(lead: Pick<Lead, "tier" | "tier_override">): string 
   return effectiveTier(lead) === "C" ? "/resources" : "/book";
 }
 
+/** Same test as the pages (videoCfg): a film counts only with a safe https:// or same-site URL. */
+export function videosConfigured(rt: Runtime): { breakout: boolean; precall: boolean } {
+  const ok = (k: string) => /^(https:\/\/|\/(?!\/))[^\s"'<>]*$/.test(rt.settings.get(k) || "");
+  return { breakout: ok("VSL_BREAKOUT_SRC"), precall: ok("VSL_PRECALL_SRC") };
+}
+
 export async function buildCtx(rt: Runtime, lead: Lead, emailId: string): Promise<EmailCtx> {
   const secret = await signingSecret(rt.env);
   const tz = await leadTimezone(rt, lead);
@@ -104,6 +110,7 @@ export async function buildCtx(rt: Runtime, lead: Lead, emailId: string): Promis
     callTime: lead.call_at ? escHtml(formatCallTime(lead.call_at, tz)) : null,
     closerName: escHtml(rep?.name || BRAND.founder),
     sigName: escHtml(rt.settings.get("EMAIL_SIGNATURE") || BRAND.founder),
+    hasVideo: videosConfigured(rt),
     now: rt.now(),
   };
 }

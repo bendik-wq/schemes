@@ -427,6 +427,9 @@ export const RESOURCES: Resource[] = [
  */
 export const RESOURCES_PAGE = {
   h1: "Not the right time for the program.",
+  /** For an A or B lead after a call (the kit is linked from post-call emails). */
+  h1Neutral: "Resources you can use on your own.",
+  subNeutral: "Short, practical notes your team can use whether or not we work together.",
   h1b: "Here is where to start.",
   h1bEmpty: "Here is what happens next.",
   sub: {

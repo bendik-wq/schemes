@@ -2,7 +2,7 @@
 // Cells go through csvCell (formula-injection safe). Each export is capped at 20,000 rows.
 
 import type { Runtime } from "../app";
-import { listReps } from "../sales/reps";
+import { listRepsNamed } from "../sales/reps";
 import { toCsv } from "./sales";
 import { all, type Filters } from "./stats";
 import { attributionReport, cohortsReport, COHORT_DAYS } from "./attribution";
@@ -11,7 +11,7 @@ const iso = (t: unknown) => (typeof t === "number" && t > 0 ? new Date(t).toISOS
 export const EXPORTS = ["payments", "calls", "emails", "attribution", "cohorts"] as const;
 
 export async function exportCsv(rt: Runtime, kind: string, f: Filters, q: (k: string) => string | undefined): Promise<string | null> {
-  const reps = await listReps(rt);
+  const reps = await listRepsNamed(rt);
   const rep = (id: unknown) => (id ? reps.find((r) => r.id === id)?.name || String(id) : "");
   if (kind === "payments") {
     const rows = await all<Record<string, unknown>>(rt,

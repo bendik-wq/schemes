@@ -23,6 +23,20 @@ export async function listReps(rt: Runtime, activeOnly = false): Promise<Rep[]> 
   return r.results || [];
 }
 
+/**
+ * For showing names (lists, pipeline, drawer): the D1 reps plus any config fallback closer (CLOSERS, e.g. "founder")
+ * that leads were assigned to while the table was empty. A fallback is active only while the table is empty, so the
+ * drawer offers it for new assignments only then, but always keeps it for a lead that already has it.
+ */
+export async function listRepsNamed(rt: Runtime): Promise<Rep[]> {
+  const db = await listReps(rt);
+  const extra = CLOSERS.filter((c) => !db.some((r) => r.id === c.id)).map((c) => fallbackRep(c, db.length ? 0 : 1));
+  return [...db, ...extra];
+}
+function fallbackRep(c: (typeof CLOSERS)[number], active: number): Rep {
+  return { id: c.id, name: c.name, email: null, role: "closer", tiers: c.tiers.join(","), weight: c.weight, calendar_url: c.calendar_url || null, commission_pct: 0, monthly_target: 0, slack_user_id: null, discord_user_id: null, active, created_at: 0 };
+}
+
 /** Reps from D1, falling back to CLOSERS in config when the table is empty. */
 export async function repsForTier(rt: Runtime, tier: Tier): Promise<Rep[]> {
   const db = await listReps(rt, true);

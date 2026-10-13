@@ -160,6 +160,8 @@
         if (!has && !qs[i].optional) { idx = i; break; }
         idx = Math.min(i + 1, qs.length - 1);
       }
+      // Reopened to update the answers (requalify): walk through them from the first question.
+      if (lead.restart) idx = 1;
     }
 
     // ── analytics: time on step, hesitation, answer changes, abandonment (never values) ──
@@ -512,8 +514,11 @@
               busy = false; btn.classList.remove("busy");
               store(CKEY, null);
               var e164 = normPhone(v.phone, sel.value);
-              lead = { first: v.first_name, last: v.last_name, email: v.email, phone: e164 || v.phone, callConsent: consent.checked, smsConsent: sms ? sms.checked : false, answers: answers };
-              if (r.phone_callable === false && consent.checked) phoneNote = "Heads-up: that looks like a landline or service number, so our assistant won't ring it. You can change it with Back.";
+              // The server can decline a call consent (e.g. a number already on another recent application): never say "We'll call".
+              var callOk = consent.checked && !r.call_consent_dropped;
+              lead = { first: v.first_name, last: v.last_name, email: v.email, phone: e164 || v.phone, callConsent: callOk, smsConsent: sms ? sms.checked : false, answers: answers };
+              if (consent.checked && !callOk) phoneNote = "Thanks. We'll follow up about your application by email.";
+              else if (r.phone_callable === false && consent.checked) phoneNote = "Heads-up: that looks like a landline or service number, so our assistant won't ring it. You can change it with Back.";
               go(1);
               return;
             }

@@ -11,8 +11,8 @@ import { SETTINGS, isOwnerOnly, loadSettings, maskValue, saveSetting, settingDef
 import { logoutEverywhere } from "../admin/auth";
 import { getLead, parseAnswers, type Lead } from "../funnel/leads";
 import { LINK_KINDS, archiveLink, createLink, linkStats } from "../funnel/tracked-links";
-import { createRep, deleteRep, listReps, updateRep } from "../sales/reps";
-import { ValidationError, applyLeadUpdate, deletePayment, listPayments, recordPayment, type LeadPatch } from "../sales/outcomes";
+import { createRep, deleteRep, listReps, listRepsNamed, updateRep } from "../sales/reps";
+import { OutcomeError, ValidationError, applyLeadUpdate, deletePayment, listPayments, recordPayment, type LeadPatch } from "../sales/outcomes";
 import { requalifyCalendlyLeads } from "../sales/qualify";
 import { previewTemplate, processEmailQueue, sendTestEmail } from "../integrations/email";
 import { SEQUENCES } from "../integrations/sequences";
@@ -232,7 +232,7 @@ adminApi.post("/links/:code/archive", async (c) => {
 adminApi.get("/sales", async (c) => {
   const rt = rtOf(c);
   const f = filters(c);
-  const reps = await listReps(rt);
+  const reps = await listRepsNamed(rt);
   const scope = scopeFor(c);
   if (scope === null) return c.json({ scoped: true, linked: false });
   const [team, risk, fu, pay, activity] = await Promise.all([salesTeam(rt, f), upcomingByRisk(rt), followUpsDue(rt, reps, scope), paymentsDue(rt, reps, scope), salesActivity(rt, f.since, scope)]);
@@ -256,6 +256,7 @@ adminApi.post("/sales/outcome", async (c) => {
     await auditLead(c, "outcome", lead, fresh);
     return c.json({ ok: true, lead: publicLead(fresh) });
   } catch (e) {
+    if (e instanceof OutcomeError) return bad(c, e.message, 422);
     if (e instanceof ValidationError) return bad(c, `Invalid ${e.message}`);
     throw e;
   }
@@ -286,6 +287,7 @@ adminApi.post("/pipeline/move", async (c) => {
     if (mv.verbal !== null) await audit(rt, userOf(c), ipOf(c), { action: "pipeline_move", entity: "lead", entity_id: lead.id, after: { stage: b.stage } });
     return c.json({ ok: true, lead: publicLead(fresh) });
   } catch (e) {
+    if (e instanceof OutcomeError) return bad(c, e.message, 422);
     if (e instanceof ValidationError) return bad(c, `Invalid ${e.message.replace(/_/g, " ")}`);
     throw e;
   }
@@ -295,7 +297,7 @@ adminApi.get("/receivables", async (c) => {
   const scope = scopeFor(c);
   if (scope === null) return c.json({ rows: [] });
   const ahead = Math.max(0, Math.min(90, Number(c.req.query("days") || 30)));
-  return c.json({ rows: await receivablesDue(rt, { aheadMs: ahead * 86_400_000, rep: scope, reps: await listReps(rt) }), days: ahead });
+  return c.json({ rows: await receivablesDue(rt, { aheadMs: ahead * 86_400_000, rep: scope, reps: await listRepsNamed(rt) }), days: ahead });
 });
 adminApi.post("/receivables/:id/paid", async (c) => {
   const rt = rtOf(c);
@@ -585,7 +587,7 @@ adminApi.get("/leads/:id", async (c) => {
        FROM sessions WHERE lead_id = ? OR (visitor_id = ? AND visitor_id != '') ORDER BY started_at DESC LIMIT 30`, [lead.id, vid]),
     all<{ video: string; buckets: string; completed: number; max_position: number; last_at: number }>(rt,
       "SELECT video, buckets, completed, max_position, last_at FROM vsl_views WHERE lead_id = ? OR (visitor_id = ? AND visitor_id != '')", [lead.id, vid]),
-    listReps(rt),
+    listRepsNamed(rt),
     buildProfile(rt, lead).catch(() => []),
   ]);
   const revops = await one<{ ft_ad_id: string | null; p_win: number | null; noshow_risk: number | null; noshow_reasons: string | null; email_status: string | null; pipeline_stage: string | null; score_model: string | null }>(rt,
@@ -671,6 +673,7 @@ adminApi.patch("/leads/:id", async (c) => {
     await auditLead(c, "lead_update", lead, fresh);
     return c.json({ ok: true, lead: publicLead(fresh) });
   } catch (e) {
+    if (e instanceof OutcomeError) return bad(c, e.message, 422);
     if (e instanceof ValidationError) return bad(c, `Invalid ${e.message.replace(/_/g, " ")}`);
     throw e;
   }
@@ -722,18 +725,21 @@ adminApi.get("/leads/:id/preview", async (c) => {
 adminApi.get("/emails", async (c) => {
   const rt = rtOf(c);
   const f = filters(c);
+  // Test leads are left out unless "Include test data" is on (emails with no lead always count).
+  const nt = f.includeTest ? "" : " AND (lead_id IS NULL OR lead_id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1))";
+  const ntl = f.includeTest ? "" : " AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)";
   const [counts, queue, pendingTotal, deliv, unsubs, fired] = await Promise.all([
     all<{ sequence: string; step: number; template: string; status: string; n: number; opened: number; clicked: number }>(rt,
-      "SELECT sequence, step, template, status, COUNT(*) AS n, SUM(opens > 0) AS opened, SUM(clicks > 0) AS clicked FROM emails WHERE created_at >= ? GROUP BY sequence, step, template, status", [f.since]),
+      `SELECT sequence, step, template, status, COUNT(*) AS n, SUM(opens > 0) AS opened, SUM(clicks > 0) AS clicked FROM emails WHERE created_at >= ?${nt} GROUP BY sequence, step, template, status`, [f.since]),
     all<{ id: string; lead_id: string; sequence: string; step: number; template: string; send_at: number; first_name: string | null; last_name: string | null; email: string | null }>(rt,
       `SELECT e.id, e.lead_id, e.sequence, e.step, e.template, e.send_at, l.first_name, l.last_name, l.email FROM emails e LEFT JOIN leads l ON l.id = e.lead_id
        WHERE e.status = 'pending'${f.includeTest ? "" : " AND e.lead_id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)"} ORDER BY e.send_at LIMIT 200`),
-    one<{ n: number; due: number }>(rt, "SELECT COUNT(*) AS n, SUM(send_at <= ?) AS due FROM emails WHERE status = 'pending'", [rt.now()]),
+    one<{ n: number; due: number }>(rt, `SELECT COUNT(*) AS n, SUM(send_at <= ?) AS due FROM emails WHERE status = 'pending'${nt}`, [rt.now()]),
     one<Record<string, number>>(rt,
       `SELECT SUM(status = 'sent') AS sent, SUM(status = 'simulated') AS simulated, SUM(status = 'failed') AS failed, SUM(status = 'skipped') AS skipped,
-         SUM(status = 'cancelled') AS cancelled, SUM(opens > 0) AS opened, SUM(clicks > 0) AS clicked FROM emails WHERE COALESCE(sent_at, created_at) >= ?`, [f.since]),
-    one<{ n: number }>(rt, "SELECT COUNT(*) AS n FROM leads WHERE unsubscribed_at >= ?", [f.since]),
-    all<{ step: number; n: number }>(rt, "SELECT step, COUNT(*) AS n FROM emails WHERE sequence = 'behaviour' AND status IN ('sent','simulated') GROUP BY step"),
+         SUM(status = 'cancelled') AS cancelled, SUM(opens > 0) AS opened, SUM(clicks > 0) AS clicked FROM emails WHERE COALESCE(sent_at, created_at) >= ?${nt}`, [f.since]),
+    one<{ n: number }>(rt, `SELECT COUNT(*) AS n FROM leads WHERE unsubscribed_at >= ?${ntl}`, [f.since]),
+    all<{ step: number; n: number }>(rt, `SELECT step, COUNT(*) AS n FROM emails WHERE sequence = 'behaviour' AND status IN ('sent','simulated')${nt} GROUP BY step`),
   ]);
   const stepStats = (seq: string, step: number | null, template: string | null) => {
     const rows = counts.filter((r) => r.sequence === seq && (step == null || r.step === step) && (template == null || r.template === template));

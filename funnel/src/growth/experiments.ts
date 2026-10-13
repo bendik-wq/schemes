@@ -14,7 +14,7 @@ import { newId } from "../lib/ids";
 import { twoProportionZ } from "../admin/landers";
 
 export const SLOTS = {
-  cta_label: { label: "Landing CTA text", where: "Main button under the film on / and /for/*", values: null, control: LANDING.ctaLabel },
+  cta_label: { label: "Landing CTA text", where: "Main button under the film and the sticky button on / and /for/*", values: null, control: LANDING.ctaLabel },
   gate_mode: { label: "Film gate", where: "When the application opens on / and /for/*", values: ["hard", "soft", "open"], control: VIDEOS.main.gate.mode as string },
   inline_booking: { label: "Inline booking", where: "Native time picker after submit (tiers in INLINE_BOOKING_TIERS)", values: ["on", "off"], control: "on" },
   book_page_closer_card: { label: "Closer card on /book", where: "The closer's name, photo and bio above the calendar", values: ["on", "off"], control: "on" },

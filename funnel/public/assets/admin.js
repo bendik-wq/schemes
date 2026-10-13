@@ -508,6 +508,8 @@
   const tabAllowed = (id) => roleAllows(id) && simpleAllows(id);
   const canWrite = () => !!S.me && S.me.role !== "viewer";
   const isManager = () => !!S.me && (S.me.role === "owner" || S.me.role === "manager");
+  // Showed / no-show open 10 minutes before the start (the server refuses earlier).
+  const callNotYet = (at) => isNum(at) && at > Date.now() + 10 * 60000;
   const TAB = Object.fromEntries(TABS.map((t) => [t.id, t]));
 
   // ── Overview ───────────────────────────────────────────────────────────────
@@ -1718,11 +1720,11 @@
     return card({ title: "Summary", body: facts }) + card({ title: "Film", body: vsl }) +
       card({ title: "Application", sub: L.app_completed_at ? "Submitted " + dt(L.app_completed_at) : "Step " + (L.step_reached || 0) + " reached, not submitted", body: answers }) +
       (scoreLines ? card({ title: "How the score was built", flush: true, body: scoreLines }) : "") + booking + visits +
-      card({ title: "Records", sub: "Booking checks and erasure on request", body:
+      (!isManager() ? "" : card({ title: "Records", sub: "Booking checks and erasure on request", body:
         '<div class="row-actions">' +
         (L.status === "booked" ? '<button class="btn btn-sm" type="button" data-action="confirm-booking" data-id="' + esc(L.id) + '">Confirm booking and start reminders</button>' : "") +
         '<button class="btn btn-sm btn-danger" type="button" data-action="erase-lead" data-id="' + esc(L.id) + '" data-ref="' + esc(L.ref_code) + '">Erase all data for this lead</button></div>' +
-        '<p class="faint small">Confirm only a booking you trust, for example one matched by email alone. Erasure deletes the lead, their visits, emails, calls and bookings, and keeps payment amounts without any link to the person.</p>' });
+        '<p class="faint small">Confirm only a booking you trust, for example one matched by email alone. Erasure deletes the lead, their visits, emails, calls and bookings, and keeps payment amounts without any link to the person.</p>' }));
   }
 
   function field(label, inner, cls) { return '<label class="field' + (cls ? " " + cls : "") + '"><span class="field-label">' + esc(label) + "</span>" + inner + "</label>"; }
@@ -1782,7 +1784,7 @@
         '<label class="field span2"><span class="field-label">Note</span><input class="input" name="note" maxlength="300"></label>' +
         '<div class="field"><span class="field-label">&nbsp;</span><button class="btn" type="submit">Add payment</button></div></form>',
     });
-    const held = canWrite() && ["booked", "no_show", "showed"].includes(L.status) && L.call_at ? '<div class="row mb12"><button class="btn btn-primary btn-sm" type="button" data-action="held-open" data-id="' + esc(L.id) + '" data-name="' + esc([L.first_name, L.last_name].filter(Boolean).join(" ")) + '">' + (L.status === "showed" ? "Add call review" : "Log showed: review and plan") + "</button></div>" : "";
+    const held = canWrite() && ["booked", "no_show", "showed"].includes(L.status) && L.call_at && !(L.status === "booked" && callNotYet(L.call_at)) ? '<div class="row mb12"><button class="btn btn-primary btn-sm" type="button" data-action="held-open" data-id="' + esc(L.id) + '" data-name="' + esc([L.first_name, L.last_name].filter(Boolean).join(" ")) + '">' + (L.status === "showed" ? "Add call review" : "Log showed: review and plan") + "</button></div>" : "";
     return held + planCard(d) + pipeline + deal + receivablesCard(d) + pays;
   }
 
@@ -2360,7 +2362,7 @@
       (top.length ? dl(top) : "") + (rest.length ? '<details class="prep-more"><summary>More answers</summary>' + dl(rest) + "</details>" : "") +
       (c.objections && c.objections.length ? '<div class="prep-obj"><span class="field-label">Likely objections</span><div class="chips">' + c.objections.map((o) => '<span class="chip" title="' + esc(o.why) + '">' + esc(o.objection) + '<span class="chip-why">' + esc(o.why) + "</span></span>").join("") + "</div></div>" : "") +
       '<div class="prep-actions">' + telBtn(c.phone, true) + (c.join_url ? '<a class="btn btn-sm" href="' + esc(c.join_url) + '" target="_blank" rel="noopener noreferrer">Join</a>' : "") +
-      (canWrite() ? '<button class="btn btn-sm" type="button" data-action="today-touch" data-id="' + esc(c.id) + '" data-name="' + esc(c.name) + '">Log touch</button><button class="btn btn-sm" type="button" data-action="today-outcome" data-id="' + esc(c.id) + '" data-name="' + esc(c.name) + '" data-status="' + esc(c.status) + '">Log outcome</button><button class="btn btn-sm" type="button" data-action="today-pay" data-id="' + esc(c.id) + '" data-name="' + esc(c.name) + '">Log payment</button>' : "") +
+      (canWrite() ? '<button class="btn btn-sm" type="button" data-action="today-touch" data-id="' + esc(c.id) + '" data-name="' + esc(c.name) + '">Log touch</button><button class="btn btn-sm" type="button" data-action="today-outcome" data-id="' + esc(c.id) + '" data-name="' + esc(c.name) + '" data-status="' + esc(c.status) + '" data-call-at="' + esc(c.call_at || "") + '">Log outcome</button><button class="btn btn-sm" type="button" data-action="today-pay" data-id="' + esc(c.id) + '" data-name="' + esc(c.name) + '">Log payment</button>' : "") +
       "</div></article>";
   }
   function touchForm(id, kinds, outcomes) {
@@ -2373,9 +2375,9 @@
       field("Note", '<input class="input" name="note" maxlength="500" placeholder="Optional">') +
       '<div class="form-actions span-all"><button class="btn" type="button" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">Log touch</button></div></form>';
   }
-  function outcomeForm(id, status) {
+  function outcomeForm(id, status, callAt) {
     const reasons = (S.today && S.today.lost_reasons) || ["Price", "Timing", "Chose agency", "Built in-house", "No response", "Not a fit", "Trust", "Other"];
-    return '<div class="stack gap16">' + (status === "booked" ? '<div class="row wrap"><button class="btn btn-primary" type="button" data-action="held-open" data-id="' + esc(id) + '">Showed: review and plan…</button><button class="btn" type="button" data-action="today-quick" data-id="' + esc(id) + '" data-status="no_show">No-show</button></div>' : "") +
+    return '<div class="stack gap16">' + (status === "booked" && callNotYet(callAt) ? '<p class="small faint">This call hasn\'t happened yet. Showed and no-show open 10 minutes before the start.</p>' : "") + (status === "booked" && !callNotYet(callAt) ? '<div class="row wrap"><button class="btn btn-primary" type="button" data-action="held-open" data-id="' + esc(id) + '">Showed: review and plan…</button><button class="btn" type="button" data-action="today-quick" data-id="' + esc(id) + '" data-status="no_show">No-show</button></div>' : "") +
       '<form data-submit="today-won" data-id="' + esc(id) + '" class="form-grid">' + field("Deal value (USD)", '<input class="input" name="revenue" type="number" min="1" step="1" required inputmode="numeric">') +
       field("Payment plan", sel("plan", [{ value: "full", label: "Paid in full" }, { value: "2", label: "2 instalments" }, { value: "3", label: "3 instalments" }, { value: "6", label: "6 instalments" }, { value: "12", label: "12 instalments" }], "full")) +
       '<div class="form-actions span-all"><button class="btn btn-primary" type="submit">Won</button></div></form>' +
@@ -2430,8 +2432,9 @@
     return tiles + fc + '<h2 class="section-title">Board' + (canWrite() ? ' <span class="faint small">· drag a card to move it, or use its menu</span>' : "") + "</h2>" + board + '<div class="grid g2 mt16">' + rv + probs + "</div>";
   };
   function pipeCard(c) {
-    const moves = ["held", "verbal", "won_plan", "won_paid"].filter((s) => s !== c.stage);
-    return '<article class="pipe-card" draggable="' + (canWrite() ? "true" : "false") + '" data-id="' + esc(c.id) + '" data-stage="' + esc(c.stage) + '" data-name="' + esc(c.name) + '">' +
+    const future = c.stage === "booked" && callNotYet(c.call_at);
+    const moves = ["held", "verbal", "won_plan", "won_paid"].filter((s) => s !== c.stage && !(future && (s === "held" || s === "verbal")));
+    return '<article class="pipe-card" draggable="' + (canWrite() ? "true" : "false") + '" data-id="' + esc(c.id) + '" data-stage="' + esc(c.stage) + '" data-name="' + esc(c.name) + '"' + (future ? ' data-future="1"' : "") + '>' +
       '<div class="pipe-card-top">' + leadLink(c.id, c.name) + tierBadge(c.tier) + "</div>" +
       '<div class="pipe-card-meta">' + esc(c.closer || "Unassigned") + (c.temperature ? " " + badge(label(c.temperature), TEMP_CLS[c.temperature] || "b-grey") : "") + "</div>" +
       '<div class="pipe-card-nums"><span class="tnum">' + esc(moneyShort(c.value)) + (c.value_is_estimate ? '<span class="faint" title="Average deal: no value set yet"> est.</span>' : "") + "</span>" +
@@ -2476,6 +2479,7 @@
     const id = dragId; dragId = null;
     if (!card || card.dataset.stage === col.dataset.stage) return;
     if (col.dataset.stage === "booked") { toast("Calls move to Booked when they are booked.", "err"); return; }
+    if (card.dataset.future && (col.dataset.stage === "held" || col.dataset.stage === "verbal")) { toast("This call hasn't happened yet.", "err"); return; }
     movePipeline(id, col.dataset.stage, card.dataset.name);
   });
 
@@ -2707,7 +2711,7 @@
     "user-edit": (el) => { const u = (S.users || []).find((x) => x.id === el.dataset.id); if (u) openModal("Edit " + (u.name || u.email), userForm(u), true); },
     "activity-page": (el) => { S.activity.page = Math.max(1, Number(el.dataset.page) || 1); loadTab(); },
     "today-touch": (el) => openModal("Log touch · " + (el.dataset.name || "lead"), touchForm(el.dataset.id, S.today && S.today.touch_kinds, S.today && S.today.touch_outcomes), true),
-    "today-outcome": (el) => openModal("Log outcome · " + (el.dataset.name || "lead"), outcomeForm(el.dataset.id, el.dataset.status), true),
+    "today-outcome": (el) => openModal("Log outcome · " + (el.dataset.name || "lead"), outcomeForm(el.dataset.id, el.dataset.status, Number(el.dataset.callAt) || null), true),
     "today-pay": (el) => openModal("Log payment · " + (el.dataset.name || "lead"), paymentForm(el.dataset.id), true),
     "today-quick": async (el) => {
       el.disabled = true;
@@ -2848,7 +2852,7 @@
   }
   function testControls(d) {
     const t = d.test || {};
-    if (!canWrite()) return t.is_test ? badge("Test data", "b-amber") : "";
+    if (!isManager()) return t.is_test ? badge("Test data", "b-amber") : "";
     return t.is_test
       ? badge("Test data", "b-amber") + ' <span class="faint small">' + esc(t.reason ? "(" + human(String(t.reason).replace(/^manual:.*/, "marked by hand")) + ")" : "") + '</span> <button class="btn btn-sm" type="button" data-action="lead-test" data-on="0">Not test data</button>'
       : '<button class="btn btn-sm btn-ghost" type="button" data-action="lead-test" data-on="1">Mark as test data</button>' + (t.decided ? ' <span class="faint small">marked real by hand</span>' : "");

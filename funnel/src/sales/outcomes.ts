@@ -65,6 +65,15 @@ function toTs(v: unknown): number | null {
 }
 
 export class ValidationError extends Error {}
+/** A readable refusal (shown as is, not as "Invalid <field>"). */
+export class OutcomeError extends ValidationError {}
+
+/** Showed / no-show can be logged from 10 minutes before the start: before that the call has not happened. */
+export const OUTCOME_GRACE_MS = 10 * 60_000;
+export const NOT_YET = "This call hasn't happened yet. Log showed or no-show once it has started.";
+export function callNotYet(lead: { call_at: number | null }, now: number): boolean {
+  return !!lead.call_at && lead.call_at > now + OUTCOME_GRACE_MS;
+}
 
 /** Pure validation → a clean patch of lead columns. Throws ValidationError. */
 export function validatePatch(p: LeadPatch): Partial<Lead> {
@@ -146,6 +155,8 @@ export async function applyLeadUpdate(
   const next = clean.status ?? prev;
   // Date outcomes to the call when logging an old call.
   const anchor = lead.call_at && lead.call_at < now ? lead.call_at : now;
+  // Pipeline drag, the drawer and the held form all land here: a future call cannot have been held or missed.
+  if (next !== prev && (next === "showed" || next === "no_show") && opts.source === "admin" && callNotYet(lead, now)) throw new OutcomeError(NOT_YET);
   if (next !== prev) {
     if ((next === "showed" || next === "won" || next === "lost") && !lead.showed_at && lead.call_at && lead.call_at <= now) clean.showed_at = anchor;
     if ((next === "won" || next === "lost") && !lead.closed_at) clean.closed_at = anchor; // never in the future
