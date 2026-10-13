@@ -24,6 +24,7 @@ export interface SettingDef {
 export const SETTINGS: SettingDef[] = [
   { key: "PUBLIC_URL", ownerOnly: true, group: "site", label: "Public URL", kind: "url", help: "Your live domain, e.g. https://apply.example.com. Email links use it." },
   { key: "SITE_NAME", group: "site", label: "Site name", help: "Shown in titles and emails." },
+  { key: "CF_ACCESS_CONFIRMED", group: "site", label: "Cloudflare Access covers /admin (confirmed)", kind: "bool", def: "false", help: "Funnel HQ cannot detect Access from inside. Tick it on Overview → Launch readiness once /admin* is behind Access." },
   { key: "REFERRAL_REWARD", group: "site", label: "Referral reward text", help: "Only a real reward you will honour. Empty = no reward line." },
   { key: "FOUNDER_PHOTO_URL", group: "site", label: "Founder photo (https or /assets path)", kind: "url", help: "Turns on the founder block above the application. Square, at least 144×144." },
   { key: "FOUNDER_BIO", group: "site", label: "Founder lines", help: "Two short, true lines, separated by |. Only facts you can stand behind." },
@@ -126,10 +127,14 @@ export const SETTINGS: SettingDef[] = [
   { key: "CONSENT_REQUIRED_EU", ownerOnly: true, group: "privacy", label: "Consent banner in EU/UK/EEA/CH", kind: "bool", def: "true" },
   { key: "IP_ANONYMIZE", ownerOnly: true, group: "privacy", label: "Store IP as a hash only", kind: "bool", def: "false" },
   { key: "BLOCKLIST", group: "privacy", label: "Blocklist (emails/domains, comma separated)" },
+  { key: "PRIVACY_REVIEWED", group: "privacy", label: "Privacy policy reviewed by a lawyer", kind: "bool", def: "false", help: "A launch-readiness check. Tick it only after a lawyer has reviewed /privacy." },
+  { key: "INTERNAL_IP_HASHES", group: "privacy", label: "Internal IP hashes (test traffic)", help: "Comma-separated sessions.ip_hash values of your office or home networks. Visits and leads from them count as test data. Overview → Test data shows yours." },
 
   { key: "PRECALL_EMAILS_PER_DAY", group: "pacing", label: "Pre-call emails per day (0 = off)", kind: "number", def: "1", help: "Never more than 5 per booking in total, ranked by the lead's blockers and goal. Stops after three unopened in a row or once attendance is confirmed." },
 
   { key: "SALES_TIMEZONE", group: "pacing", label: "Sales time zone", def: "Europe/Oslo" },
+  { key: "SALES_HOURS", group: "pacing", label: "Sales hours (speed-to-lead clock)", def: "Mon-Fri 09:00-18:00", help: "e.g. Mon-Fri 09:00-18:00, Mon-Sat 08:00-17:00 or 24/7, in the sales time zone. The escalation clock pauses outside these hours." },
+  { key: "ESCALATIONS", group: "pacing", label: "Speed-to-lead escalation pings", kind: "bool", def: "true", help: "Untouched A/B leads: rep at 5 min, managers at 30 min, reassign link at 2 h (sales hours)." },
   // Managed from Insights → Scoring calibration by the owner; refused on the Integrations screen.
   { key: "LEARNED_ROUTING", ownerOnly: true, group: "pacing", label: "Use learned points for routing (managed)", kind: "bool", def: "false", help: "Turned on and off by the owner on Insights → Scoring calibration." },
   { key: "LEARNED_POINTS", ownerOnly: true, group: "pacing", label: "Learned points table (managed)", help: "Built from the active scoring model when learned routing is turned on." },

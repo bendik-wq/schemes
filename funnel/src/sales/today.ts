@@ -13,6 +13,7 @@ import { salesTz } from "../admin/stats";
 import { NOSHOW_LABELS } from "./noshow";
 import { followUpsDue, paymentsDue } from "./followups";
 import { listReps } from "./reps";
+import { businessMs, escalationState, inSalesHours, salesHours, slaLevel } from "./escalation";
 
 const DAY = 86_400_000;
 export const TOUCH_KINDS = ["dial", "connect", "voicemail", "sms", "email", "dm"] as const;
@@ -98,7 +99,7 @@ export async function todayView(rt: Runtime, rep: string | null | undefined) {
   const db = rt.env.DB;
   // rep === null means a rep user without a linked rep: show nothing.
   if (rep === null) return { scoped: true, linked: false, calls: [], fresh: [], follow_ups: [], payments_due: [], stats: { calls: 0, fresh: 0, follow_ups: 0, payments_due: 0 }, tz };
-  const scope = rep ? " AND (l.closer_id = ? OR l.setter_id = ?)" : "";
+  const scope = " AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)" + (rep ? " AND (l.closer_id = ? OR l.setter_id = ?)" : "");
   const sb = rep ? [rep, rep] : [];
   const reps = await listReps(rt);
   const repName = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name || id : null);
@@ -113,7 +114,7 @@ export async function todayView(rt: Runtime, rep: string | null | undefined) {
        ORDER BY l.call_at LIMIT 60`,
     ).bind(start, end, ...sb).all<Record<string, unknown>>(),
     db.prepare(
-      `SELECT l.id, l.ref_code, l.first_name, l.last_name, l.email, l.phone, COALESCE(l.tier_override, l.tier) AS tier, l.score, l.status, l.app_completed_at, l.closer_id, l.setter_id, l.do_not_call_at
+      `SELECT l.id, l.ref_code, l.first_name, l.last_name, l.email, l.phone, COALESCE(l.tier_override, l.tier) AS tier, l.score, l.status, l.app_completed_at, l.closer_id, l.setter_id, l.do_not_call_at, l.visitor_id
        FROM leads l
        WHERE l.app_completed_at >= ? AND COALESCE(l.tier_override, l.tier) IN ('A','B') AND l.status IN ('applied','booked','nurture')
          AND l.booking_source = 'funnel' AND NOT EXISTS (SELECT 1 FROM touches t WHERE t.lead_id = l.id)${scope}
@@ -139,15 +140,53 @@ export async function todayView(rt: Runtime, rep: string | null | undefined) {
       needs_outcome: r.status === "booked" && Number(r.call_at) < now - 30 * 60_000,
     };
   });
-  const fresh = (freshRows.results || []).map((r) => ({
+  const freshAll = (freshRows.results || []).map((r) => ({
     id: String(r.id), ref_code: String(r.ref_code), name: name(r), tier: (r.tier as string) || null, score: r.score == null ? null : Number(r.score),
     status: String(r.status), applied_at: Number(r.app_completed_at), waiting_ms: now - Number(r.app_completed_at), phone: tel(r),
-    closer: repName((r.closer_id as string) || null),
+    closer: repName((r.closer_id as string) || null), email: String(r.email || ""), raw_phone: (r.phone as string) || null, visitor_id: (r.visitor_id as string) || null,
   }));
+  // The SLA clock runs in sales hours only; the same person applying twice is one row ("+1 more").
+  const hours = salesHours(rt);
+  const esc = await escalationState(rt, freshAll.map((r) => r.id));
+  const fresh = groupSamePerson(freshAll).map((g) => {
+    const { email: _e, raw_phone: _p, visitor_id: _v, ...r } = g.lead;
+    const ms = businessMs(r.applied_at, now, tz, hours);
+    return { ...r, sla_ms: ms, sla_level: slaLevel(ms), escalated: esc.get(r.id) || 0, also: g.others.map((o) => ({ id: o.id, ref_code: o.ref_code, applied_at: o.applied_at })) };
+  });
+  // Buying signal: the lead opened their written plan.
+  const ids = [...new Set([...calls.map((c) => c.id), ...fu.map((f) => f.id)])];
+  const views = ids.length ? ((await db.prepare(
+    `SELECT lead_id, MAX(viewed_at) AS first_view, MAX(last_viewed_at) AS last_view, SUM(views) AS views FROM call_plans WHERE lead_id IN (${ids.map(() => "?").join(",")}) AND viewed_at IS NOT NULL GROUP BY lead_id`,
+  ).bind(...ids).all<{ lead_id: string; first_view: number; last_view: number; views: number }>()).results || []) : [];
+  const pv = new Map(views.map((v) => [v.lead_id, { at: Number(v.last_view) || Number(v.first_view), views: Number(v.views) || 1 }]));
+  const withPlan = <T extends { id: string }>(r: T) => ({ ...r, plan_viewed: pv.get(r.id) || null });
   return {
-    scoped: !!rep, linked: true, tz, day_start: start, calls, fresh, follow_ups: fu, payments_due: pay,
+    scoped: !!rep, linked: true, tz, day_start: start, calls: calls.map(withPlan), fresh, follow_ups: fu.map(withPlan), payments_due: pay,
+    in_hours: inSalesHours(now, tz, hours), sales_hours: rt.settings.get("SALES_HOURS") || "Mon-Fri 09:00-18:00",
     stats: { calls: calls.length, fresh: fresh.length, follow_ups: fu.length, payments_due: pay.length },
   };
+}
+
+/** Pure: the normalised address without a +tag ("ada+2@x.com" → "ada@x.com"). */
+export function baseEmail(e: string): string {
+  const m = /^([^+@]+)(?:\+[^@]*)?@(.+)$/.exec(String(e || "").trim().toLowerCase());
+  return m ? `${m[1]}@${m[2]}` : String(e || "").trim().toLowerCase();
+}
+
+/** Pure: group rows that are the same person (same browser, phone or base email); newest row leads the group. */
+export function groupSamePerson<T extends { id: string; applied_at: number; email: string; raw_phone: string | null; visitor_id: string | null }>(rows: T[]): Array<{ lead: T; others: T[] }> {
+  const groups: Array<{ lead: T; others: T[]; keys: Set<string> }> = [];
+  const sorted = rows.slice().sort((a, b) => b.applied_at - a.applied_at);
+  for (const r of sorted) {
+    const keys = [r.visitor_id ? "v:" + r.visitor_id : "", r.raw_phone ? "p:" + r.raw_phone.replace(/\D/g, "") : "", r.email ? "e:" + baseEmail(r.email) : ""].filter(Boolean);
+    const g = groups.find((x) => keys.some((k) => x.keys.has(k)));
+    if (g) { g.others.push(r); keys.forEach((k) => g.keys.add(k)); } else groups.push({ lead: r, others: [], keys: new Set(keys) });
+  }
+  // Longest-waiting first, as before (the clock runs from the earliest application in the group).
+  return groups.map(({ lead, others }) => {
+    const first = [lead, ...others].reduce((a, b) => (b.applied_at < a.applied_at ? b : a));
+    return { lead: { ...lead, applied_at: first.applied_at, waiting_ms: (lead as unknown as { waiting_ms: number }).waiting_ms + (lead.applied_at - first.applied_at) }, others };
+  }).sort((a, b) => b.lead.applied_at - a.lead.applied_at);
 }
 
 // ── Speed to lead and setter activity ────────────────────────────────────────
@@ -173,7 +212,7 @@ export async function salesActivity(rt: Runtime, since: number, rep?: string | n
     db.prepare(
       `SELECT t.rep_id, l.app_completed_at, t.at FROM leads l
        JOIN touches t ON t.lead_id = l.id AND t.at = (SELECT MIN(t2.at) FROM touches t2 WHERE t2.lead_id = l.id)
-       WHERE l.app_completed_at >= ? AND l.booking_source = 'funnel' AND t.at >= l.app_completed_at LIMIT 20000`,
+       WHERE l.app_completed_at >= ? AND l.booking_source = 'funnel' AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND t.at >= l.app_completed_at LIMIT 20000`,
     ).bind(since).all<{ rep_id: string | null; app_completed_at: number; at: number }>(),
     db.prepare(
       `SELECT rep_id, SUM(kind IN ('dial','connect','voicemail')) AS dials, SUM(kind = 'connect') AS connects, COUNT(*) AS touches

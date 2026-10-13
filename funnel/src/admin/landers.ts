@@ -34,7 +34,7 @@ export async function experiment(rt: Runtime, f: Filters) {
     all<{ v: string | null; leads: number; applied: number; qualified: number; booked: number }>(rt,
       `SELECT l.variant AS v, COUNT(*) AS leads, SUM(l.app_completed_at IS NOT NULL) AS applied,
          SUM(l.app_completed_at IS NOT NULL AND COALESCE(l.tier_override, l.tier) IN ('A','B')) AS qualified, SUM(l.booked_at IS NOT NULL) AS booked
-       FROM leads l WHERE l.ft_lander IS NULL AND l.booking_source = 'funnel' AND l.created_at >= ? AND l.visitor_id IN (${pv}) GROUP BY l.variant`, [f.since, f.since]),
+       FROM leads l WHERE l.ft_lander IS NULL AND l.booking_source = 'funnel' AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND l.created_at >= ? AND l.visitor_id IN (${pv}) GROUP BY l.variant`, [f.since, f.since]),
   ]);
   const variants = HEADLINES.map((h) => {
     const v = vis.find((x) => x.v === h.id), l = leads.find((x) => x.v === h.id);
@@ -68,7 +68,7 @@ export async function landersReport(rt: Runtime, f: Filters) {
          SUM(l.app_completed_at IS NOT NULL AND COALESCE(l.tier_override, l.tier) = 'A') AS a,
          SUM(l.booked_at IS NOT NULL) AS booked, SUM(l.status = 'won') AS won,
          SUM(CASE WHEN l.status = 'won' THEN l.revenue ELSE 0 END) AS revenue, SUM(l.cash_collected) AS cash
-       FROM leads l WHERE l.ft_lander IS NOT NULL AND l.created_at >= ? GROUP BY l.ft_lander`, [f.since]),
+       FROM leads l WHERE l.ft_lander IS NOT NULL AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND l.created_at >= ? GROUP BY l.ft_lander`, [f.since]),
     // Bandit inputs are all-time, exactly like armStats() in landers/bandit.ts.
     all<{ k: string; n: number }>(rt, "SELECT lander AS k, COUNT(DISTINCT visitor_id) AS n FROM sessions WHERE lander IS NOT NULL AND is_bot = 0 GROUP BY lander"),
     all<{ k: string; n: number; q: number }>(rt,

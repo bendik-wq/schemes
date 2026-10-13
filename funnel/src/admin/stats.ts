@@ -8,6 +8,7 @@ import { localParts, tzOffset, validTimezone, zonedTime } from "../integrations/
 import { EVENTS, MICRO_EVENTS } from "../tracking/catalog";
 import { dayKey } from "../integrations/meta-ads";
 import { BUCKETS, bucketSet, popcount } from "../tracking/vsl";
+import { bestBy, funnelCohort, sawFormCount } from "./metrics";
 
 // ── Small D1 helpers ─────────────────────────────────────────────────────────
 
@@ -47,6 +48,8 @@ export interface Filters {
   campaign: string | null;
   variant: string | null;
   device: string | null;
+  /** Test leads and our own browsers are left out unless this is on ("Include test data"). */
+  includeTest?: boolean;
 }
 
 const DAY = 86_400_000;
@@ -74,8 +77,14 @@ export function parseFilters(query: (k: string) => string | undefined, now: numb
     campaign: cleanFilterValue(query("campaign")),
     variant: cleanFilterValue(query("variant")),
     device: cleanFilterValue(query("device")),
+    includeTest: query("test") === "1",
   };
 }
+
+/** SQL: a visitor-id column that is not one of our own browsers (admins, ?test=1, internal IPs, test leads). */
+export const notTestVisitor = (col: string) => `(${col} IS NULL OR ${col} NOT IN (SELECT visitor_id FROM test_visitors))`;
+/** SQL: a lead-id column that is not a test lead. */
+export const notTestLead = (col: string) => `${col} NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)`;
 
 /** Turn plain `?` placeholders into ?N, ?N+1… so they can follow numbered ones. */
 export function renumber(sql: string, start: number): string {
@@ -95,6 +104,7 @@ export function sessDims(f: Filters, a = "s"): Frag {
   if (f.campaign) { parts.push(`${a}.utm_campaign = ?`); binds.push(f.campaign); }
   if (f.variant) { parts.push(`${a}.variant = ?`); binds.push(f.variant); }
   if (f.device) { parts.push(`${a}.device = ?`); binds.push(f.device); }
+  if (!f.includeTest) parts.push(notTestVisitor(`${a}.visitor_id`));
   return { sql: parts.length ? " AND " + parts.join(" AND ") : "", binds };
 }
 
@@ -106,14 +116,16 @@ export function leadDims(f: Filters, a = "l"): Frag {
   if (f.campaign) { parts.push(`COALESCE(${a}.ft_campaign, ${a}.utm_campaign) = ?`); binds.push(f.campaign); }
   if (f.variant) { parts.push(`${a}.variant = ?`); binds.push(f.variant); }
   if (f.device) { parts.push(`${a}.device = ?`); binds.push(f.device); }
+  if (!f.includeTest) parts.push(notTestLead(`${a}.id`));
   return { sql: parts.length ? " AND " + parts.join(" AND ") : "", binds };
 }
 
-/** Restrict a visitor-id column to visitors that had a matching session. */
+/** Restrict a visitor-id column to visitors that had a matching session (and, by default, not our own browsers). */
 export function visitorDims(f: Filters, col: string): Frag {
-  if (!hasDims(f)) return { sql: "", binds: [] };
-  const d = sessDims(f, "fs");
-  return { sql: ` AND ${col} IN (SELECT fs.visitor_id FROM sessions fs WHERE 1=1${d.sql})`, binds: d.binds };
+  const test = f.includeTest ? "" : ` AND ${notTestVisitor(col)}`;
+  if (!hasDims(f)) return { sql: test, binds: [] };
+  const d = sessDims({ ...f, includeTest: true }, "fs");
+  return { sql: ` AND ${col} IN (SELECT fs.visitor_id FROM sessions fs WHERE 1=1${d.sql})${test}`, binds: d.binds };
 }
 
 /** Distinct values for the filter bar. */
@@ -151,7 +163,8 @@ export async function windowCounts(rt: Runtime, f: Filters, from: number, to: nu
       `SELECT SUM(v.played) AS plays, SUM(v.cta_revealed) AS pitch, SUM(v.cta_clicked) AS clicks, SUM(v.completed) AS done
        FROM vsl_views v WHERE v.video = 'main' AND v.first_at >= ? AND v.first_at < ?
          AND v.visitor_id NOT IN (SELECT id FROM visitors WHERE is_bot = 1)${vdV.sql}`, [from, to, ...vdV.binds]),
-    one<{ n: number }>(rt, `SELECT COUNT(DISTINCT e.visitor_id) AS n FROM events e WHERE e.name = 'page_view' AND e.path = '/apply' AND e.is_bot = 0 AND e.ts >= ? AND e.ts < ?${vdE.sql}`, [from, to, ...vdE.binds]),
+    // "Saw the form": the embedded form in view (app_view) or /apply, plus everyone who left details (metrics.ts).
+    sawFormCount(rt, f, from, to).then((n) => ({ n })),
     one<Record<string, number>>(rt,
       `SELECT
          SUM(l.created_at >= ?1 AND l.created_at < ?2) AS optins,
@@ -283,8 +296,10 @@ export async function overview(rt: Runtime, f: Filters) {
     range: f.range, since: f.since,
     kpis: kpi(cur, spend),
     prev: prev ? kpi(prev, prevSpend) : null,
+    prev_counts: prev,
     counts: cur,
-    funnel: funnelRows(cur),
+    // Cohort basis (metrics.ts): people active in the period and how far each got, so steps never grow.
+    funnel: await funnelCohort(rt, f),
     trend,
   };
 }
@@ -409,31 +424,43 @@ export async function vslReport(rt: Runtime, f: Filters, videoParam: string | un
 
 // ── Traffic and ads ──────────────────────────────────────────────────────────
 
-export const TRAFFIC_DIMS: Array<{ id: string; label: string; col: string }> = [
-  { id: "channel", label: "Channel", col: "s.channel" },
-  { id: "source", label: "Source", col: "s.utm_source" },
-  { id: "medium", label: "Medium", col: "s.utm_medium" },
-  { id: "campaign", label: "Campaign", col: "s.utm_campaign" },
-  { id: "content", label: "Ad (utm_content)", col: "s.utm_content" },
-  { id: "term", label: "Ad set (utm_term)", col: "s.utm_term" },
-  { id: "ad_id", label: "Ad id", col: "s.ad_id" },
-  { id: "placement", label: "Placement", col: "s.placement" },
-  { id: "landing_path", label: "Landing page", col: "s.landing_path" },
-  { id: "referrer_host", label: "Referrer", col: "s.referrer_host" },
-  { id: "country", label: "Country", col: "s.country" },
-  { id: "device", label: "Device", col: "s.device" },
-  { id: "browser", label: "Browser", col: "s.browser" },
-  { id: "os", label: "OS", col: "s.os" },
-  { id: "variant", label: "Headline variant", col: "s.variant" },
+function firstSession(col: string, fallback: string): string {
+  return `COALESCE((SELECT fs1.${col} FROM sessions fs1 WHERE fs1.visitor_id = l.visitor_id ORDER BY fs1.started_at LIMIT 1), ${fallback})`;
+}
+
+/** col: the session column (visitors, plays). lead: the lead's first-touch value, so lead counts add up to Overview. */
+export const TRAFFIC_DIMS: Array<{ id: string; label: string; col: string; lead: string }> = [
+  { id: "channel", label: "Channel", col: "s.channel", lead: "COALESCE(l.ft_channel, l.channel)" },
+  { id: "source", label: "Source", col: "s.utm_source", lead: "COALESCE(l.ft_source, l.utm_source)" },
+  { id: "medium", label: "Medium", col: "s.utm_medium", lead: "COALESCE(l.ft_medium, l.utm_medium)" },
+  { id: "campaign", label: "Campaign", col: "s.utm_campaign", lead: "COALESCE(l.ft_campaign, l.utm_campaign)" },
+  { id: "content", label: "Ad (utm_content)", col: "s.utm_content", lead: "COALESCE(l.ft_content, l.utm_content)" },
+  { id: "term", label: "Ad set (utm_term)", col: "s.utm_term", lead: "COALESCE(l.ft_term, l.utm_term)" },
+  { id: "ad_id", label: "Ad id", col: "s.ad_id", lead: "(SELECT r.ft_ad_id FROM lead_revops r WHERE r.lead_id = l.id)" },
+  { id: "placement", label: "Placement", col: "s.placement", lead: "(SELECT r.ft_placement FROM lead_revops r WHERE r.lead_id = l.id)" },
+  { id: "landing_path", label: "Landing page", col: "s.landing_path", lead: firstSession("landing_path", "l.landing_path") },
+  { id: "referrer_host", label: "Referrer", col: "s.referrer_host", lead: firstSession("referrer_host", "NULL") },
+  { id: "country", label: "Country", col: "s.country", lead: "l.country" },
+  { id: "device", label: "Device", col: "s.device", lead: "l.device" },
+  { id: "browser", label: "Browser", col: "s.browser", lead: firstSession("browser", "NULL") },
+  { id: "os", label: "OS", col: "s.os", lead: firstSession("os", "NULL") },
+  { id: "variant", label: "Headline variant", col: "s.variant", lead: "l.variant" },
 ];
 
+/**
+ * Traffic by one dimension. Visitors, sessions and plays come from sessions that started in the period with
+ * that value. Leads, applications, bookings, wins and cash use the same event-dated definitions as Overview
+ * (metrics.ts), credited to the lead's first touch, so the totals row equals the Overview tiles.
+ */
 export async function trafficReport(rt: Runtime, f: Filters, dimParam: string | undefined) {
   const dim = TRAFFIC_DIMS.find((d) => d.id === dimParam) || TRAFFIC_DIMS[0];
   const sd = sessDims(f, "s");
+  const ld = leadDims(f, "l");
   const key = `COALESCE(NULLIF(${dim.col}, ''), '(none)')`;
+  const lkey = `COALESCE(NULLIF(${dim.lead}, ''), '(none)')`;
   const base = `SELECT DISTINCT ${key} AS k, s.visitor_id AS vid FROM sessions s WHERE s.is_bot = 0 AND s.started_at >= ? AND s.started_at < ?${sd.sql}`;
   const binds = [f.since, f.until, ...sd.binds];
-  const [vis, sess, plays, leads, cash] = await Promise.all([
+  const [vis, sess, plays, leads, cash, totalVisitors] = await Promise.all([
     all<{ k: string; visitors: number }>(rt, `SELECT k, COUNT(*) AS visitors FROM (${base}) GROUP BY k ORDER BY visitors DESC LIMIT 200`, binds),
     all<{ k: string; sessions: number; engaged: number; bounce: number }>(rt,
       `SELECT ${key} AS k, COUNT(*) AS sessions, AVG(s.engaged_ms) AS engaged, SUM(s.pageviews <= 1 AND s.engaged_ms < 10000) AS bounce
@@ -441,38 +468,69 @@ export async function trafficReport(rt: Runtime, f: Filters, dimParam: string | 
     all<{ k: string; plays: number }>(rt,
       `SELECT b.k, COUNT(*) AS plays FROM (${base}) b JOIN vsl_views v ON v.visitor_id = b.vid AND v.video = 'main' AND v.played = 1 GROUP BY b.k`, binds),
     all<{ k: string; leads: number; applied: number; qualified: number; booked: number; showed: number; won: number; revenue: number }>(rt,
-      `SELECT k, COUNT(*) AS leads, SUM(app_completed_at IS NOT NULL) AS applied,
-         SUM(app_completed_at IS NOT NULL AND COALESCE(tier_override, tier) IN ('A','B')) AS qualified,
-         SUM(booked_at IS NOT NULL) AS booked, SUM(showed_at IS NOT NULL) AS showed, SUM(status = 'won') AS won,
-         SUM(CASE WHEN status = 'won' THEN revenue ELSE 0 END) AS revenue
-       FROM (SELECT DISTINCT b.k, l.id, l.app_completed_at, l.tier, l.tier_override, l.booked_at, l.showed_at, l.status, l.revenue
-             FROM (${base}) b JOIN leads l ON l.visitor_id = b.vid WHERE l.booking_source = 'funnel') GROUP BY k`, binds),
+      `SELECT ${lkey} AS k,
+         SUM(l.created_at >= ?1 AND l.created_at < ?2) AS leads,
+         SUM(l.app_completed_at >= ?1 AND l.app_completed_at < ?2) AS applied,
+         SUM(l.app_completed_at >= ?1 AND l.app_completed_at < ?2 AND COALESCE(l.tier_override, l.tier) IN ('A','B')) AS qualified,
+         SUM(l.booked_at >= ?1 AND l.booked_at < ?2) AS booked,
+         SUM(l.showed_at >= ?1 AND l.showed_at < ?2) AS showed,
+         SUM(l.status = 'won' AND l.closed_at >= ?1 AND l.closed_at < ?2) AS won,
+         SUM(CASE WHEN l.status = 'won' AND l.closed_at >= ?1 AND l.closed_at < ?2 THEN l.revenue ELSE 0 END) AS revenue
+       FROM leads l WHERE l.booking_source = 'funnel'
+         AND (l.created_at >= ?1 OR l.app_completed_at >= ?1 OR l.booked_at >= ?1 OR l.showed_at >= ?1 OR l.closed_at >= ?1)${renumber(ld.sql, 3)}
+       GROUP BY k`, [f.since, f.until, ...ld.binds]),
     all<{ k: string; cash: number }>(rt,
-      `SELECT k, SUM(cash_collected) AS cash FROM (SELECT DISTINCT b.k, l.id, l.cash_collected FROM (${base}) b JOIN leads l ON l.visitor_id = b.vid) GROUP BY k`, binds),
+      `SELECT ${lkey} AS k, SUM(p.amount) AS cash FROM payments p JOIN leads l ON l.id = p.lead_id WHERE p.paid_at >= ? AND p.paid_at < ?${ld.sql} GROUP BY k`,
+      [f.since, f.until, ...ld.binds]),
+    one<{ n: number }>(rt, `SELECT COUNT(DISTINCT s.visitor_id) AS n FROM sessions s WHERE s.is_bot = 0 AND s.started_at >= ? AND s.started_at < ?${sd.sql}`, binds),
   ]);
-  const by = <T extends { k: string }>(arr: T[]) => new Map(arr.map((r) => [r.k, r]));
-  const S = by(sess), P = by(plays), L = by(leads), C = by(cash);
-  const rows = vis.map((v) => {
-    const s = S.get(v.k), p = P.get(v.k), l = L.get(v.k), c = C.get(v.k);
-    const visitors = num(v.visitors);
-    const leadsN = num(l?.leads), applied = num(l?.applied), qualified = num(l?.qualified);
+  const by = <T extends { k: string }>(arr: T[]) => new Map(arr.map((r) => [String(r.k), r]));
+  const V = by(vis), S = by(sess), P = by(plays), L = by(leads), C = by(cash);
+  const keys = [...new Set([...vis.map((r) => String(r.k)), ...leads.map((r) => String(r.k)), ...cash.map((r) => String(r.k))])];
+  const rows = keys.map((k) => {
+    const v = V.get(k), s = S.get(k), p = P.get(k), l = L.get(k), c = C.get(k);
+    const visitors = num(v?.visitors);
+    const applied = num(l?.applied), qualified = num(l?.qualified);
     return {
-      key: String(v.k).slice(0, 160),
-      sessions: num(s?.sessions), visitors, engaged_s: Math.round(num(s?.engaged) / 1000), bounce_rate: pct(num(s?.bounce), num(s?.sessions)),
+      key: k.slice(0, 160),
+      sessions: num(s?.sessions), visitors, engaged_s: Math.round(num(s?.engaged) / 1000), bounce_rate: pct(num(s?.bounce), num(s?.sessions)), bounced: num(s?.bounce),
       plays: num(p?.plays), play_rate: pct(num(p?.plays), visitors),
-      leads: leadsN, applied, qualified, booked: num(l?.booked), showed: num(l?.showed), won: num(l?.won),
+      leads: num(l?.leads), applied, qualified, booked: num(l?.booked), showed: num(l?.showed), won: num(l?.won),
       apply_rate: pct(applied, visitors), qualified_rate: pct(qualified, visitors),
       revenue: num(l?.revenue), cash: num(c?.cash),
     };
-  });
+  }).filter((r) => r.visitors || r.leads || r.applied || r.booked || r.won || r.cash);
+  rows.sort((a, b) => b.visitors - a.visitors || b.applied - a.applied);
   const totals = rows.reduce((t, r) => {
-    for (const k of ["sessions", "visitors", "plays", "leads", "applied", "qualified", "booked", "showed", "won", "revenue", "cash"] as const) t[k] = (t[k] || 0) + r[k];
+    for (const k of ["sessions", "plays", "leads", "applied", "qualified", "booked", "showed", "won", "revenue", "cash"] as const) t[k] = (t[k] || 0) + r[k];
     return t;
   }, {} as Record<string, number>);
-  return { dim: dim.id, dims: TRAFFIC_DIMS.map((d) => ({ id: d.id, label: d.label })), rows, totals };
+  // A visitor can arrive through several values; the total counts each person once (as Overview does).
+  totals.visitors = num(totalVisitors?.n);
+  const best = bestBy(rows.filter((r) => r.key !== "(none)"));
+  return {
+    dim: dim.id, dims: TRAFFIC_DIMS.map((d) => ({ id: d.id, label: d.label })), rows: rows.slice(0, 200), totals,
+    best: best ? { key: best.key, booked: best.booked, cash: best.cash } : null,
+  };
 }
 
 // ── Application ──────────────────────────────────────────────────────────────
+
+/** Qualification flags as people say them. */
+export const FLAG_LABELS: Record<string, string> = {
+  under_1m: "Under $1M", small: "$1–3M", no_business: "No business yet", not_owner: "Not the owner", partner: "Decides with a partner",
+  low_spend: "Spends under $25k a year", exploring: "Just exploring", not_ready: "Not ready to invest", personal_email: "Personal email",
+  personal_email_small: "Personal email, $1–3M", excluded_industry: "Excluded industry", out_of_market: "Outside our markets", blocked: "Blocklisted",
+};
+export const flagLabel = (f: string) => FLAG_LABELS[f] || (f.charAt(0).toUpperCase() + f.slice(1)).replace(/_/g, " ");
+
+/** Pure: median of durations (ms) as whole seconds; ignores non-positive and > 6 h (abandoned and resumed). */
+export function medianSeconds(ms: number[]): number | null {
+  const v = ms.filter((d) => Number.isFinite(d) && d > 0 && d < 6 * 3600_000).sort((a, b) => a - b);
+  if (!v.length) return null;
+  const m = Math.floor(v.length / 2);
+  return Math.round((v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2) / 1000);
+}
 
 export async function applicationReport(rt: Runtime, f: Filters) {
   const ld = leadDims(f, "l");
@@ -484,9 +542,9 @@ export async function applicationReport(rt: Runtime, f: Filters) {
     const s = xs.filter((x) => Number.isFinite(x) && x >= 0).sort((a, b) => a - b);
     return s.length ? s[Math.floor(s.length / 2)] : null;
   };
-  // Starts: the /apply page, or the form embedded under the film becoming half visible (app_view).
+  // "Saw the form" (metrics.ts): the embedded form in view (app_view) or /apply, plus everyone who left details.
   const [starts, backs, stepViews, stepDone, errors] = await Promise.all([
-    one<{ n: number }>(rt, `SELECT COUNT(DISTINCT e.visitor_id) AS n FROM events e WHERE ((e.name = 'page_view' AND e.path = '/apply') OR e.name = 'app_view') AND e.is_bot = 0 AND e.ts >= ?${vdE.sql}`, [f.since, ...vdE.binds]),
+    sawFormCount(rt, f).then((n) => ({ n })),
     all<{ step: string; n: number }>(rt, `SELECT json_extract(e.props, '$.step') AS step, COUNT(*) AS n FROM events e WHERE e.name = 'app_back' AND e.is_bot = 0 AND e.ts >= ?${vdE.sql} GROUP BY step`, [f.since, ...vdE.binds]),
     all<{ step: string; n: number }>(rt, `SELECT json_extract(e.props, '$.step') AS step, COUNT(*) AS n FROM events e WHERE e.name = 'app_step_view' AND e.is_bot = 0 AND e.ts >= ?${vdE.sql} GROUP BY step`, [f.since, ...vdE.binds]),
     all<{ step: string; ms: number | null; first: number | null; abandoned: number | null }>(rt,
@@ -536,19 +594,27 @@ export async function applicationReport(rt: Runtime, f: Filters) {
   for (const l of completed) if (l.score != null) hist[Math.min(9, Math.floor(l.score / 10))]++;
   const flags: Record<string, number> = {};
   for (const l of completed) for (const fl of (l.qual_flags || "").split(",").filter(Boolean)) flags[fl] = (flags[fl] || 0) + 1;
-  const durations = completed.map((l) => (l.app_completed_at || 0) - (l.app_started_at || l.created_at)).filter((d) => d > 0 && d < 6 * 3600_000).sort((a, b) => a - b);
+  const medSec = medianSeconds(completed.map((l) => (l.app_completed_at || 0) - (l.app_started_at || l.created_at)));
   const tier = (t: string) => completed.filter((l) => (l.tier_override || l.tier) === t).length;
+  const sawForm = Math.max(num(starts?.n), leads.length);
+  // Optional questions after submit: answered by how many of those who finished (not part of the drop-off).
+  const optional = steps.filter((s) => s.after_submit).map((s) => ({
+    id: s.id, title: s.title, step: s.step, finished: completed.length,
+    answered: parsed.filter((a) => { const v = a[s.id]; return v != null && v !== "" && !(Array.isArray(v) && !v.length); }).length,
+  })).map((o) => ({ ...o, answer_rate: pct(o.answered, o.finished) }));
   return {
     kpis: {
-      apply_starts: num(starts?.n), contacts: leads.length, completed: completed.length,
+      apply_starts: sawForm, saw_form: sawForm, contacts: leads.length, completed: completed.length,
+      contact_rate: pct(leads.length, sawForm),
       completion_rate: pct(completed.length, leads.length),
-      median_minutes: durations.length ? Math.round((durations[Math.floor(durations.length / 2)] / 60_000) * 10) / 10 : null,
+      median_seconds: medSec,
+      median_minutes: medSec == null ? null : Math.round((medSec / 60) * 10) / 10,
       avg_score: completed.length ? Math.round(completed.reduce((s, l) => s + (l.score || 0), 0) / completed.length) : null,
     },
-    steps, questions, text: textAnswered,
+    steps: steps.filter((s) => !s.after_submit), optional, questions, text: textAnswered,
     tiers: { A: tier("A"), B: tier("B"), C: tier("C") },
     score_histogram: hist.map((n, i) => ({ from: i * 10, to: i * 10 + 9, n })),
-    flags: Object.entries(flags).sort((a, b) => b[1] - a[1]).map(([flag, n]) => ({ flag, n })),
+    flags: Object.entries(flags).sort((a, b) => b[1] - a[1]).map(([flag, n]) => ({ flag, label: flagLabel(flag), n })),
     errors: Object.entries(errorCodes).sort((a, b) => b[1] - a[1]).map(([code, n]) => ({ code, n })),
   };
 }

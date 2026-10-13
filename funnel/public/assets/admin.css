@@ -871,3 +871,71 @@ audio { width: 100%; height: 36px; margin-top: 8px; }
   .board { grid-template-columns: repeat(5, minmax(78vw, 1fr)); scroll-snap-type: x mandatory; }
   .pipe-col { scroll-snap-align: start; }
 }
+
+/* ── Round 3 ──────────────────────────────────────────────────────────────── */
+
+/* Metric definitions: a real "?" button; the definition floats above everything (no clipping). */
+.mhelp { display: inline-flex; margin-left: 2px; }
+.mhelp-btn { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-3); font: 600 10px/1 var(--font); padding: 0; cursor: help; display: inline-grid; place-items: center; flex: none; }
+.mhelp-btn:hover, .mhelp-btn:focus-visible { color: var(--accent-text); border-color: var(--accent); outline: none; box-shadow: var(--focus); }
+.mhelp-tip { display: none; }
+.float-tip { position: fixed; z-index: 90; max-width: 280px; background: var(--text); color: var(--surface); font-size: 12px; line-height: 1.5; font-weight: 400; padding: 8px 10px; border-radius: var(--r); box-shadow: var(--shadow-pop); pointer-events: none; }
+.float-tip[hidden] { display: none; }
+.funnel-row .f-label { display: flex; align-items: center; gap: 4px; }
+
+/* Small samples: muted, with n. */
+.small-n { color: var(--text-3); white-space: nowrap; }
+.kpi-value .small-n { color: var(--text-2); }
+.n-tag { display: inline-block; margin-left: 4px; font-size: 10px; font-weight: 500; letter-spacing: 0; padding: 1px 4px; border-radius: 4px; background: var(--surface-3); color: var(--text-3); vertical-align: 2px; }
+.kpi-value .n-tag { font-size: 11px; vertical-align: 6px; }
+
+/* Filter bar and sidebar switches */
+.test-switch, .simple-switch { font-size: 12px; color: var(--text-2); }
+.side-simple { padding: 6px 10px 2px; }
+body.simple-mode [data-growth-nav], body.simple-mode [data-growth-tab] { display: none !important; }
+
+/* Launch readiness */
+.ready-card details > summary { list-style: none; cursor: pointer; }
+.ready-card details > summary::-webkit-details-marker { display: none; }
+.ready-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ready-meter { width: 160px; height: 8px; border-radius: 4px; background: var(--surface-3); overflow: hidden; flex: none; }
+.ready-meter span { display: block; height: 100%; width: 0; background: var(--warn); border-radius: 4px; }
+.ready-card.all-ok .ready-meter span { background: var(--good); }
+.ready-list { list-style: none; margin: 0; padding: 0; }
+.ready-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 16px; border-top: 1px solid var(--line); }
+.ready-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; background: var(--line-strong); }
+.ready-row.ok .ready-dot { background: var(--good); }
+.ready-row.bad .ready-dot { background: var(--bad); }
+.ready-row.opt .ready-dot { background: var(--c4); }
+.ready-row.ok .t-name { color: var(--text-2); font-weight: 500; }
+.ready-act { display: flex; align-items: center; gap: 8px; }
+
+/* Today: SLA colours */
+.today-row { position: relative; }
+.sla-bar { position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--good); }
+.today-row.sla-1 .sla-bar { background: var(--c4); }
+.today-row.sla-2 .sla-bar { background: var(--bad); }
+.today-row.sla-3 .sla-bar { background: var(--bad); width: 5px; }
+.today-row.sla-1 .tnum { color: var(--warn); font-weight: 600; }
+.today-row.sla-2 .tnum, .today-row.sla-3 .tnum { color: var(--bad); font-weight: 600; }
+.today-row.sla-3 { background: var(--bad-weak); }
+.signal { font-weight: 600; }
+
+/* Stacked chart */
+.chart .seg-col.k1 { fill: var(--c1); }
+.chart .seg-col.k2 { fill: var(--c2); }
+.chart .seg-col.k3 { fill: var(--c3); }
+.chart .seg-col.k4 { fill: var(--c4); }
+.chart .seg-col.k5 { fill: var(--c5); }
+.chart .seg-col.k6 { fill: var(--c6); }
+
+/* Showed form and plan */
+.plan-fields { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px 14px 14px; margin: 4px 0 0; min-width: 0; }
+.plan-fields legend { padding: 0 6px; }
+.req { color: var(--bad); font-weight: 500; font-size: 11px; margin-left: 4px; }
+.mb12 { margin-bottom: 12px; }
+@media (max-width: 640px) {
+  .ready-row { grid-template-columns: 12px minmax(0, 1fr); }
+  .ready-act { grid-column: 2; }
+  .ready-meter { width: 80px; }
+}

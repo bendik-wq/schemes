@@ -55,6 +55,17 @@ import { attributionReport, cohortsReport } from "../admin/attribution";
 import { exportCsv } from "../admin/exports";
 import { API_SCOPES, ApiKeyError, createKey, listKeys, revokeKey } from "../admin/api-keys";
 import { WebhookError, createSub, deleteSub, setSubActive, subsPayload } from "../integrations/webhooks";
+import { getCookie } from "hono/cookie";
+import { COOKIE } from "../lib/identity";
+import { notifyRep } from "../integrations/notify";
+import { metricsPayload } from "../admin/metrics";
+import { cacheDnsResult, goLive, readiness } from "../admin/readiness";
+import { internalHashes, markTestVisitor, purgeTestData, sessionIpHash, setTestFlag, sweepTestData, testSummary } from "../admin/testdata";
+import { CallError, latestReview, logHeldCall } from "../sales/calls";
+import { PlanError, getPlan, parsePlanBody, planUrl, savePlan } from "../sales/plan";
+import { nextRep, verifyReassignToken } from "../sales/escalation";
+import { getRep } from "../sales/reps";
+import { emailCatalog } from "../admin/email-catalog";
 
 export { csvCell };
 
@@ -310,7 +321,7 @@ adminApi.post("/receivables/:id/paid", async (c) => {
 
 // ── Today ────────────────────────────────────────────────────────────────────
 
-adminApi.get("/today", async (c) => c.json({ ...(await todayView(rtOf(c), scopeFor(c))), touch_kinds: TOUCH_KINDS, touch_outcomes: TOUCH_OUTCOMES.filter(Boolean), lost_reasons: LOST_REASONS }));
+adminApi.get("/today", async (c) => c.json({ ...(await todayView(rtOf(c), scopeFor(c))), touch_kinds: TOUCH_KINDS, touch_outcomes: TOUCH_OUTCOMES.filter(Boolean), lost_reasons: LOST_REASONS, objections: OBJECTIONS }));
 adminApi.post("/leads/:id/touches", async (c) => {
   const lead = await visibleLead(c, c.req.param("id"));
   if (!lead) return bad(c, "not found", 404);
@@ -329,8 +340,10 @@ adminApi.post("/leads/:id/touches", async (c) => {
 
 // ── Me, users and the activity log ───────────────────────────────────────────
 
-adminApi.get("/me", (c) => {
+adminApi.get("/me", async (c) => {
   const u = userOf(c);
+  // This browser is ours: its first-party visitor id (if it has visited the funnel) is test traffic.
+  await markTestVisitor(rtOf(c), getCookie(c, COOKIE.visitor), "admin").catch(() => undefined);
   return c.json({ user: { id: u.id, name: u.name, email: u.email, role: u.role, rep_id: u.rep_id, breakglass: u.breakglass } });
 });
 adminApi.get("/users", async (c) => c.json({ users: await listUsers(rtOf(c)), reps: (await listReps(rtOf(c))).map((r) => ({ id: r.id, name: r.name, role: r.role, active: !!r.active })) }));
@@ -427,6 +440,9 @@ adminApi.post("/leads/:id/merge", async (c) => {
   if (!/^l[0-9a-z]{19}$/.test(id) || !/^l[0-9a-z]{19}$/.test(into)) return bad(c, "bad id");
   try {
     const r = await mergeLeads(rtOf(c), id, into);
+    const loser = r.survivor.id === id ? into : id;
+    await rtOf(c).env.DB.prepare("INSERT OR REPLACE INTO lead_redirects (from_id, to_id, at) VALUES (?,?,?)").bind(loser, r.survivor.id, rtOf(c).now()).run();
+    await rtOf(c).env.DB.prepare("UPDATE lead_redirects SET to_id = ? WHERE to_id = ?").bind(r.survivor.id, loser).run();
     await audit(rtOf(c), u, ipOf(c), { action: "lead_merge", entity: "lead", entity_id: r.survivor.id, before: { merged: r.loser_ref }, after: { survivor: r.survivor.ref_code, tables: r.tables } });
     return c.json({ ok: true, survivor: publicLead(r.survivor), merged: r.loser_ref });
   } catch (e) {
@@ -542,7 +558,15 @@ const CONV_RE = /^[A-Za-z0-9_-]{6,80}$/;
 adminApi.get("/leads/:id", async (c) => {
   const rt = rtOf(c);
   const lead = await visibleLead(c, c.req.param("id"));
-  if (!lead) return bad(c, "not found", 404);
+  if (!lead) {
+    // Merged into another lead: follow it. Erased: say so instead of "not found".
+    const id = c.req.param("id");
+    const moved = await one<{ to_id: string }>(rt, "SELECT to_id FROM lead_redirects WHERE from_id = ?", [id]);
+    if (moved && (await visibleLead(c, moved.to_id))) return c.json({ moved_to: moved.to_id });
+    const erased = await one<{ ts: number }>(rt, "SELECT ts FROM audit_log WHERE entity = 'lead' AND entity_id = ? AND action IN ('lead_erase','test_purge') ORDER BY ts DESC LIMIT 1", [id]);
+    if (erased || moved) return c.json({ gone: true, erased_at: erased?.ts ?? null });
+    return bad(c, "not found", 404);
+  }
   const vid = lead.visitor_id || "";
   const [events, emails, calls, voice, payments, bookings, sessions, vsl, reps, facts] = await Promise.all([
     all<{ id: string; ts: number; name: string; path: string | null; source: string; props: string | null }>(rt,
@@ -566,7 +590,8 @@ adminApi.get("/leads/:id", async (c) => {
   ]);
   const revops = await one<{ ft_ad_id: string | null; p_win: number | null; noshow_risk: number | null; noshow_reasons: string | null; email_status: string | null; pipeline_stage: string | null; score_model: string | null }>(rt,
     "SELECT ft_ad_id, p_win, noshow_risk, noshow_reasons, email_status, pipeline_stage, score_model FROM lead_revops WHERE lead_id = ?", [lead.id]).catch(() => null);
-  const [touches, receivables] = await Promise.all([listTouches(rt, lead.id), listReceivables(rt, lead.id)]);
+  const [touches, receivables, plan, review, test] = await Promise.all([listTouches(rt, lead.id), listReceivables(rt, lead.id), getPlan(rt, lead.id), latestReview(rt, lead.id),
+    one<{ is_test: number | null; test_reason: string | null }>(rt, "SELECT is_test, test_reason FROM lead_revops WHERE lead_id = ?", [lead.id])]);
 
   const answers = parseAnswers(lead);
   const answerRows = APPLICATION.filter((q) => q.type !== "contact").map((q) => {
@@ -584,7 +609,7 @@ adminApi.get("/leads/:id", async (c) => {
   }
   for (const m of emails) {
     if (m.status === "pending" || m.status === "cancelled" || m.status === "skipped") continue;
-    timeline.push({ ts: m.sent_at || m.send_at, type: "email", title: `Email ${m.status}: ${m.template}`, detail: [m.sequence, m.opens ? `opened ${m.opens}×` : "", m.clicks ? `clicked ${m.clicks}×` : "", m.error ? (m.error || "").slice(0, 120) : ""].filter(Boolean).join(" · ") });
+    timeline.push({ ts: m.sent_at || m.send_at, type: "email", title: `Email ${m.status}: ${m.subject || m.template}`, detail: [m.template, m.opens ? `opened ${m.opens}×` : "", m.clicks ? `clicked ${m.clicks}×` : "", m.error ? (m.error || "").slice(0, 120) : ""].filter(Boolean).join(" · ") });
   }
   for (const k of calls) timeline.push({ ts: k.run_at, type: "call", title: `AI call (${k.kind.replace(/_/g, " ")}): ${k.status}`, detail: k.outcome || "" });
   for (const p of payments) timeline.push({ ts: p.paid_at, type: "payment", title: `Payment ${Math.round(p.amount).toLocaleString("en-US")}`, detail: [p.method, p.note].filter(Boolean).join(" · ") });
@@ -592,12 +617,16 @@ adminApi.get("/leads/:id", async (c) => {
   for (const t of touches) timeline.push({ ts: Number(t.at), type: "call", title: `Touch: ${String(t.kind)}${t.outcome ? ` · ${String(t.outcome).replace(/_/g, " ")}` : ""}`, detail: [reps.find((r) => r.id === t.rep_id)?.name, t.note ? String(t.note).slice(0, 160) : ""].filter(Boolean).join(" · ") });
   timeline.sort((a, b) => b.ts - a.ts);
 
-  const pendingEmails = emails.filter((m) => m.status === "pending").map((m) => ({ id: m.id, sequence: m.sequence, template: m.template, send_at: m.send_at }));
+  const cat = emailCatalog();
+  const pendingEmails = emails.filter((m) => m.status === "pending").map((m) => ({ id: m.id, sequence: m.sequence, sequence_name: cat.sequence_names[m.sequence] || m.sequence, template: m.template, subject: cat.subjects[m.template] || m.template, send_at: m.send_at }));
 
   return c.json({
     lead: { ...publicLead(lead), closer: reps.find((r) => r.id === lead.closer_id)?.name || null, setter: reps.find((r) => r.id === lead.setter_id)?.name || null },
     revops: revops ? { ft_ad_id: revops.ft_ad_id, p_win: revops.p_win, noshow_risk: revops.noshow_risk, noshow_reasons: parse<string[]>(revops.noshow_reasons, []), email_status: revops.email_status, pipeline_stage: revops.pipeline_stage, score_model: revops.score_model } : null,
     touches: touches.map((t) => ({ ...t, rep: reps.find((r) => r.id === t.rep_id)?.name || null })),
+    test: { is_test: test?.is_test === 1, decided: test?.is_test != null, reason: test?.test_reason || null },
+    plan: plan ? { url: planUrl(rt, plan.token), body: parsePlanBody(plan.body), created_at: plan.created_at, updated_at: plan.updated_at, viewed_at: plan.viewed_at, last_viewed_at: plan.last_viewed_at, views: plan.views } : null,
+    review: review || null,
     receivables,
     touch_kinds: TOUCH_KINDS, touch_outcomes: TOUCH_OUTCOMES.filter(Boolean),
     answers: answerRows,
@@ -698,7 +727,7 @@ adminApi.get("/emails", async (c) => {
       "SELECT sequence, step, template, status, COUNT(*) AS n, SUM(opens > 0) AS opened, SUM(clicks > 0) AS clicked FROM emails WHERE created_at >= ? GROUP BY sequence, step, template, status", [f.since]),
     all<{ id: string; lead_id: string; sequence: string; step: number; template: string; send_at: number; first_name: string | null; last_name: string | null; email: string | null }>(rt,
       `SELECT e.id, e.lead_id, e.sequence, e.step, e.template, e.send_at, l.first_name, l.last_name, l.email FROM emails e LEFT JOIN leads l ON l.id = e.lead_id
-       WHERE e.status = 'pending' ORDER BY e.send_at LIMIT 100`),
+       WHERE e.status = 'pending'${f.includeTest ? "" : " AND e.lead_id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)"} ORDER BY e.send_at LIMIT 200`),
     one<{ n: number; due: number }>(rt, "SELECT COUNT(*) AS n, SUM(send_at <= ?) AS due FROM emails WHERE status = 'pending'", [rt.now()]),
     one<Record<string, number>>(rt,
       `SELECT SUM(status = 'sent') AS sent, SUM(status = 'simulated') AS simulated, SUM(status = 'failed') AS failed, SUM(status = 'skipped') AS skipped,
@@ -724,21 +753,38 @@ adminApi.get("/emails", async (c) => {
   });
   const d = deliv || {};
   const delivered = num(d.sent) + num(d.simulated);
+  const cat = emailCatalog();
+  // The same person queued twice for the same email around the same time is one row with a count.
+  const queueRows = groupQueue(queue.map((q) => ({ id: q.id, lead_id: q.lead_id, name: [q.first_name, q.last_name].filter(Boolean).join(" ") || q.email || "", email: q.email || "", sequence: q.sequence, step: q.step, template: q.template, send_at: q.send_at })))
+    .slice(0, 100).map((q) => ({ ...q, sequence_name: cat.sequence_names[q.sequence] || q.sequence, subject: cat.subjects[q.template] || q.template }));
   return c.json({
     health: await deliverabilityPayload(rt, Math.max(f.since, rt.now() - 90 * 86_400_000)),
     mode: rt.settings.has("RESEND_API_KEY") && rt.settings.has("EMAIL_FROM") ? "live" : "simulated",
     sequences,
-    queue: queue.map((q) => ({ id: q.id, lead_id: q.lead_id, name: [q.first_name, q.last_name].filter(Boolean).join(" ") || q.email || "", sequence: q.sequence, step: q.step, template: q.template, send_at: q.send_at })),
+    queue: queueRows,
+    sequence_names: cat.sequence_names,
     queue_total: num(pendingTotal?.n), queue_due: num(pendingTotal?.due),
-    triggers: RULES.map((r, i) => ({ index: i, template: r.template, label: r.label, delay_min: r.delayMin, fired: num(fired.find((x) => x.step === i)?.n) })),
+    triggers: cat.triggers.map((t) => ({ ...t, fired: num(fired.find((x) => x.step === t.index)?.n) })),
     deliverability: {
       sent: num(d.sent), simulated: num(d.simulated), failed: num(d.failed), skipped: num(d.skipped), cancelled: num(d.cancelled),
       opens: num(d.opened), clicks: num(d.clicked), unsubscribes: num(unsubs?.n),
       open_rate: pct(num(d.opened), delivered), click_rate: pct(num(d.clicked), delivered), failure_rate: pct(num(d.failed), delivered + num(d.failed)),
     },
-    templates: Object.keys(TEMPLATES).sort().map((id) => ({ id, topics: TEMPLATE_TOPICS[id] || [] })),
+    templates: Object.keys(TEMPLATES).sort().map((id) => ({ id, subject: cat.subjects[id] || id, topics: TEMPLATE_TOPICS[id] || [] })),
   });
 });
+/** Pure: collapse queue rows for the same person (base email) and template due within 10 minutes of each other. */
+export function groupQueue<T extends { email: string; name: string; template: string; send_at: number }>(rows: T[]): Array<T & { count: number }> {
+  const out: Array<T & { count: number }> = [];
+  const key = (r: T) => `${(r.email || r.name).toLowerCase().replace(/\+[^@]*@/, "@")}|${r.template}`;
+  for (const r of rows) {
+    const prev = out.find((o) => key(o) === key(r) && Math.abs(o.send_at - r.send_at) <= 10 * 60_000);
+    if (prev) prev.count++;
+    else out.push({ ...r, count: 1 });
+  }
+  return out;
+}
+
 adminApi.get("/emails/preview", async (c) => {
   const t = c.req.query("template") || "";
   if (!TEMPLATES[t]) return bad(c, "unknown template");
@@ -931,7 +977,11 @@ adminApi.post("/integrations/test-email", async (c) => {
   const r = await sendTestEmail(rtOf(c), to);
   return r.ok ? c.json(r) : bad(c, r.error || "Send failed", 422);
 });
-adminApi.post("/integrations/email/dns-check", async (c) => c.json(await checkEmailDns(rtOf(c))));
+adminApi.post("/integrations/email/dns-check", async (c) => {
+  const r = await checkEmailDns(rtOf(c));
+  await cacheDnsResult(rtOf(c), r);
+  return c.json(r);
+});
 adminApi.post("/integrations/calendly/connect", async (c) => c.json(await connectCalendly(rtOf(c))));
 adminApi.post("/integrations/calendly/sync", async (c) => {
   const r = await syncCalendly(rtOf(c), true);
@@ -963,6 +1013,156 @@ adminApi.put("/map/custom", async (c) => {
     if (e instanceof MapError) return bad(c, e.message);
     throw e;
   }
+});
+
+
+// ── Round 3: metric dictionary, launch readiness, test data, held calls and plans, escalation ───────────
+
+const isManagerRole = (u: AdminUser) => u.role === "owner" || u.role === "manager";
+const forbid = (c: Ctx) => c.json({ error: "Your role does not allow this." }, 403);
+
+adminApi.get("/metrics", (c) => c.json(metricsPayload()));
+
+adminApi.get("/readiness", async (c) => {
+  if (!isManagerRole(userOf(c))) return forbid(c);
+  return c.json(await readiness(rtOf(c)));
+});
+adminApi.post("/readiness/dns", async (c) => {
+  if (!isManagerRole(userOf(c))) return forbid(c);
+  const rt = rtOf(c);
+  const r = await checkEmailDns(rt);
+  await cacheDnsResult(rt, r);
+  return c.json({ ok: true, ...r });
+});
+/** Manual confirmations (lawyer review, Cloudflare Access): owners only. */
+const CONFIRMABLE = new Set(["PRIVACY_REVIEWED", "CF_ACCESS_CONFIRMED"]);
+adminApi.post("/readiness/confirm", async (c) => {
+  const u = userOf(c);
+  if (u.role !== "owner") return c.json({ error: "Only the owner can confirm launch checks." }, 403);
+  const rt = rtOf(c);
+  const b = await body(c);
+  const key = typeof b.key === "string" ? b.key : "";
+  if (!CONFIRMABLE.has(key)) return bad(c, "Unknown check.");
+  if (rt.settings.source(key) === "env") return bad(c, "This value is set as an environment variable. Change it there.", 409);
+  await saveSetting(rt.env, key, b.value === true ? "true" : "");
+  await audit(rt, u, ipOf(c), { action: b.value === true ? "setting_set" : "setting_clear", entity: "setting", entity_id: key, after: { set: b.value === true } });
+  return c.json({ ok: true });
+});
+adminApi.post("/readiness/go-live", async (c) => {
+  const u = userOf(c);
+  if (u.role !== "owner") return c.json({ error: "Only the owner can go live." }, 403);
+  const r = await goLive(rtOf(c));
+  await audit(rtOf(c), u, ipOf(c), { action: "go_live", entity: "setting", entity_id: "go_live", after: { skipped: r.skipped } });
+  return c.json({ ok: true, ...r });
+});
+
+// Test data.
+adminApi.get("/test-data", async (c) => {
+  const rt = rtOf(c);
+  const mine = await sessionIpHash(rt, ipOf(c));
+  const internal = internalHashes(rt);
+  return c.json({ ...(await testSummary(rt)), my_ip_hash: mine, my_ip_internal: !!mine && internal.has(mine), internal_count: internal.size });
+});
+adminApi.post("/test-data/add-my-ip", async (c) => {
+  const u = userOf(c);
+  if (!isManagerRole(u)) return forbid(c);
+  const rt = rtOf(c);
+  if (rt.settings.source("INTERNAL_IP_HASHES") === "env") return bad(c, "INTERNAL_IP_HASHES is set as an environment variable. Change it there.", 409);
+  const mine = await sessionIpHash(rt, ipOf(c));
+  if (!mine) return bad(c, "Could not read your IP address.", 422);
+  const set = internalHashes(rt);
+  set.add(mine);
+  await saveSetting(rt.env, "INTERNAL_IP_HASHES", [...set].slice(-40).join(","));
+  await audit(rt, u, ipOf(c), { action: "setting_set", entity: "setting", entity_id: "INTERNAL_IP_HASHES", after: { count: set.size } });
+  const fresh: Runtime = { ...rt, settings: await loadSettings(rt.env) };
+  const marked = await sweepTestData(fresh, fresh.now() - 90 * 86_400_000);
+  return c.json({ ok: true, marked });
+});
+adminApi.post("/test-data/sweep", async (c) => {
+  if (!isManagerRole(userOf(c))) return forbid(c);
+  const rt = rtOf(c);
+  return c.json({ ok: true, marked: await sweepTestData(rt, rt.now() - 365 * 86_400_000), ...(await testSummary(rt)) });
+});
+adminApi.post("/test-data/purge", async (c) => {
+  const u = userOf(c);
+  if (u.role !== "owner") return c.json({ error: "Only the owner can purge test data." }, 403);
+  const b = await body(c);
+  if (b.confirm !== "PURGE") return bad(c, "Type PURGE to confirm.");
+  const r = await purgeTestData(rtOf(c));
+  await audit(rtOf(c), u, ipOf(c), { action: "test_purge", entity: "lead", entity_id: "test", after: r });
+  return c.json({ ok: true, ...r });
+});
+adminApi.post("/leads/:id/test", async (c) => {
+  const u = userOf(c);
+  if (u.role === "viewer") return forbid(c);
+  const lead = await visibleLead(c, c.req.param("id"));
+  if (!lead) return bad(c, "not found", 404);
+  const b = await body(c);
+  await setTestFlag(rtOf(c), lead.id, b.is_test === true, u.id);
+  await audit(rtOf(c), u, ipOf(c), { action: b.is_test === true ? "mark_test" : "mark_not_test", entity: "lead", entity_id: lead.id });
+  return c.json({ ok: true, is_test: b.is_test === true });
+});
+
+// Held calls (review + plan), plans and objections.
+adminApi.post("/calls/held", async (c) => {
+  const u = userOf(c);
+  if (u.role === "viewer") return forbid(c);
+  const b = await body(c);
+  const lead = await visibleLead(c, typeof b.lead_id === "string" ? b.lead_id : "");
+  if (!lead) return bad(c, "lead not found", 404);
+  try {
+    const r = await logHeldCall(rtOf(c), lead, b, u.id);
+    await auditLead(c, "outcome", lead, r.lead);
+    if (r.plan) await audit(rtOf(c), u, ipOf(c), { action: "plan_save", entity: "lead", entity_id: lead.id });
+    return c.json({ ok: true, lead: publicLead(r.lead), plan: r.plan ? { url: planUrl(rtOf(c), r.plan.token) } : null });
+  } catch (e) {
+    if (e instanceof CallError) return bad(c, e.message, 422);
+    throw e;
+  }
+});
+adminApi.put("/leads/:id/plan", async (c) => {
+  const u = userOf(c);
+  if (u.role === "viewer") return forbid(c);
+  const lead = await visibleLead(c, c.req.param("id"));
+  if (!lead) return bad(c, "not found", 404);
+  try {
+    const p = await savePlan(rtOf(c), lead, await body(c), u.id);
+    await audit(rtOf(c), u, ipOf(c), { action: "plan_save", entity: "lead", entity_id: lead.id });
+    return c.json({ ok: true, url: planUrl(rtOf(c), p.token) });
+  } catch (e) {
+    if (e instanceof PlanError) return bad(c, e.message, 422);
+    throw e;
+  }
+});
+
+// Escalation: the signed "Reassign to next rep" link opens HQ at #reassign=<token>.
+adminApi.get("/reassign", async (c) => {
+  const rt = rtOf(c);
+  const id = await verifyReassignToken(rt, c.req.query("token") || "");
+  if (!id) return bad(c, "This reassign link has expired. Reassign from the lead's Pipeline tab instead.", 404);
+  const lead = await visibleLead(c, id);
+  if (!lead) return bad(c, "Lead not found.", 404);
+  const [cur, next, touched] = await Promise.all([getRep(rt, lead.closer_id), nextRep(rt, lead), one<{ n: number }>(rt, "SELECT COUNT(*) AS n FROM touches WHERE lead_id = ?", [lead.id])]);
+  return c.json({
+    lead: { id: lead.id, name: [lead.first_name, lead.last_name].filter(Boolean).join(" ") || lead.ref_code, ref_code: lead.ref_code, tier: lead.tier_override || lead.tier, status: lead.status, applied_at: lead.app_completed_at },
+    current: cur ? { id: cur.id, name: cur.name } : null, next: next ? { id: next.id, name: next.name } : null, touched: num(touched?.n) > 0,
+  });
+});
+adminApi.post("/reassign", async (c) => {
+  const u = userOf(c);
+  if (!isManagerRole(u)) return c.json({ error: "Only owners and managers can reassign leads." }, 403);
+  const rt = rtOf(c);
+  const b = await body(c);
+  const id = await verifyReassignToken(rt, typeof b.token === "string" ? b.token : "");
+  if (!id) return bad(c, "This reassign link has expired.", 404);
+  const lead = await visibleLead(c, id);
+  if (!lead) return bad(c, "Lead not found.", 404);
+  const next = await nextRep(rt, lead);
+  if (!next) return bad(c, "There is no other active rep for this tier.", 422);
+  const fresh = await applyLeadUpdate(rt, lead, { closer_id: next.id }, { source: "admin" });
+  await auditLead(c, "reassign", lead, fresh);
+  rt.waitUntil(notifyRep(rt, next, "Lead reassigned to you", [`${[lead.first_name, lead.last_name].filter(Boolean).join(" ") || "Lead"} · ${lead.ref_code} · tier ${lead.tier_override || lead.tier || "?"}`, "Untouched for 2 hours of sales time. Call now."], `${rt.origin}/admin#lead=${encodeURIComponent(lead.id)}`).then(() => undefined));
+  return c.json({ ok: true, closer: { id: next.id, name: next.name } });
 });
 
 // ── Session ──────────────────────────────────────────────────────────────────

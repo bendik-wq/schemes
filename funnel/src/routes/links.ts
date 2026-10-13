@@ -28,6 +28,7 @@ import { parseAnswers } from "../funnel/leads";
 import { inferIndustry } from "../landers/catalog";
 import { referralLink, referralReward } from "../growth/referrals";
 import { CONSENT_SCOPES, parseScope, saveProof } from "../growth/proof";
+import { planForLead, planPage } from "../sales/plan";
 
 /** Signature for a client's proof link: /proof/submit?ref=<lead id>&sig=<this>. */
 export async function proofSig(rt: Runtime, leadId: string): Promise<string> {
@@ -379,3 +380,7 @@ links.post("/go/requalify", async (c) => {
   await reopen(rt, lead);
   return c.redirect("/apply", 303);
 });
+
+// Written call plan (src/sales/plan.ts): the signed page, and the email route that finds it for the lead.
+links.get("/plan/for/:lead", (c) => planForLead(c));
+links.get("/plan/:token", (c) => planPage(c));

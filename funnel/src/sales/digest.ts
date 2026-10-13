@@ -15,7 +15,7 @@ import { outcomeLink } from "./outcome-link";
 export async function pingUpcomingCalls(rt: Runtime): Promise<number> {
   const now = rt.now();
   const rows = (await rt.env.DB.prepare(
-    "SELECT * FROM leads WHERE status = 'booked' AND booking_cancelled_at IS NULL AND booking_source = 'funnel' AND call_at > ? AND call_at <= ?",
+    "SELECT * FROM leads WHERE status = 'booked' AND booking_cancelled_at IS NULL AND booking_source = 'funnel' AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND call_at > ? AND call_at <= ?",
   ).bind(now + 5 * 60_000, now + 20 * 60_000).all<Lead>()).results || [];
   let n = 0;
   for (const l of rows) {
@@ -28,7 +28,7 @@ export async function pingUpcomingCalls(rt: Runtime): Promise<number> {
   }
   // After the call: one nudge 45–90 minutes after the start time while it still says booked.
   const after = (await rt.env.DB.prepare(
-    "SELECT * FROM leads WHERE status = 'booked' AND booking_cancelled_at IS NULL AND booking_source = 'funnel' AND call_at > ? AND call_at <= ?",
+    "SELECT * FROM leads WHERE status = 'booked' AND booking_cancelled_at IS NULL AND booking_source = 'funnel' AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND call_at > ? AND call_at <= ?",
   ).bind(now - 90 * 60_000, now - 45 * 60_000).all<Lead>()).results || [];
   for (const l of after) {
     if (!(await kvGate(rt.env, `postping:${l.id}:${l.call_at}`, 365 * 86_400_000))) continue;
@@ -49,7 +49,7 @@ export async function digestNumbers(rt: Runtime, since: number, dayStart: number
   const l = await db.prepare(
     `SELECT COUNT(*) AS leads, SUM(app_completed_at >= ?) AS applied,
        SUM(app_completed_at >= ? AND COALESCE(tier_override, tier) = 'A') AS a, SUM(app_completed_at >= ? AND COALESCE(tier_override, tier) = 'B') AS b
-     FROM leads WHERE created_at >= ? AND booking_source = 'funnel'`,
+     FROM leads WHERE created_at >= ? AND booking_source = 'funnel' AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)`,
   ).bind(since, since, since, since).first<{ leads: number; applied: number; a: number; b: number }>();
   const e = await db.prepare(
     `SELECT SUM(name='booking_scheduled') AS booked, SUM(name='call_showed') AS showed, SUM(name='deal_won') AS won FROM events WHERE ts >= ? AND name IN ('booking_scheduled','call_showed','deal_won')`,
@@ -74,7 +74,7 @@ export async function periodNumbers(rt: Runtime, from: number, to: number): Prom
     db.prepare(
       `SELECT SUM(created_at >= ?1 AND created_at < ?2) AS leads, SUM(app_completed_at >= ?1 AND app_completed_at < ?2) AS applied,
          SUM(app_completed_at >= ?1 AND app_completed_at < ?2 AND COALESCE(tier_override, tier) IN ('A','B')) AS qualified
-       FROM leads WHERE booking_source = 'funnel' AND (created_at >= ?1 OR app_completed_at >= ?1)`,
+       FROM leads WHERE booking_source = 'funnel' AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND (created_at >= ?1 OR app_completed_at >= ?1)`,
     ).bind(from, to).first<{ leads: number; applied: number; qualified: number }>(),
     db.prepare(
       `SELECT SUM(name='booking_scheduled') AS booked, SUM(name='call_showed') AS showed, SUM(name='deal_won') AS won FROM events
@@ -174,7 +174,7 @@ export async function buildDigest(rt: Runtime): Promise<string[]> {
     const yLeads = await db.prepare(
       `SELECT COUNT(*) AS n FROM leads l JOIN lead_revops r ON r.lead_id = l.id WHERE r.ft_ad_id IN (SELECT ad_id FROM ad_spend WHERE date = ?) AND l.created_at >= ? AND l.created_at < ?`,
     ).bind(yKey, dayStart - DAY, dayStart).first<{ n: number }>();
-    const won7 = await db.prepare("SELECT COUNT(*) AS n FROM leads WHERE status = 'won' AND booking_source = 'funnel' AND closed_at >= ?").bind(now - 7 * DAY).first<{ n: number }>();
+    const won7 = await db.prepare("SELECT COUNT(*) AS n FROM leads WHERE status = 'won' AND booking_source = 'funnel' AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND closed_at >= ?").bind(now - 7 * DAY).first<{ n: number }>();
     spend = { yesterday: sp.y || 0, cpl: yLeads?.n ? (sp.y || 0) / yLeads.n : null, cac7: won7?.n ? (sp.w || 0) / won7.n : null };
   }
   const alerts = ((await db.prepare("SELECT rule, detail FROM alerts WHERE resolved_at IS NULL ORDER BY opened_at DESC LIMIT 5").all<{ rule: string; detail: string | null }>().catch(() => ({ results: [] }))).results) || [];

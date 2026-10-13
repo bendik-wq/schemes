@@ -115,7 +115,7 @@ async function leadFacts(rt: Runtime, from: number, to: number): Promise<LeadFac
        CASE WHEN l.status = 'won' AND l.closed_at >= ?1 AND l.closed_at < ?2 THEN l.revenue ELSE 0 END AS revenue,
        (SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.lead_id = l.id AND p.paid_at >= ?1 AND p.paid_at < ?2) AS cash
      FROM leads l LEFT JOIN lead_revops r ON r.lead_id = l.id
-     WHERE l.booking_source = 'funnel' AND (r.ft_ad_id IS NOT NULL OR COALESCE(l.ft_campaign, l.utm_campaign) IS NOT NULL)
+     WHERE l.booking_source = 'funnel' AND COALESCE(r.is_test, 0) != 1 AND (r.ft_ad_id IS NOT NULL OR COALESCE(l.ft_campaign, l.utm_campaign) IS NOT NULL)
        AND (l.created_at >= ?1 OR l.app_completed_at >= ?1 OR l.booked_at >= ?1 OR l.showed_at >= ?1 OR l.closed_at >= ?1
             OR l.id IN (SELECT lead_id FROM payments WHERE paid_at >= ?1))
      LIMIT 50000`, [from, to]);

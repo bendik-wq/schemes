@@ -96,15 +96,15 @@ export async function loadStageProbs(rt: Runtime): Promise<StageProbs> {
   const [verbal, show, cash] = await Promise.all([
     db.prepare(
       `SELECT COALESCE(l.tier_override, l.tier) AS tier, COUNT(*) AS n, SUM(l.status = 'won') AS won FROM leads l JOIN lead_revops r ON r.lead_id = l.id
-       WHERE r.pipeline_stage = 'verbal' AND l.status IN ('won','lost') AND l.updated_at >= ? GROUP BY 1`,
+       WHERE r.pipeline_stage = 'verbal' AND COALESCE(r.is_test, 0) != 1 AND l.status IN ('won','lost') AND l.updated_at >= ? GROUP BY 1`,
     ).bind(since).all<{ tier: string; n: number; won: number }>(),
     db.prepare(
       `SELECT COALESCE(tier_override, tier) AS tier, COUNT(*) AS n, SUM(status IN ('showed','won','lost') OR showed_at IS NOT NULL) AS showed FROM leads
-       WHERE booked_at IS NOT NULL AND booking_source = 'funnel' AND call_at >= ? AND call_at < ? AND status IN ('showed','won','lost','no_show') GROUP BY 1`,
+       WHERE booked_at IS NOT NULL AND booking_source = 'funnel' AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND call_at >= ? AND call_at < ? AND status IN ('showed','won','lost','no_show') GROUP BY 1`,
     ).bind(since, rt.now()).all<{ tier: string; n: number; showed: number }>(),
     db.prepare(
       `SELECT COUNT(*) AS n, SUM(l.revenue) AS revenue, SUM((SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.lead_id = l.id AND p.paid_at < l.closed_at + ${31 * DAY})) AS cash31
-       FROM leads l WHERE l.status = 'won' AND l.revenue > 0 AND l.closed_at >= ? AND l.closed_at < ?`,
+       FROM leads l WHERE l.status = 'won' AND l.revenue > 0 AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND l.closed_at >= ? AND l.closed_at < ?`,
     ).bind(since, rt.now() - 31 * DAY).first<{ n: number; revenue: number; cash31: number }>(),
   ]);
   const by = <T extends { tier: string }>(rows: T[]) => Object.fromEntries(rows.map((r) => [r.tier, r]));
@@ -145,7 +145,7 @@ const COLS = `l.id, l.ref_code, l.first_name, l.last_name, l.email, COALESCE(l.t
 
 async function boardRows(rt: Runtime, rep: string | null | undefined) {
   const now = rt.now();
-  const scope = rep ? " AND (l.closer_id = ? OR l.setter_id = ?)" : "";
+  const scope = " AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)" + (rep ? " AND (l.closer_id = ? OR l.setter_id = ?)" : "");
   return ((await rt.env.DB.prepare(
     `SELECT ${COLS} FROM leads l LEFT JOIN lead_revops r ON r.lead_id = l.id
      WHERE ((l.status = 'booked' AND l.booking_cancelled_at IS NULL AND l.call_at > ?) OR (l.status = 'showed' AND COALESCE(l.showed_at, l.call_at, l.updated_at) > ?)
@@ -231,7 +231,7 @@ export async function pipelineReport(rt: Runtime, rep?: string | null) {
   // Forecast
   const tz = salesTz(rt);
   const months = monthWindows(now, tz);
-  const scope = rep ? " AND (l.closer_id = ? OR l.setter_id = ?)" : "";
+  const scope = " AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)" + (rep ? " AND (l.closer_id = ? OR l.setter_id = ?)" : "");
   const sb = rep ? [rep, rep] : [];
   const db = rt.env.DB;
   const forecast: ForecastMonth[] = [];

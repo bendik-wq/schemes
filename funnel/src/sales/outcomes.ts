@@ -14,6 +14,8 @@ import { queueCall, cancelCalls } from "../integrations/elevenlabs";
 import { notifyTeam } from "../integrations/notify";
 import { isHistorical } from "../integrations/booking";
 import { allocatePayments, linkPayment, syncReceivables, unlinkPayment } from "./receivables";
+import { isTestLead } from "../admin/testdata";
+import { getPlan, scheduleRecap } from "./plan";
 
 export { isHistorical };
 
@@ -165,6 +167,8 @@ export async function applyLeadUpdate(
 
   if (clean.refunded_at && !lead.refunded_at) await cancelSequences(rt, lead.id, ["won"]);
   if (historical || next === prev) return fresh;
+  // Test leads: outcomes are recorded, but no emails and no calls (src/admin/testdata.ts).
+  const test = await isTestLead(rt, lead.id);
 
   if (next === "won" || next === "lost" || next === "disqualified") {
     await cancelSequences(rt, lead.id, ALL_MARKETING);
@@ -172,22 +176,26 @@ export async function applyLeadUpdate(
   }
   if (next === "no_show") {
     await cancelSequences(rt, lead.id, ["booked", "precall"]);
-    await enqueueSequence(rt, fresh, "no_show");
-    await queueCall(rt, fresh, "rebook");
+    if (!test) await enqueueSequence(rt, fresh, "no_show");
+    if (!test) await queueCall(rt, fresh, "rebook");
     await track(rt, { leadId: lead.id }, { name: "call_no_show", source: "admin", eventId: `noshow_${lead.id}_${lead.call_at || 0}` });
     rt.waitUntil(notifyTeam(rt, "no_show", fresh));
   } else if (next === "showed") {
     await cancelSequences(rt, lead.id, ["booked", "precall", "no_show"]);
-    await enqueueSequence(rt, fresh, "post_call");
+    if (!test) {
+      await enqueueSequence(rt, fresh, "post_call");
+      // The recap waits for the written plan (~2 h after the call) or goes as a neutral note after 24 h.
+      await scheduleRecap(rt, lead.id, lead.call_at, !!(await getPlan(rt, lead.id)));
+    }
     await track(rt, { leadId: lead.id }, { name: "call_showed", source: "admin", eventId: `showed_${lead.id}_${lead.call_at || 0}` });
     rt.waitUntil(notifyTeam(rt, "showed", fresh));
   } else if (next === "won") {
-    await enqueueSequence(rt, fresh, "won");
+    if (!test) await enqueueSequence(rt, fresh, "won");
     if (prev !== "showed") await track(rt, { leadId: lead.id }, { name: "call_showed", source: "admin", eventId: `showed_${lead.id}_${lead.call_at || 0}` });
     await track(rt, { leadId: lead.id }, { name: "deal_won", source: "admin", value: fresh.revenue || undefined, currency: "USD", eventId: `won_${lead.id}` });
     rt.waitUntil(notifyTeam(rt, "won", fresh, fresh.revenue ? `Deal value ${Math.round(fresh.revenue).toLocaleString("en-US")}` : undefined));
   } else if (next === "lost") {
-    await enqueueSequence(rt, fresh, "lost");
+    if (!test) await enqueueSequence(rt, fresh, "lost");
     await track(rt, { leadId: lead.id }, { name: "deal_lost", source: "admin", props: { reason: fresh.lost_reason }, eventId: `lost_${lead.id}` });
     rt.waitUntil(notifyTeam(rt, "lost", fresh, fresh.lost_reason || undefined));
   }

@@ -81,7 +81,7 @@ async function signalRows(rt: Runtime, where: string, binds: unknown[], asOfCall
       (SELECT COUNT(*) FROM outbound_calls o WHERE o.lead_id = l.id AND o.kind = 'confirm' AND o.outcome = 'answered' AND o.created_at < ${ref}) AS confirm_answered,
       (SELECT COUNT(*) FROM outbound_calls o WHERE o.lead_id = l.id AND o.kind = 'confirm' AND (o.outcome IN ('no_answer','voicemail') OR o.status = 'failed') AND o.created_at < ${ref}) AS confirm_missed,
       (SELECT v.buckets FROM vsl_views v WHERE v.video = 'main' AND (v.lead_id = l.id OR v.visitor_id = l.visitor_id) ORDER BY v.last_at DESC LIMIT 1) AS buckets
-    FROM leads l WHERE ${where}`;
+    FROM leads l WHERE (${where}) AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)`;
   return ((await rt.env.DB.prepare(sql).bind(...binds).all<Row>()).results) || [];
 }
 
@@ -158,7 +158,7 @@ export async function upcomingByRisk(rt: Runtime) {
     `SELECT l.id, l.ref_code, l.first_name, l.last_name, l.email, COALESCE(l.tier_override, l.tier) AS tier, l.call_at, l.closer_id,
        r.noshow_risk, r.noshow_reasons, r.noshow_scored_at, r.p_win
      FROM leads l LEFT JOIN lead_revops r ON r.lead_id = l.id
-     WHERE l.status = 'booked' AND l.booking_cancelled_at IS NULL AND l.booking_source = 'funnel' AND l.call_at > ? AND l.call_at <= ?
+     WHERE l.status = 'booked' AND l.booking_cancelled_at IS NULL AND l.booking_source = 'funnel' AND l.call_at > ? AND l.call_at <= ? AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)
      ORDER BY COALESCE(r.noshow_risk, 0) DESC, l.call_at LIMIT 100`,
   ).bind(now, now + 72 * H).all<Record<string, unknown>>()).results) || [];
   const m = await activeNoShowModel(rt);
