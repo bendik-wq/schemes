@@ -25,7 +25,7 @@ function page(title: string, inner: string, status = 200): Response {
 <meta name="robots" content="noindex, nofollow"><meta name="color-scheme" content="light dark"><title>${escHtml(title)} · Funnel HQ</title>
 <link rel="stylesheet" href="/assets/admin.css"></head><body data-page="login"><main class="login"><div class="login-card">
 <span class="brand-mark" aria-hidden="true">A</span>${inner}<p class="login-foot">Asymmetrical AI Solutions · Funnel HQ</p></div></main></body></html>`;
-  return new Response(html, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer" } });
+  return new Response(html, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }
 
 // The sign-out form: owners and managers sign everyone out (round-1 behaviour), other roles only themselves.

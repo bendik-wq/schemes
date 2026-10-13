@@ -2117,8 +2117,8 @@
 
   function dueTable(rows) {
     return table([
-      { label: "Lead", get: (r) => leadLink(r.id, r.name) + '<span class="sub mono">' + esc(r.ref_code) + (r.seq ? " · instalment " + esc(r.seq) + (r.of ? " of " + esc(r.of) : "") : "") + "</span>" },
-      { label: "Due", get: (r) => esc(day(r.due_at)) + " " + (r.overdue ? badge((r.days_overdue ? r.days_overdue + "d " : "") + "overdue", "b-red") : badge("Due", "b-amber")) },
+      { label: "Lead", get: (r) => leadLink(r.id, r.name) + '<span class="sub mono">' + esc(r.ref_code) + "</span>" },
+      { label: "Due", get: (r) => esc(day(r.due_at)) + " " + (r.overdue ? badge((r.days_overdue ? r.days_overdue + "d " : "") + "overdue", "b-red") : badge("Due", "b-amber")) + (r.seq ? '<span class="sub">Instalment ' + esc(r.seq) + (r.of ? " of " + esc(r.of) : "") + "</span>" : "") },
       { label: "Amount", num: true, get: (r) => (isNum(r.amount) ? esc(money(r.amount)) : '<span class="faint">—</span>') + '<span class="sub">' + esc(money(r.cash_collected)) + " of " + esc(money(r.revenue)) + "</span>" },
       { label: "Closer", get: (r) => esc(r.closer || "Unassigned") },
       { label: "", get: (r) => (r.receivable_id && canWrite() ? '<button class="btn btn-sm" type="button" data-action="rv-paid" data-id="' + esc(r.receivable_id) + '" data-amount="' + esc(r.amount) + '" data-name="' + esc(r.name) + '">Mark paid</button>' : '<a class="btn btn-sm btn-ghost" href="#lead=' + encodeURIComponent(r.id) + '">Open</a>') },
@@ -2399,8 +2399,8 @@
     const q = d.q;
     const tiles = kpis([
       kpi("Missing phone", esc(pc(q.missing_phone_pct)), esc(n(q.missing_phone)) + " of " + esc(n(q.applied)) + " applications, 90 days"),
-      kpi("Unmatched bookings", esc(n(q.unmatched_bookings)), esc(pc(q.unmatched_bookings_pct)) + " of Calendly bookings have no lead"),
-      kpi("No source", esc(pc(q.no_source_pct)), esc(n(q.no_source)) + " leads with no channel or UTM"),
+      kpi("Unmatched bookings", esc(n(q.unmatched_bookings)), q.bookings ? esc(pc(q.unmatched_bookings_pct)) + " of Calendly bookings have no lead" : "No Calendly bookings in 90 days"),
+      kpi("No source", esc(pc(q.no_source_pct)), esc(n(q.no_source)) + (q.no_source === 1 ? " lead" : " leads") + " with no channel or UTM"),
       kpi("Duplicate candidates", esc(n(q.duplicate_candidates)), "Same phone, browser, or name at a company domain"),
     ]);
     const who = (l) => leadLink(l.id, [l.first_name, l.last_name].filter(Boolean).join(" ") || l.email) + '<span class="sub">' + esc(l.email) + (l.phone ? " · " + esc(l.phone) : "") + "</span>";
@@ -2475,7 +2475,7 @@
     return card({
       title: (d.by === "week" ? "Weekly" : "Monthly") + " cohorts", sub: "Applicants by the " + d.by + " they first left details. Cash is cumulative from that date; blank cells are cohorts too young for that age. Plan collection = paid instalments ÷ instalments due so far.", flush: true,
       body: table([
-        { label: "Cohort", get: (r) => '<span class="t-name">' + esc(r.cohort) + "</span>" },
+        { label: "Cohort", get: (r) => { const p = String(r.cohort).split("-"); return '<span class="t-name nowrap">' + esc(p.length === 2 && !p[1].startsWith("W") ? MONTHS[Number(p[1]) - 1] + " " + p[0] : r.cohort) + "</span>"; } },
         { label: "Leads", num: true, get: (r) => esc(n(r.leads)) },
         { label: "Booked", num: true, get: (r) => esc(n(r.booked)) },
         { label: "Won", num: true, get: (r) => esc(n(r.won)) },
