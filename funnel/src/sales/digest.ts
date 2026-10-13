@@ -9,6 +9,7 @@ import { listReps } from "./reps";
 import { RULES } from "../admin/alerts";
 import { popcount } from "../tracking/vsl";
 import type { Lead } from "../funnel/leads";
+import { outcomeLink } from "./outcome-link";
 
 /** Ping the assigned rep ~15 minutes before each call, with how much of the film they watched. */
 export async function pingUpcomingCalls(rt: Runtime): Promise<number> {
@@ -21,7 +22,18 @@ export async function pingUpcomingCalls(rt: Runtime): Promise<number> {
     if (!(await kvGate(rt.env, `ping:${l.id}:${l.call_at}`, 365 * 86_400_000))) continue;
     const v = await rt.env.DB.prepare("SELECT buckets FROM vsl_views WHERE (lead_id = ? OR visitor_id = ?) AND video = 'main'").bind(l.id, l.visitor_id || "").first<{ buckets: string }>();
     const pct = v ? popcount(v.buckets) : 0;
-    rt.waitUntil(notifyTeam(rt, "call_soon", l, `Watched ${pct}% of the film`));
+    const link = await outcomeLink(rt, l);
+    rt.waitUntil(notifyTeam(rt, "call_soon", l, `Watched ${pct}% of the film`, link ? { label: "Log outcome", url: link } : undefined));
+    n++;
+  }
+  // After the call: one nudge 45–90 minutes after the start time while it still says booked.
+  const after = (await rt.env.DB.prepare(
+    "SELECT * FROM leads WHERE status = 'booked' AND booking_cancelled_at IS NULL AND booking_source = 'funnel' AND call_at > ? AND call_at <= ?",
+  ).bind(now - 90 * 60_000, now - 45 * 60_000).all<Lead>()).results || [];
+  for (const l of after) {
+    if (!(await kvGate(rt.env, `postping:${l.id}:${l.call_at}`, 365 * 86_400_000))) continue;
+    const link = await outcomeLink(rt, l);
+    rt.waitUntil(notifyTeam(rt, "needs_outcome", l, "One tap to log how it went", link ? { label: "Log outcome", url: link } : undefined));
     n++;
   }
   return n;

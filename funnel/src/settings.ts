@@ -2,6 +2,7 @@
 // The SETTINGS list drives the Integrations tab. Secret values never leave the Worker.
 
 import type { Env } from "./env";
+import { parseLearnedPoints, useLearnedPoints } from "./funnel/scoring";
 
 export type SettingGroup =
   | "site" | "email" | "calendly" | "booking" | "claude" | "voice" | "notify" | "meta" | "ga4" | "posthog"
@@ -94,6 +95,8 @@ export const SETTINGS: SettingDef[] = [
   { key: "TURNSTILE_SECRET_KEY", group: "turnstile", label: "Secret key", secret: true },
 
   { key: "LEAD_WEBHOOK_URL", group: "crm", label: "CRM webhook URL", secret: true },
+  { key: "LEAD_WEBHOOK_SECRET", group: "crm", label: "CRM webhook signing secret", secret: true, help: "When set, every CRM post carries X-Funnel-Signature: t=<unix>,v1=HMAC-SHA256(secret, t + \".\" + body). Verify it on your side." },
+  { key: "WEBHOOK_ALLOWED_HOSTS", group: "crm", label: "Webhook host allowlist", help: "Comma-separated hosts (e.g. hooks.zapier.com, api.example.com). When set, webhook subscriptions may only post to these hosts." },
 
   { key: "VSL_MAIN_SRC", group: "video", label: "Main VSL (MP4 or HLS)" },
   { key: "VSL_MAIN_POSTER", group: "video", label: "Main VSL poster" },
@@ -110,6 +113,9 @@ export const SETTINGS: SettingDef[] = [
 
   { key: "PRECALL_EMAILS_PER_DAY", group: "pacing", label: "Pre-call emails per day (0 = off)", kind: "number", def: "6" },
   { key: "SALES_TIMEZONE", group: "pacing", label: "Sales time zone", def: "Europe/Oslo" },
+  // Managed from Insights → Scoring calibration by the owner; refused on the Integrations screen.
+  { key: "LEARNED_ROUTING", group: "pacing", label: "Use learned points for routing (managed)", kind: "bool", def: "false", help: "Turned on and off by the owner on Insights → Scoring calibration." },
+  { key: "LEARNED_POINTS", group: "pacing", label: "Learned points table (managed)", help: "Built from the active scoring model when learned routing is turned on." },
 
   { key: "VAPI_API_KEY", group: "vapi", label: "Vapi private key", secret: true },
   { key: "VAPI_PUBLIC_KEY", group: "vapi", label: "Vapi public key" },
@@ -158,6 +164,9 @@ export async function loadSettings(env: Env): Promise<Settings> {
     return typeof v === "string" ? v.trim() : "";
   };
   const get = (k: string): string => envVal(k) || rows.get(k) || DEFS.get(k)?.def || "";
+  // Learned scoring is opt-in: scoring.ts uses the table only while LEARNED_ROUTING is on.
+  const learnedOn = ["1", "true", "yes", "on"].includes(get("LEARNED_ROUTING").toLowerCase());
+  useLearnedPoints(learnedOn ? parseLearnedPoints(get("LEARNED_POINTS")) : null);
   return {
     get,
     bool: (k) => ["1", "true", "yes", "on"].includes(get(k).toLowerCase()),

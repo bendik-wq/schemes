@@ -26,8 +26,18 @@
 
   // Login page: only the error state.
   if (document.body.dataset.page === "login") {
-    const e = new URLSearchParams(location.search).get("e");
+    const q = new URLSearchParams(location.search);
+    const e = q.get("e");
     const box = $("#login-error");
+    const ok = $("#login-ok"), mbox = $("#login-magic-error");
+    if (q.get("m") === "sent" && ok) ok.hidden = false;
+    if (e && e.startsWith("magic") && mbox) {
+      mbox.textContent = e === "magic_locked" ? "Too many sign-in links. Try again in 15 minutes."
+        : e === "magic_expired" ? "That sign-in link has expired or was already used. Ask for a new one."
+        : "Enter your work email address.";
+      mbox.hidden = false;
+      return;
+    }
     if (e && box) {
       box.textContent = e === "locked" ? "Too many attempts. Try again in 15 minutes."
         : e === "unset" ? "The admin password is not set on the server yet. Run: wrangler secret put ADMIN_PASSWORD"
@@ -371,19 +381,28 @@
     live: '<path d="M1.5 8h3l1.5-4 3 8 1.5-4h4"/>',
     alerts: '<path d="M8 2.5L14 13H2z"/><path d="M8 6.5v3M8 11.2v.1"/>',
     integrations: '<path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2.5a3.5 3.5 0 0 1-7 0zM8 11.5v2"/>',
+    today: '<rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3M5.5 9.5l1.5 1.5 3-3"/>',
+    pipeline: '<rect x="2" y="3" width="3" height="10" rx="1"/><rect x="6.5" y="3" width="3" height="7" rx="1"/><rect x="11" y="3" width="3" height="4" rx="1"/>',
+    attribution: '<circle cx="3.5" cy="8" r="1.5"/><circle cx="12.5" cy="3.5" r="1.5"/><circle cx="12.5" cy="12.5" r="1.5"/><path d="M5 8h3l3-3.7M8 8l3 3.7"/>',
+    quality: '<path d="M8 2l5 2v4c0 3-2.2 5-5 6-2.8-1-5-3-5-6V4z"/><path d="M5.8 8.2l1.6 1.6 3-3.2"/>',
+    activity: '<rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M5.5 5h5M5.5 8h5M5.5 11h3"/>',
+    api: '<path d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5M9 3l-2 10"/>',
   };
 
   // KEEP the ids in sync with TAB_IDS in src/admin/map.ts.
   const TABS = [
     { id: "overview", group: "", title: "Overview", sub: "How the whole funnel is doing for the selected period, from first visit to cash." },
+    { id: "today", group: "", title: "Today", sub: "Your calls with prep, new A and B leads nobody has called yet, follow-ups and instalments due.", noFilters: true },
     { id: "map", group: "", title: "Funnel map", sub: "Every page, decision and automation with live numbers. Drag to rearrange; changes are shared with your team." },
     { id: "traffic", group: "Acquisition", title: "Traffic & ads", sub: "Where visitors come from, and which sources turn into calls and cash." },
+    { id: "attribution", group: "Acquisition", title: "Attribution & cohorts", sub: "Credit for leads, calls, wins and cash under five models, the paths people take, and how cohorts pay over time." },
     { id: "landers", group: "Acquisition", title: "Landing pages & tests", sub: "The headline test on the main page and the 100 industry landers the bandit is optimising." },
     { id: "links", group: "Acquisition", title: "Links & videos", sub: "Tracked links for YouTube, podcasts, newsletters and bios, and what each one produced." },
     { id: "vsl", group: "Conversion", title: "VSL", sub: "How far people watch the film, where they drop off and how many reach the pitch." },
     { id: "behaviour", group: "Conversion", title: "On-page behaviour", sub: "What people click, re-read and skip, and where the application form gets hard." },
     { id: "application", group: "Conversion", title: "Application", sub: "Where applicants drop off, what they answer and how they score." },
     { id: "leads", group: "Sales", title: "Leads", sub: "Everyone who left their details. Search looks across all time; open a lead to log the outcome." },
+    { id: "pipeline", group: "Sales", title: "Pipeline & forecast", sub: "Every open deal by stage, weighted by how often that stage closes, and the cash forecast for this month and next.", noFilters: true },
     { id: "sales", group: "Sales", title: "Sales team", sub: "Calls, show rate, closes and cash by rep, plus the calls that still need an outcome." },
     { id: "insights", group: "Sales", title: "Insights", sub: "Everyone who booked, split by tier, and what your best leads have in common." },
     { id: "team", group: "Sales", title: "Team", sub: "Closers and setters, which tiers they take, and where their pings go.", noFilters: true },
@@ -392,8 +411,22 @@
     { id: "tracking", group: "System", title: "Tracking", sub: "Server-side forwarding to Meta, GA4, PostHog and your CRM, and how well Meta can match people." },
     { id: "live", group: "System", title: "Live", sub: "What is happening on the site right now. Updates every five seconds while this tab is open.", noFilters: true },
     { id: "alerts", group: "System", title: "Alerts", sub: "Automatic checks against the same hours of the last four weeks. Open alerts ping the team and show a red bar here.", noFilters: true },
+    { id: "quality", group: "System", title: "Data quality", sub: "Duplicate leads to merge, and gaps in the data: missing phones, bookings with no lead, leads with no source.", noFilters: true },
+    { id: "activity", group: "System", title: "Activity log", sub: "Who changed what: outcomes, payments, settings (names only), team and user changes, merges and erasures.", noFilters: true },
+    { id: "api", group: "System", title: "API & webhooks", sub: "Keys for the read-only API, signed webhooks to your other systems, and CSV exports.", noFilters: true },
     { id: "integrations", group: "System", title: "Integrations", sub: "Keys and settings for every service. Keys go here, never into a chat.", noFilters: true },
   ];
+  // Tabs by role (the server enforces the same rules; this only keeps the menu honest).
+  const REP_TABS = ["today", "pipeline", "leads", "sales"];
+  const VIEWER_HIDDEN = ["integrations", "activity", "api"];
+  function tabAllowed(id) {
+    const r = S.me ? S.me.role : "viewer";
+    if (r === "owner" || r === "manager") return true;
+    if (r === "closer" || r === "setter") return REP_TABS.includes(id);
+    return !VIEWER_HIDDEN.includes(id);
+  }
+  const canWrite = () => !!S.me && S.me.role !== "viewer";
+  const isManager = () => !!S.me && (S.me.role === "owner" || S.me.role === "manager");
   const TAB = Object.fromEntries(TABS.map((t) => [t.id, t]));
 
   // ── Overview ───────────────────────────────────────────────────────────────
@@ -821,6 +854,7 @@
     { label: "Value", num: true, get: (r) => (r.revenue ? esc(money(r.revenue)) : '<span class="faint">—</span>') },
   ];
   TAB.sales.render = (d) => {
+    if (d.linked === false) return unlinkedCallout();
     const k = d.kpis;
     const tiles = kpis([
       kpi("Calls due", esc(n(k.calls)), "Call times already passed"),
@@ -879,12 +913,10 @@
       body: table(dueCols("Follow up").concat([{ label: "Status", get: (r) => statusBadge(r.status) }]), d.follow_ups || [], { mid: true, empty: empty("No follow-ups due", "Set a follow-up date on a lead's Deal tab and it shows here on the day.", true) }),
     });
     const pay = card({
-      title: "Payments due", sub: "Next instalment within 7 days or overdue, on won deals not fully paid.", flush: true,
-      body: table(dueCols("Next payment").concat([
-        { label: "Collected", num: true, get: (r) => esc(money(r.cash_collected)) + '<span class="sub">of ' + esc(money(r.revenue)) + "</span>" },
-      ]), d.payments_due || [], { mid: true, empty: empty("No instalments due", "Set the next payment date on a won deal and it shows here a week before.", true) }),
+      title: "Payments due / overdue", sub: "Instalments due within 7 days or overdue. Closers get theirs in the morning ping.", flush: true,
+      body: dueTable(d.payments_due || []),
     });
-    return tiles + needs + risk + '<div class="grid g2">' + fu + pay + "</div>" + reps + log;
+    return (d.scoped ? "" : tiles) + needs + risk + '<div class="grid g2">' + fu + pay + "</div>" + activityCard(d.activity) + reps + log;
   };
   TAB.sales.actions = () => '<button class="btn" type="button" data-action="digest-send">Send digest now</button>';
 
@@ -895,7 +927,7 @@
   TAB.insights.render = (d) => {
     const seg = '<div class="row between wrap"><div class="seg" role="group" aria-label="View">' +
       [["booked", "Bookings by tier"], ["scoring", "Scoring calibration"]].map((v) => '<button type="button" data-action="insights-view" data-view="' + v[0] + '" aria-pressed="' + (S.insightsView === v[0]) + '">' + v[1] + "</button>").join("") + "</div></div>";
-    return seg + (d._view === "scoring" ? renderCalibration(d) : aiCard(d) + renderBookings(d));
+    return seg + (d._view === "scoring" ? learnedCard(d.learned) + renderCalibration(d) : aiCard(d) + renderBookings(d));
   };
 
   function aiCard(d) {
@@ -1604,7 +1636,7 @@
         '<label class="field span2"><span class="field-label">Note</span><input class="input" name="note" maxlength="300"></label>' +
         '<div class="field"><span class="field-label">&nbsp;</span><button class="btn" type="submit">Add payment</button></div></form>',
     });
-    return pipeline + deal + pays;
+    return pipeline + deal + receivablesCard(d) + pays;
   }
 
   function drawerJourney(d) {
@@ -1668,7 +1700,7 @@
       { label: "Status", get: (r) => esc(human(r.status)) + (r.outcome ? '<span class="sub">' + esc(label(r.outcome)) + "</span>" : "") },
       { label: "Attempts", num: true, get: (r) => esc(r.attempts) },
     ], d.outbound_calls) }) : "";
-    return bookings + calls + queued;
+    return touchesCard(d) + bookings + calls + queued;
   }
 
   function formObj(form) {
@@ -1695,6 +1727,7 @@
   function renderNav() {
     let html = "", group = null;
     for (const t of TABS) {
+      if (!tabAllowed(t.id)) continue;
       if (t.group !== group) { group = t.group; if (group) html += '<div class="nav-label">' + esc(group) + "</div>"; }
       html += '<a class="nav-item' + (t.id === S.tab ? " active" : "") + '" href="#' + esc(t.id) + '"' + (t.id === S.tab ? ' aria-current="page"' : "") + '><svg viewBox="0 0 16 16" aria-hidden="true">' + (ICONS[t.id] || "") + "</svg><span>" + esc(t.title) + "</span></a>";
     }
@@ -1759,13 +1792,14 @@
   function parseHash() {
     const h = decodeURIComponent(location.hash.replace(/^#/, ""));
     if (h.startsWith("lead=")) return { tab: null, lead: h.slice(5) };
-    return { tab: TAB[h] ? h : "overview", lead: null };
+    const home = S.me && (S.me.role === "closer" || S.me.role === "setter") ? "today" : "overview";
+    return { tab: TAB[h] && tabAllowed(h) ? h : home, lead: null };
   }
   let booted = false;
   function route() {
     const r = parseHash();
     if (r.lead) {
-      if (!booted) { S.tab = "leads"; renderShell(); loadTab(); }
+      if (!booted) { S.tab = tabAllowed("leads") ? "leads" : "today"; renderShell(); loadTab(); }
       if (!S.drawer || S.drawer.id !== r.lead) openLead(r.lead);
     } else {
       if (S.drawer) closeDrawer();
@@ -1791,7 +1825,7 @@
       applyTheme(next);
     },
     logout: async () => {
-      if (!confirm("Log out on every device? Everyone signed in to Funnel HQ will need the password again.")) return;
+      if (isManager() && !confirm("Log out on every device? Everyone signed in to Funnel HQ will need to sign in again.")) return;
       try { await api("/logout", { method: "POST" }); } catch (e) { /* fall through */ }
       location.href = "/admin/login";
     },
@@ -2057,6 +2091,545 @@
     },
   };
 
+  // ══ Sales ops (round 2): roles, Today, pipeline & forecast, receivables, touches, users, activity,
+  //    data quality, learned routing, attribution & cohorts, API & webhooks ══════════════════════════
+
+  function renderMe() {
+    const box = $("#side-user");
+    const lbl = $("#logout-label");
+    if (!S.me) return;
+    if (box) {
+      box.hidden = false;
+      box.innerHTML = '<span class="t-name ellipsis">' + esc(S.me.name) + '</span><span class="badge plain b-grey">' + esc(label(S.me.role)) + "</span>";
+    }
+    if (lbl) lbl.textContent = isManager() ? "Log out everywhere" : "Sign out";
+  }
+  function waited(ts) {
+    const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (s < 3600) return Math.floor(s / 60) + "m " + String(s % 60).padStart(2, "0") + "s";
+    if (s < 86400) return Math.floor(s / 3600) + "h " + Math.floor((s % 3600) / 60) + "m";
+    return Math.floor(s / 86400) + "d " + Math.floor((s % 86400) / 3600) + "h";
+  }
+  const unlinkedCallout = () => '<div class="callout warn"><span class="callout-dot"></span><div><strong>Your account is not linked to a rep yet.</strong> Ask the owner to link it under Team → Users; then your calls and leads show here.</div></div>';
+  const riskBadgeOf = (v) => (isNum(v) ? badge(Math.round(v * 100) + "% no-show", v > 0.4 ? "b-red" : v > 0.25 ? "b-amber" : "b-green") : "");
+  const telBtn = (phone, primary) => (phone ? '<a class="btn btn-sm' + (primary ? " btn-primary" : "") + '" href="tel:' + esc(phone) + '">Call</a>' : '<span class="btn btn-sm" aria-disabled="true">No phone</span>');
+  const TEMP_CLS = { hot: "b-red", warm: "b-amber", cold: "b-blue" };
+
+  function dueTable(rows) {
+    return table([
+      { label: "Lead", get: (r) => leadLink(r.id, r.name) + '<span class="sub mono">' + esc(r.ref_code) + "</span>" },
+      { label: "Due", get: (r) => esc(day(r.due_at)) + " " + (r.overdue ? badge((r.days_overdue ? r.days_overdue + "d " : "") + "overdue", "b-red") : badge("Due", "b-amber")) + (r.seq ? '<span class="sub">Instalment ' + esc(r.seq) + (r.of ? " of " + esc(r.of) : "") + "</span>" : "") },
+      { label: "Amount", num: true, get: (r) => (isNum(r.amount) ? esc(money(r.amount)) : '<span class="faint">—</span>') + '<span class="sub">' + esc(money(r.cash_collected)) + " of " + esc(money(r.revenue)) + "</span>" },
+      { label: "Closer", get: (r) => esc(r.closer || "Unassigned") },
+      { label: "", get: (r) => (r.receivable_id && canWrite() ? '<button class="btn btn-sm" type="button" data-action="rv-paid" data-id="' + esc(r.receivable_id) + '" data-amount="' + esc(r.amount) + '" data-name="' + esc(r.name) + '">Mark paid</button>' : '<a class="btn btn-sm btn-ghost" href="#lead=' + encodeURIComponent(r.id) + '">Open</a>') },
+    ], rows, { mid: true, empty: empty("No instalments due", "Win a deal on a payment plan with an instalment count and its schedule shows here a week before each date.", true) });
+  }
+
+  function activityCard(a) {
+    if (!a) return "";
+    const o = a.overall || {};
+    return card({
+      title: "Speed to lead & setter activity",
+      sub: "Application to first human touch (dial, SMS, email or DM) in the period: median " + (isNum(o.median_min) ? n1(o.median_min) + " min" : "—") + ", " + (isNum(o.within5_pct) ? pc(o.within5_pct) : "—") + " within 5 minutes, over " + n(o.n || 0) + " leads. Log touches from Today or a lead's Calls tab.",
+      flush: true,
+      body: table([
+        { label: "Rep", get: (r) => '<span class="t-name">' + esc(r.name) + "</span>" },
+        { label: "Median to first touch", num: true, get: (r) => (isNum(r.speed.median_min) ? esc(n1(r.speed.median_min)) + " min" : '<span class="faint">—</span>') + '<span class="sub">' + esc(n(r.speed.n)) + " leads</span>" },
+        { label: "Within 5 min", num: true, get: (r) => (isNum(r.speed.within5_pct) ? badge(pc(r.speed.within5_pct), r.speed.within5_pct >= 50 ? "b-green" : r.speed.within5_pct >= 20 ? "b-amber" : "b-red") : '<span class="faint">—</span>') },
+        { label: "Dials", num: true, get: (r) => esc(n(r.dials)) },
+        { label: "Connects", num: true, get: (r) => esc(n(r.connects)) + (r.dials ? '<span class="sub">' + esc(pc((r.connects / r.dials) * 100)) + "</span>" : "") },
+        { label: "Sets", num: true, get: (r) => esc(n(r.sets)) },
+        { label: "Set → show", num: true, get: (r) => esc(pc(r.set_show_pct)) },
+      ], a.reps || [], { mid: true, empty: empty("No touches logged yet", "When setters and closers log dials and messages, speed to lead and activity show here.", true) }),
+    });
+  }
+
+  // ── Today ──────────────────────────────────────────────────────────────────
+  TAB.today.load = async () => {
+    const d = await api("/today", { query: S.todayRep ? "rep=" + encodeURIComponent(S.todayRep) : "" });
+    if (isManager() && !S.repList) { try { S.repList = (await api("/team")).reps.filter((r) => r.active); } catch (e) { S.repList = []; } }
+    return d;
+  };
+  TAB.today.render = (d) => {
+    S.today = d;
+    if (d.linked === false) return unlinkedCallout();
+    const picker = isManager() && S.repList && S.repList.length ? '<div class="row wrap mb12">' + sel("rep", [{ value: "", label: "Everyone" }].concat(S.repList.map((r) => ({ value: r.id, label: r.name }))), S.todayRep || "", { change: "today-rep", label: "Rep" }) + '<span class="faint small">Showing ' + esc(S.todayRep ? "one rep" : "the whole team") + "</span></div>" : "";
+    const st = d.stats;
+    const tiles = kpis([
+      kpi("Calls today", esc(n(st.calls)), d.calls.filter((c) => c.needs_outcome).length ? esc(n(d.calls.filter((c) => c.needs_outcome).length)) + " need an outcome" : "In your time zone"),
+      kpi("New A/B waiting", esc(n(st.fresh)), "Applied, nobody has called yet"),
+      kpi("Follow-ups due", esc(n(st.follow_ups)), "Today or overdue"),
+      kpi("Payments due", esc(n(st.payments_due)), "Instalments this week"),
+    ], "today-kpis");
+    const calls = d.calls.length ? '<div class="prep-list">' + d.calls.map(prepCard).join("") + "</div>" : empty("No calls today", "Booked calls for today show here with a prep card.", true);
+    const fresh = card({
+      title: "New A/B leads not yet touched", sub: "Speed matters: the clock runs from the moment they applied.", flush: true,
+      body: d.fresh.length ? '<ul class="today-list">' + d.fresh.map((r) =>
+        '<li class="today-row' + (r.waiting_ms > 300000 ? " late" : "") + '"><div class="today-main">' + leadLink(r.id, r.name) + " " + tierBadge(r.tier) +
+        '<span class="sub">Waiting <span class="tnum" data-since="' + esc(r.applied_at) + '">' + esc(waited(r.applied_at)) + "</span>" + (r.closer ? " · " + esc(r.closer) : "") + "</span></div>" +
+        '<div class="today-actions">' + telBtn(r.phone, true) + (canWrite() ? '<button class="btn btn-sm" type="button" data-action="today-touch" data-id="' + esc(r.id) + '" data-name="' + esc(r.name) + '">Log touch</button>' : "") + "</div></li>").join("") + "</ul>"
+        : empty("Inbox zero", "Every new A and B lead from the last 7 days has been touched.", true),
+    });
+    const fu = card({
+      title: "Follow-ups due", flush: true,
+      body: d.follow_ups.length ? '<ul class="today-list">' + d.follow_ups.map((r) =>
+        '<li class="today-row"><div class="today-main">' + leadLink(r.id, r.name) + " " + tierBadge(r.tier) + '<span class="sub">' + esc(day(r.due_at)) + " " + (r.overdue ? badge("Overdue", "b-red") : badge("Today", "b-amber")) + " " + statusBadge(r.status) + "</span></div>" +
+        '<div class="today-actions">' + (canWrite() ? '<button class="btn btn-sm" type="button" data-action="today-touch" data-id="' + esc(r.id) + '" data-name="' + esc(r.name) + '">Log touch</button>' : "") + '<a class="btn btn-sm btn-ghost" href="#lead=' + encodeURIComponent(r.id) + '">Open</a></div></li>').join("") + "</ul>"
+        : empty("No follow-ups due", "Set a follow-up date on a lead and it shows here on the day.", true),
+    });
+    const pay = card({ title: "Payments due", flush: true, body: dueTable(d.payments_due) });
+    return picker + tiles + '<h2 class="section-title">' + (d.scoped ? "My calls today" : "Calls today") + "</h2>" + calls + '<div class="grid g2 mt16">' + fresh + fu + "</div>" + pay;
+  };
+  function prepCard(c) {
+    const answers = c.key_answers || [];
+    const top = answers.slice(0, 4), rest = answers.slice(4);
+    const dl = (list) => '<dl class="prep-answers">' + list.map((a) => "<dt>" + esc(label(a.q)) + "</dt><dd>" + esc(a.a) + "</dd>").join("") + "</dl>";
+    return '<article class="prep' + (c.needs_outcome ? " due" : "") + '">' +
+      '<div class="prep-head"><div class="prep-time tnum">' + esc(hm(c.call_at)) + '</div><div class="prep-who">' + leadLink(c.id, c.name) + " " + tierBadge(c.tier) + " " + statusBadge(c.status) +
+      '<div class="sub">' + esc([c.ref_code, c.closer, isNum(c.score) ? "score " + c.score : ""].filter(Boolean).join(" · ")) + "</div></div>" + (c.needs_outcome ? badge("Needs outcome", "b-red") : riskBadgeOf(c.noshow_risk)) + "</div>" +
+      '<div class="prep-facts"><span>Film ' + (isNum(c.watched_pct) ? "<strong>" + esc(c.watched_pct) + "%</strong>" : "not played") + "</span>" + (isNum(c.p_win) ? "<span>Win prob. <strong>" + esc(pp(c.p_win)) + "</strong></span>" : "") + "<span>" + esc(n(c.touches)) + " touches</span></div>" +
+      (c.noshow_reasons && c.noshow_reasons.length && !c.needs_outcome ? '<p class="small faint">No-show signals: ' + esc(c.noshow_reasons.join(" · ")) + "</p>" : "") +
+      (top.length ? dl(top) : "") + (rest.length ? '<details class="prep-more"><summary>More answers</summary>' + dl(rest) + "</details>" : "") +
+      (c.objections && c.objections.length ? '<div class="prep-obj"><span class="field-label">Likely objections</span><div class="chips">' + c.objections.map((o) => '<span class="chip" title="' + esc(o.why) + '">' + esc(o.objection) + '<span class="chip-why">' + esc(o.why) + "</span></span>").join("") + "</div></div>" : "") +
+      '<div class="prep-actions">' + telBtn(c.phone, true) + (c.join_url ? '<a class="btn btn-sm" href="' + esc(c.join_url) + '" target="_blank" rel="noopener noreferrer">Join</a>' : "") +
+      (canWrite() ? '<button class="btn btn-sm" type="button" data-action="today-touch" data-id="' + esc(c.id) + '" data-name="' + esc(c.name) + '">Log touch</button><button class="btn btn-sm" type="button" data-action="today-outcome" data-id="' + esc(c.id) + '" data-name="' + esc(c.name) + '" data-status="' + esc(c.status) + '">Log outcome</button><button class="btn btn-sm" type="button" data-action="today-pay" data-id="' + esc(c.id) + '" data-name="' + esc(c.name) + '">Log payment</button>' : "") +
+      "</div></article>";
+  }
+  function touchForm(id, kinds, outcomes) {
+    kinds = kinds || ["dial", "connect", "voicemail", "sms", "email", "dm"];
+    outcomes = outcomes || ["booked", "follow_up", "not_interested", "wrong_number", "no_answer", "left_message"];
+    const K = { dial: "Dial (no answer)", connect: "Connected", voicemail: "Voicemail", sms: "SMS", email: "Email", dm: "DM" };
+    return '<form data-submit="touch-save" data-id="' + esc(id) + '" class="form-grid"><div class="field span-all"><span class="field-label">What did you do?</span><div class="seg seg-wrap" role="radiogroup" aria-label="Touch">' +
+      kinds.map((k, i) => '<label class="seg-radio"><input type="radio" name="kind" value="' + esc(k) + '"' + (i === 0 ? " checked" : "") + "><span>" + esc(K[k] || label(k)) + "</span></label>").join("") + "</div></div>" +
+      field("Outcome", sel("outcome", [{ value: "", label: "—" }].concat(outcomes.map((o) => ({ value: o, label: label(o) }))), "")) +
+      field("Note", '<input class="input" name="note" maxlength="500" placeholder="Optional">') +
+      '<div class="form-actions span-all"><button class="btn" type="button" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">Log touch</button></div></form>';
+  }
+  function outcomeForm(id, status) {
+    const reasons = (S.today && S.today.lost_reasons) || ["Price", "Timing", "Chose agency", "Built in-house", "No response", "Not a fit", "Trust", "Other"];
+    return '<div class="stack gap16">' + (status === "booked" ? '<div class="row wrap"><button class="btn btn-primary" type="button" data-action="today-quick" data-id="' + esc(id) + '" data-status="showed">Showed – follow up</button><button class="btn" type="button" data-action="today-quick" data-id="' + esc(id) + '" data-status="no_show">No-show</button></div>' : "") +
+      '<form data-submit="today-won" data-id="' + esc(id) + '" class="form-grid">' + field("Deal value (USD)", '<input class="input" name="revenue" type="number" min="1" step="1" required inputmode="numeric">') +
+      field("Payment plan", sel("plan", [{ value: "full", label: "Paid in full" }, { value: "2", label: "2 instalments" }, { value: "3", label: "3 instalments" }, { value: "6", label: "6 instalments" }, { value: "12", label: "12 instalments" }], "full")) +
+      '<div class="form-actions span-all"><button class="btn btn-primary" type="submit">Won</button></div></form>' +
+      '<form data-submit="today-lost" data-id="' + esc(id) + '" class="form-grid">' + field("Lost reason", sel("lost_reason", [{ value: "", label: "Pick a reason" }].concat(reasons.map((r) => ({ value: r, label: r }))), "")) +
+      '<div class="form-actions span-all"><button class="btn" type="submit">Lost</button></div></form></div>';
+  }
+  function paymentForm(id, amount) {
+    return '<form data-submit="today-payment" data-id="' + esc(id) + '" class="form-grid">' + field("Amount (USD)", '<input class="input" name="amount" type="number" step="1" required inputmode="numeric" value="' + esc(amount || "") + '">') +
+      field("Paid on", '<input class="input" name="paid_at" type="date" value="' + esc(dateInput(Date.now())) + '">') + field("Method", '<input class="input" name="method" maxlength="40" placeholder="Stripe, bank transfer">') +
+      '<div class="form-actions span-all"><button class="btn" type="button" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">Record payment</button></div></form>';
+  }
+
+  // ── Pipeline & forecast ────────────────────────────────────────────────────
+  const STAGE_LABEL = { booked: "Booked", held: "Held – follow-up", verbal: "Verbal – contract out", won_plan: "Won – payment plan", won_paid: "Won – paid in full" };
+  TAB.pipeline.load = () => Promise.all([api("/pipeline"), api("/receivables", { query: "days=30" })]).then((r) => Object.assign(r[0], { receivables: r[1].rows || [] }));
+  TAB.pipeline.render = (d) => {
+    if (d.linked === false) return unlinkedCallout();
+    S.pipeline = d;
+    const f = d.forecast || [];
+    const cur = f[0] || {}, nxt = f[1] || {};
+    const open = d.stages.filter((s) => ["booked", "held", "verbal"].includes(s.id)).reduce((t, s) => t + s.count, 0);
+    const pctOf = (a, b) => (b ? (a / b) * 100 : null);
+    const tiles = kpis([
+      kpi("Weighted pipeline", esc(moneyShort(d.weighted)), esc(n(open)) + " open deals × P(win | stage, tier)"),
+      kpi("This month, expected", esc(moneyShort(cur.expected)), cur.target ? esc(pc(pctOf(cur.expected, cur.target))) + " of " + esc(moneyShort(cur.target)) + " target" : "No rep targets set"),
+      kpi("Collected so far", esc(moneyShort(cur.collected)), esc(moneyShort(cur.scheduled)) + " more scheduled"),
+      kpi("Next month, expected", esc(moneyShort(nxt.expected)), esc(n(nxt.calls)) + " calls booked"),
+    ]);
+    const monthName = (k) => { const p = String(k).split("-"); return p.length === 2 ? MONTHS[Number(p[1]) - 1] + " " + p[0] : k; };
+    const fc = card({
+      title: "Cash forecast", sub: "Commit = collected + instalments due + verbal deals. Expected weights held/verbal deals and booked calls by P(show) × P(close) × average deal. Best case assumes everyone who shows buys. New deals count at the share of a deal usually collected in the first month (" + esc(pc((d.probs.cash_share || 0) * 100)) + ").", flush: true,
+      body: table([
+        { label: "Month", get: (r) => '<span class="t-name">' + esc(monthName(r.key)) + "</span>" },
+        { label: "Collected", num: true, get: (r) => esc(money(r.collected)) },
+        { label: "Instalments due", num: true, get: (r) => esc(money(r.scheduled)) },
+        { label: "Commit", num: true, get: (r) => esc(money(r.commit)) },
+        { label: "Expected", num: true, get: (r) => "<strong>" + esc(money(r.expected)) + "</strong>" },
+        { label: "Best case", num: true, get: (r) => esc(money(r.best)) },
+        { label: "Target", num: true, get: (r) => (r.target ? esc(money(r.target)) : '<span class="faint">—</span>') },
+        { label: "vs target", get: (r) => (r.target ? '<div class="cell-bar"><div class="bar-track"><div class="bar-fill ' + (r.expected >= r.target ? "c3" : "c2") + '"' + w(pctOf(r.expected, r.target)) + '></div></div><span class="faint small tnum">' + esc(pc(pctOf(r.expected, r.target))) + "</span></div>" : '<span class="faint small">Set monthly targets on Team</span>') },
+      ], f),
+    });
+    const board = '<div class="board" role="list">' + d.stages.map((s) =>
+      '<section class="pipe-col" data-stage="' + esc(s.id) + '" role="listitem" aria-label="' + esc(s.label) + '"><header class="pipe-col-head"><div><div class="pipe-col-title">' + esc(s.label) + '</div><div class="sub">' + esc(n(s.count)) + " · " + esc(moneyShort(s.value)) + (["booked", "held", "verbal"].includes(s.id) ? " · weighted " + esc(moneyShort(s.weighted)) : "") + "</div></div></header>" +
+      '<div class="pipe-cards">' + (s.cards.length ? s.cards.map(pipeCard).join("") : '<p class="faint small pipe-empty">Nothing here</p>') + "</div></section>").join("") + "</div>";
+    const P = d.probs;
+    const probs = card({
+      title: "Stage probabilities", sub: "P(won | stage, tier). From your last 365 days where a cell has 20+ outcomes, otherwise a fixed starting value. Average deal " + money(P.avg_deal) + ".", flush: true,
+      body: table([{ label: "Stage", get: (r) => esc(STAGE_LABEL[r]) }].concat(["A", "B", "C"].map((t) => ({ label: "Tier " + t, num: true, get: (r) => esc(pp(P.p[r][t])) + (P.source[r][t] === "history" ? "" : '<span class="sub">starting value</span>') }))), ["booked", "held", "verbal"]),
+    });
+    const rv = card({ title: "Payments due / overdue", sub: "Pending instalments due within 30 days or overdue.", flush: true, body: dueTable(d.receivables || []) });
+    return tiles + fc + '<h2 class="section-title">Board' + (canWrite() ? ' <span class="faint small">· drag a card to move it, or use its menu</span>' : "") + "</h2>" + board + '<div class="grid g2 mt16">' + rv + probs + "</div>";
+  };
+  function pipeCard(c) {
+    const moves = ["held", "verbal", "won_plan", "won_paid"].filter((s) => s !== c.stage);
+    return '<article class="pipe-card" draggable="' + (canWrite() ? "true" : "false") + '" data-id="' + esc(c.id) + '" data-stage="' + esc(c.stage) + '" data-name="' + esc(c.name) + '">' +
+      '<div class="pipe-card-top">' + leadLink(c.id, c.name) + tierBadge(c.tier) + "</div>" +
+      '<div class="pipe-card-meta">' + esc(c.closer || "Unassigned") + (c.temperature ? " " + badge(label(c.temperature), TEMP_CLS[c.temperature] || "b-grey") : "") + "</div>" +
+      '<div class="pipe-card-nums"><span class="tnum">' + esc(moneyShort(c.value)) + (c.value_is_estimate ? '<span class="faint" title="Average deal: no value set yet"> est.</span>' : "") + "</span>" +
+      (isNum(c.p) ? '<span class="faint tnum">' + esc(pp(c.p)) + " → " + esc(moneyShort(c.expected)) + "</span>" : isNum(c.remaining) ? '<span class="faint tnum">' + esc(moneyShort(c.remaining)) + " to collect</span>" : "") + "</div>" +
+      '<div class="pipe-card-foot"><span class="faint small">' + (c.stage === "booked" && c.call_at ? esc(dt(c.call_at)) : isNum(c.days_in_stage) ? esc(c.days_in_stage) + "d in stage" : "") + "</span>" +
+      (c.needs_outcome ? badge("Needs outcome", "b-red") : c.stage === "booked" ? riskBadgeOf(c.noshow_risk) : "") + "</div>" +
+      (canWrite() ? '<select class="select sm pipe-move" data-change="pipe-move" data-id="' + esc(c.id) + '" aria-label="Move ' + esc(c.name) + '"><option value="">Move to…</option>' + moves.map((s) => '<option value="' + s + '">' + esc(STAGE_LABEL[s]) + "</option>").join("") + "</select>" : "") +
+      "</article>";
+  }
+  async function movePipeline(id, stage, name) {
+    if (stage === "won_plan" || stage === "won_paid") {
+      openModal("Won: " + (name || "deal"), '<form data-submit="pipe-won" data-id="' + esc(id) + '" data-stage="' + esc(stage) + '" class="form-grid">' +
+        field("Deal value (USD)", '<input class="input" name="revenue" type="number" min="1" step="1" required inputmode="numeric">') +
+        (stage === "won_plan" ? field("Instalments", '<input class="input" name="installments" type="number" min="2" max="60" step="1" value="3" required>') : "") +
+        '<div class="form-actions span-all"><button class="btn" type="button" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">Mark won</button></div></form>', true);
+      return;
+    }
+    try { await api("/pipeline/move", { method: "POST", body: { lead_id: id, stage } }); toast("Moved to " + STAGE_LABEL[stage]); loadTab(true); } catch (e) { fail(e); loadTab(true); }
+  }
+  let dragId = null;
+  document.addEventListener("dragstart", (ev) => {
+    const c = ev.target.closest && ev.target.closest(".pipe-card[draggable='true']");
+    if (!c) return;
+    dragId = c.dataset.id;
+    c.classList.add("dragging");
+    try { ev.dataTransfer.setData("text/plain", dragId); ev.dataTransfer.effectAllowed = "move"; } catch (e) { /* old browsers */ }
+  });
+  document.addEventListener("dragend", (ev) => { const c = ev.target.closest && ev.target.closest(".pipe-card"); if (c) c.classList.remove("dragging"); $$(".pipe-col.over").forEach((x) => x.classList.remove("over")); });
+  document.addEventListener("dragover", (ev) => {
+    const col = ev.target.closest && ev.target.closest(".pipe-col");
+    if (!col || !dragId) return;
+    ev.preventDefault();
+    $$(".pipe-col.over").forEach((x) => { if (x !== col) x.classList.remove("over"); });
+    col.classList.add("over");
+  });
+  document.addEventListener("drop", (ev) => {
+    const col = ev.target.closest && ev.target.closest(".pipe-col");
+    if (!col || !dragId) return;
+    ev.preventDefault();
+    col.classList.remove("over");
+    const card = $('.pipe-card[data-id="' + CSS.escape(dragId) + '"]');
+    const id = dragId; dragId = null;
+    if (!card || card.dataset.stage === col.dataset.stage) return;
+    if (col.dataset.stage === "booked") { toast("Calls move to Booked when they are booked.", "err"); return; }
+    movePipeline(id, col.dataset.stage, card.dataset.name);
+  });
+
+  // Lead drawer: instalments and touches.
+  function receivablesCard(d) {
+    const rows = d.receivables || [];
+    if (!rows.length) return "";
+    const ST = { pending: ["Pending", "b-amber"], paid: ["Paid", "b-green"], cancelled: ["Cancelled", "b-grey"] };
+    return card({
+      title: "Instalments", sub: "Created when the deal is won on a plan with an instalment count. Payments recorded below pay the oldest pending one.", flush: true,
+      body: table([
+        { label: "#", num: true, get: (r) => esc(r.seq) },
+        { label: "Due", get: (r) => esc(day(r.due_at)) + (r.status === "pending" && r.due_at < Date.now() ? " " + badge("Overdue", "b-red") : "") },
+        { label: "Amount", num: true, get: (r) => esc(money(r.amount)) },
+        { label: "Status", get: (r) => badge(ST[r.status][0], ST[r.status][1]) },
+        { label: "", get: (r) => (r.status === "pending" && canWrite() ? '<button class="btn btn-sm" type="button" data-action="rv-paid" data-id="' + esc(r.id) + '" data-amount="' + esc(r.amount) + '" data-name="instalment ' + esc(r.seq) + '">Mark paid</button>' : "") },
+      ], rows),
+    });
+  }
+  function touchesCard(d) {
+    const rows = d.touches || [];
+    return card({
+      title: "Touches", sub: "Dials, messages and connects by the team. The first one sets this lead's speed to lead.", flush: true,
+      actions: canWrite() ? '<button class="btn btn-sm" type="button" data-action="today-touch" data-id="' + esc(d.lead.id) + '" data-name="' + esc([d.lead.first_name, d.lead.last_name].filter(Boolean).join(" ")) + '">Log touch</button>' + (d.lead.phone ? " " + telBtn(d.lead.phone) : "") : "",
+      body: table([
+        { label: "When", get: (r) => esc(dt(r.at)) + '<span class="sub">' + esc(ago(r.at)) + "</span>" },
+        { label: "What", get: (r) => esc(label(r.kind)) + (r.outcome ? '<span class="sub">' + esc(label(r.outcome)) + "</span>" : "") },
+        { label: "Who", get: (r) => esc(r.rep || "—") },
+        { label: "Note", cls: "wrap", get: (r) => esc(r.note || "") },
+      ], rows, { empty: empty("No touches yet", "Log each dial, voicemail, SMS, email or DM so speed to lead is measured.", true) }),
+    });
+  }
+
+  // ── Team → Users ───────────────────────────────────────────────────────────
+  S.teamView = "reps";
+  const teamLoad = TAB.team.load, teamRender = TAB.team.render, teamActions = TAB.team.actions;
+  TAB.team.load = () => (S.teamView === "users" ? api("/users").then((d) => Object.assign(d, { _view: "users" })) : teamLoad());
+  TAB.team.actions = () => (S.teamView === "users" ? '<button class="btn btn-primary" type="button" data-action="user-new">Add user</button>' : isManager() ? teamActions() : "");
+  TAB.team.render = (d) => {
+    const seg = isManager() ? '<div class="row between wrap"><div class="seg" role="group" aria-label="View">' + [["reps", "Reps"], ["users", "Users & access"]].map((v) => '<button type="button" data-action="team-view" data-view="' + v[0] + '" aria-pressed="' + (S.teamView === v[0]) + '">' + v[1] + "</button>").join("") + "</div></div>" : "";
+    if (d._view !== "users") return seg + teamRender(d);
+    S.users = d.users; S.userReps = d.reps;
+    const repName = (id) => (d.reps.find((r) => r.id === id) || {}).name || id || "—";
+    const ROLE_CLS = { owner: "b-blue", manager: "b-blue", closer: "b-green", setter: "b-green", viewer: "b-grey" };
+    return seg + '<div class="callout"><span class="callout-dot"></span><div>People sign in with a one-time link sent to their email (15 minutes, single use). Closers and setters see only their own leads and cannot open Integrations, Team, exports or erase; viewers can look but not change anything. The admin password still works as the owner\'s break-glass login.</div></div>' +
+      card({ title: "Users", flush: true, body: table([
+        { label: "Person", get: (r) => '<span class="t-name">' + esc(r.name || r.email) + '</span><span class="sub">' + esc(r.email) + "</span>" },
+        { label: "Role", get: (r) => badge(label(r.role), ROLE_CLS[r.role]) },
+        { label: "Rep", get: (r) => esc(r.rep_id ? repName(r.rep_id) : "—") },
+        { label: "Last sign-in", get: (r) => (r.last_login_at ? esc(ago(r.last_login_at)) : '<span class="faint">Never</span>') },
+        { label: "Status", get: (r) => (r.active ? badge("Active", "b-green") : badge("Off", "b-grey")) },
+        { label: "", get: (r) => '<button class="btn btn-sm" type="button" data-action="user-edit" data-id="' + esc(r.id) + '">Edit</button>' },
+      ], d.users, { empty: empty("No users yet", "Add your closers, setters and managers. Until then, sign in with the admin password.") }) });
+  };
+  function userForm(u) {
+    u = u || { role: "closer", active: 1 };
+    const reps = [{ value: "", label: "Not linked" }].concat((S.userReps || []).filter((r) => r.active || r.id === u.rep_id).map((r) => ({ value: r.id, label: r.name + " (" + r.role + ")" })));
+    const roles = (S.me && S.me.role === "owner" ? ["owner"] : []).concat(["manager", "closer", "setter", "viewer"]);
+    return '<form data-submit="user-save" data-id="' + esc(u.id || "") + '" class="form-grid">' +
+      field("Email", '<input class="input" type="email" name="email" required maxlength="200" value="' + esc(u.email || "") + '">') +
+      field("Name", '<input class="input" name="name" maxlength="80" value="' + esc(u.name || "") + '">') +
+      field("Role", sel("role", roles.concat(u.role && !roles.includes(u.role) ? [u.role] : []).map((r) => ({ value: r, label: label(r) })), u.role)) +
+      field("Rep (closers and setters)", sel("rep_id", reps, u.rep_id || "")) +
+      '<label class="field span-all"><span class="switch"><input type="checkbox" name="active"' + (u.active ? " checked" : "") + '><span class="switch-track"></span><span>Can sign in</span></span></label>' +
+      '<div class="form-actions span-all"><button class="btn" type="button" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">Save</button></div></form>';
+  }
+
+  // ── Activity log ───────────────────────────────────────────────────────────
+  S.activity = { entity: "", page: 1 };
+  TAB.activity.load = () => api("/audit", { query: new URLSearchParams({ entity: S.activity.entity, page: String(S.activity.page) }).toString() });
+  TAB.activity.render = (d) => {
+    const ents = [["", "Everything"], ["lead", "Leads"], ["payment", "Payments"], ["setting", "Settings"], ["user", "Users & sign-ins"], ["rep", "Reps"], ["map", "Funnel map"], ["api_key", "API keys"], ["webhook", "Webhooks"]];
+    const short = (o) => (o && typeof o === "object" ? Object.entries(o).slice(0, 6).map((e) => e[0] + ": " + (typeof e[1] === "object" ? JSON.stringify(e[1]) : String(e[1]))).join(", ") : "");
+    const bar = '<div class="row wrap mb12">' + sel("entity", ents.map((e) => ({ value: e[0], label: e[1] })), S.activity.entity, { change: "activity-entity", label: "Show" }) + "</div>";
+    const tbl = table([
+      { label: "When", get: (r) => esc(dt(r.ts)) + '<span class="sub">' + esc(ago(r.ts)) + "</span>" },
+      { label: "Who", get: (r) => esc(r.who) },
+      { label: "Action", get: (r) => esc(label(r.action)) },
+      { label: "On", get: (r) => (r.entity === "lead" && r.entity_id && r.action !== "lead_erase" ? leadLink(r.entity_id, "Lead") : esc(label(r.entity))) + (r.entity_id && r.entity !== "lead" ? '<span class="sub mono">' + esc(r.entity_id) + "</span>" : "") },
+      { label: "Change", cls: "wrap", get: (r) => (r.before ? '<span class="faint small">' + esc(short(r.before)) + "</span>" : "") + (r.before && r.after ? " → " : "") + (r.after ? '<span class="small">' + esc(short(r.after)) + "</span>" : "") },
+    ], d.rows, { empty: empty("Nothing logged yet", "Changes in Funnel HQ are recorded here from now on.") });
+    const pager = d.page > 1 || d.more ? '<div class="pager"><span>Page ' + esc(d.page) + '</span><div class="row"><button class="btn btn-sm" type="button" data-action="activity-page" data-page="' + esc(d.page - 1) + '"' + (d.page <= 1 ? " disabled" : "") + '>Newer</button><button class="btn btn-sm" type="button" data-action="activity-page" data-page="' + esc(d.page + 1) + '"' + (d.more ? "" : " disabled") + ">Older</button></div></div>" : "";
+    return bar + '<section class="card">' + tbl + pager + "</section>";
+  };
+
+  // ── Data quality ───────────────────────────────────────────────────────────
+  TAB.quality.load = () => Promise.all([api("/data-quality"), api("/duplicates")]).then((r) => ({ q: r[0], dups: r[1] }));
+  TAB.quality.render = (d) => {
+    const q = d.q;
+    const tiles = kpis([
+      kpi("Missing phone", esc(pc(q.missing_phone_pct)), esc(n(q.missing_phone)) + " of " + esc(n(q.applied)) + " applications, 90 days"),
+      kpi("Unmatched bookings", esc(n(q.unmatched_bookings)), q.bookings ? esc(pc(q.unmatched_bookings_pct)) + " of Calendly bookings have no lead" : "No Calendly bookings in 90 days"),
+      kpi("No source", esc(pc(q.no_source_pct)), esc(n(q.no_source)) + (q.no_source === 1 ? " lead" : " leads") + " with no channel or UTM"),
+      kpi("Duplicate candidates", esc(n(q.duplicate_candidates)), "Same phone, browser, or name at a company domain"),
+    ]);
+    const who = (l) => leadLink(l.id, [l.first_name, l.last_name].filter(Boolean).join(" ") || l.email) + '<span class="sub">' + esc(l.email) + (l.phone ? " · " + esc(l.phone) : "") + "</span>";
+    const dups = card({
+      title: "Possible duplicates", sub: "Merging keeps the earlier lead, moves every visit, email, call, booking and payment onto it, keeps the further pipeline stage, cancels the duplicate's sequences, then erases the duplicate.", flush: true,
+      body: table([
+        { label: "Keep (earlier)", get: (p) => who(p.survivor) + '<span class="sub">' + esc(day(p.survivor.created_at)) + " · " + esc(STATUS_LABEL[p.survivor.status] || p.survivor.status) + "</span>" },
+        { label: "Merge in", get: (p) => who(p.loser) + '<span class="sub">' + esc(day(p.loser.created_at)) + " · " + esc(STATUS_LABEL[p.loser.status] || p.loser.status) + "</span>" },
+        { label: "Why", get: (p) => p.reasons.map((r) => badge(r, "b-blue")).join(" ") },
+        { label: "", get: (p) => (isManager() ? '<button class="btn btn-sm" type="button" data-action="merge" data-id="' + esc(p.loser.id) + '" data-into="' + esc(p.survivor.id) + '" data-ref="' + esc(p.loser.ref_code) + '">Merge</button>' : "") },
+      ], d.dups.pairs, { empty: empty("No duplicates found", "Leads that share a phone, a browser, or a name at a company domain show here.", true) }),
+    });
+    return tiles + dups;
+  };
+
+  // ── Learned routing card (Insights → Scoring) ──────────────────────────────
+  function learnedCard(L) {
+    if (!L) return "";
+    const owner = S.me && S.me.role === "owner";
+    const btn = owner && !L.locked ? (L.on ? '<button class="btn btn-sm" type="button" data-action="learned" data-on="0">Switch back to config points</button>' : '<button class="btn btn-sm btn-primary" type="button" data-action="learned" data-on="1"' + (L.available ? "" : " disabled") + ">Use learned points for routing</button>") : "";
+    return card({
+      title: "Learned points for routing", sub: "Off by default. When on, answer options with " + L.min_n + "+ outcomes score with the calibrated points; every flag and tier cap still comes from config. Each lead records which table scored it.",
+      actions: (L.on ? badge("On · " + L.version, "b-green") : badge("Off", "b-grey")) + " " + btn,
+      body: L.on ? table([{ label: "Answer", get: (r) => esc(r.key.replace("=", ": ").replace(/_/g, " ")) }, { label: "Points", num: true, get: (r) => esc(r.points) }, { label: "Outcomes", num: true, get: (r) => esc(n(r.n)) }], L.points, { mid: true })
+        : '<p class="small faint">' + esc(n(L.available)) + " answer options have enough outcomes. " + (owner ? "" : "Only the owner can switch this on.") + "</p>",
+    });
+  }
+
+  // ── Attribution & cohorts ──────────────────────────────────────────────────
+  S.attr = { view: store.get("hq-attr-view", "models"), model: "last_non_direct", dim: "campaign", by: "month" };
+  const MODELS = [["first", "First touch"], ["last_non_direct", "Last non-direct"], ["linear", "Linear"], ["position", "Position (40/20/40)"], ["time_decay", "Time decay (7-day half-life)"]];
+  TAB.attribution.load = () => {
+    const a = S.attr;
+    if (a.view === "cohorts") return api("/cohorts", { query: "by=" + a.by }).then((d) => Object.assign(d, { _view: "cohorts" }));
+    return api("/attribution", { query: qs({ model: a.model, dim: a.dim }) }).then((d) => Object.assign(d, { _view: a.view }));
+  };
+  TAB.attribution.actions = () => (isManager() ? '<a class="btn" href="/admin/api/exports/' + (S.attr.view === "cohorts" ? "cohorts.csv?by=" + esc(S.attr.by) : "attribution.csv?" + esc(qs({ model: S.attr.model, dim: S.attr.dim }))) + '" download>Export CSV</a>' : "");
+  TAB.attribution.render = (d) => {
+    const a = S.attr;
+    const seg = '<div class="row between wrap"><div class="seg" role="group" aria-label="View">' + [["models", "Models"], ["paths", "Top paths"], ["cohorts", "Cohorts"]].map((v) => '<button type="button" data-action="attr-view" data-view="' + v[0] + '" aria-pressed="' + (a.view === v[0]) + '">' + v[1] + "</button>").join("") + "</div>" +
+      (d._view === "cohorts" ? '<div class="seg" role="group" aria-label="Cohort size">' + [["week", "Weekly"], ["month", "Monthly"]].map((v) => '<button type="button" data-action="attr-by" data-by="' + v[0] + '" aria-pressed="' + (a.by === v[0]) + '">' + v[1] + "</button>").join("") + "</div>"
+        : d._view === "models" ? '<div class="row wrap">' + sel("model", MODELS.map((m) => ({ value: m[0], label: m[1] })), a.model, { change: "attr-model", label: "Model" }) + sel("dim", [{ value: "campaign", label: "By campaign" }, { value: "ad_id", label: "By ad" }, { value: "channel", label: "By channel" }], a.dim, { change: "attr-dim", label: "Dimension" }) + "</div>" : "") + "</div>";
+    const note = d.cached_at ? '<p class="faint small mt8">Computed ' + esc(ago(d.cached_at)) + " · refreshed every 10 minutes" + (isNum(d.n_leads) ? " · " + esc(n(d.n_leads)) + " leads" : "") + "</p>" : "";
+    if (d._view === "cohorts") return seg + cohortsView(d) + note;
+    if (d._view === "paths") {
+      return seg + card({ title: "Top paths", sub: "The channels a lead touched before booking, in order (repeats collapsed). Leads created in the period.", flush: true, body: table([
+        { label: "Path", cls: "wrap", get: (r) => r.path.map((x) => badge(label(x), "b-grey")).join(' <span class="faint">→</span> ') },
+        { label: "Leads", num: true, get: (r) => esc(n(r.leads)) },
+        { label: "Booked", num: true, get: (r) => esc(n(r.booked)) },
+        { label: "Won", num: true, get: (r) => esc(n(r.wins)) },
+        { label: "Cash", num: true, get: (r) => esc(moneyShort(r.cash)) },
+      ], d.paths || [], { empty: empty("No paths yet", "Paths appear once leads have sessions before they book.") }) }) + note;
+    }
+    const t = d.totals || {};
+    return seg + card({
+      title: (MODELS.find((m) => m[0] === d.model) || [0, d.model])[1] + " credit", sub: "Fractional credit over each lead's non-bot sessions before the moment that counts: lead created, call booked, deal won (revenue and cash). ROAS ties credited cash to spend on the same campaign or ad.", flush: true,
+      body: table([
+        { label: d.dim === "ad_id" ? "Ad" : d.dim === "channel" ? "Channel" : "Campaign", cls: "wrap", get: (r) => '<span class="t-name">' + esc(r.key) + "</span>" },
+        { label: "Leads", num: true, get: (r) => esc(n1(r.leads)) },
+        { label: "Booked", num: true, get: (r) => esc(n1(r.booked)) },
+        { label: "Won", num: true, get: (r) => esc(n1(r.wins)) },
+        { label: "Revenue", num: true, get: (r) => esc(moneyShort(r.revenue)) },
+        { label: "Cash", num: true, get: (r) => esc(moneyShort(r.cash)) },
+        { label: "Spend", num: true, get: (r) => (r.spend ? esc(moneyShort(r.spend)) : '<span class="faint">—</span>') },
+        { label: "Cash ROAS", num: true, get: (r) => esc(roas(r.roas)) },
+        { label: "Per booked", num: true, get: (r) => esc(moneyShort(r.cost_per_booked)) },
+      ], d.rows || [], { tall: true, foot: ["Total", n1(t.leads), n1(t.booked), n1(t.wins), moneyShort(t.revenue), moneyShort(t.cash), moneyShort(t.spend), roas(t.roas), ""].map(esc), empty: empty("No sessions to credit", "Credit appears once leads have tracked sessions in this period.") }),
+    }) + note;
+  };
+  function cohortsView(d) {
+    const DAYS = d.days || [0, 7, 14, 30, 60, 90, 180];
+    return card({
+      title: (d.by === "week" ? "Weekly" : "Monthly") + " cohorts", sub: "Applicants by the " + d.by + " they first left details. Cash is cumulative from that date; blank cells are cohorts too young for that age. Plan collection = paid instalments ÷ instalments due so far.", flush: true,
+      body: table([
+        { label: "Cohort", get: (r) => { const p = String(r.cohort).split("-"); return '<span class="t-name nowrap">' + esc(p.length === 2 && !p[1].startsWith("W") ? MONTHS[Number(p[1]) - 1] + " " + p[0] : r.cohort) + "</span>"; } },
+        { label: "Leads", num: true, get: (r) => esc(n(r.leads)) },
+        { label: "Booked", num: true, get: (r) => esc(n(r.booked)) },
+        { label: "Won", num: true, get: (r) => esc(n(r.won)) },
+      ].concat(DAYS.map((k) => ({ label: "Cash d" + k, num: true, get: (r) => (r.cash["d" + k] == null ? '<span class="faint">·</span>' : esc(moneyShort(r.cash["d" + k]))) }))).concat([
+        { label: "Close p50 / p90", num: true, get: (r) => (isNum(r.ttc_p50_days) ? esc(n1(r.ttc_p50_days)) + " / " + esc(n1(r.ttc_p90_days)) + "d" : '<span class="faint">—</span>') },
+        { label: "Plan collected", num: true, get: (r) => esc(pc(r.plan_collection_pct)) },
+        { label: "Refunds", num: true, get: (r) => esc(pc(r.refund_pct)) },
+        { label: "90-day value / lead", num: true, get: (r) => esc(money(r.value90_per_lead)) },
+        { label: "/ booked call", num: true, get: (r) => esc(money(r.value90_per_booked)) },
+      ]), d.rows || [], { tall: true, empty: empty("No cohorts yet", "Cohorts fill in as applicants arrive.") }),
+    });
+  }
+
+  // ── API & webhooks ─────────────────────────────────────────────────────────
+  TAB.api.load = () => Promise.all([api("/api-keys"), api("/webhooks")]).then((r) => ({ keys: r[0], hooks: r[1] }));
+  TAB.api.render = (d) => {
+    const K = d.keys, H = d.hooks;
+    const keys = card({
+      title: "API keys", sub: "Read-only REST API at /api/v1 (leads, deals, payments, calls, metrics/daily, spend) with Authorization: Bearer <key>. Paginate with ?updated_since=…&cursor=…. Keys are stored as a keyed hash and shown once.", flush: true,
+      actions: isManager() ? '<button class="btn btn-sm btn-primary" type="button" data-action="key-new">New key</button>' : "",
+      body: table([
+        { label: "Name", get: (r) => '<span class="t-name">' + esc(r.name) + '</span><span class="sub mono">fk_' + esc(r.id) + "_…</span>" },
+        { label: "Scopes", cls: "wrap", get: (r) => r.scopes.map((s) => badge(s, "b-grey")).join(" ") },
+        { label: "Created", get: (r) => esc(day(r.created_at)) },
+        { label: "Last used", get: (r) => (r.last_used_at ? esc(ago(r.last_used_at)) : '<span class="faint">Never</span>') },
+        { label: "", get: (r) => (r.revoked_at ? badge("Revoked", "b-grey") : isManager() ? '<button class="btn btn-sm btn-ghost btn-danger" type="button" data-action="key-revoke" data-id="' + esc(r.id) + '">Revoke</button>' : badge("Active", "b-green")) },
+      ], K.keys, { empty: empty("No API keys", "Create a key for each system that reads from Funnel HQ.", true) }),
+    });
+    const hooks = card({
+      title: "Webhooks", sub: "Signed POSTs for lead events, retried with backoff through the forwarding log. Verify X-Funnel-Signature: t=<unix>,v1=HMAC-SHA256(secret, t + \".\" + body) and dedupe on X-Funnel-Event-Id.", flush: true,
+      actions: isManager() ? '<button class="btn btn-sm btn-primary" type="button" data-action="hook-new">New webhook</button>' : "",
+      body: table([
+        { label: "URL", cls: "wrap", get: (r) => '<span class="mono small">' + esc(r.url) + "</span>" },
+        { label: "Events", cls: "wrap", get: (r) => (r.events.includes("*") ? badge("All events", "b-blue") : r.events.map((e) => badge(e, "b-grey")).join(" ")) },
+        { label: "Delivered", num: true, get: (r) => esc(n(r.sent)) + (r.failed ? '<span class="sub bad-text">' + esc(n(r.failed)) + " failed</span>" : "") },
+        { label: "Status", get: (r) => (r.active ? badge("On", "b-green") : badge("Off", "b-grey")) },
+        { label: "", get: (r) => (isManager() ? '<div class="row"><button class="btn btn-sm" type="button" data-action="hook-toggle" data-id="' + esc(r.id) + '" data-on="' + (r.active ? "0" : "1") + '">' + (r.active ? "Pause" : "Resume") + '</button><button class="btn btn-sm btn-ghost btn-danger" type="button" data-action="hook-delete" data-id="' + esc(r.id) + '">Delete</button></div>' : "") },
+      ], H.subs, { empty: empty("No webhooks", "Add an https endpoint to receive signed lead events.", true) }),
+    });
+    const ex = isManager() ? card({ title: "CSV exports", sub: "Uses the date range from the other tabs (last 90 days by default).", body: '<div class="row wrap">' + [["payments", "Payments"], ["calls", "Calls"], ["emails", "Emails"], ["attribution", "Attribution"], ["cohorts", "Cohorts"]].map((x) => '<a class="btn btn-sm" href="/admin/api/exports/' + x[0] + ".csv?" + esc(qs()) + '" download>' + x[1] + "</a>").join("") + "</div>" }) : "";
+    return keys + hooks + ex;
+  };
+  function keyForm(scopes) {
+    return '<form data-submit="key-save" class="form-grid">' + field("Name", '<input class="input" name="name" required maxlength="60" placeholder="e.g. HubSpot sync">') +
+      '<div class="field span-all"><span class="field-label">Scopes</span><div class="row wrap">' + scopes.map((s) => '<label class="row small"><input type="checkbox" name="scope_' + esc(s) + '" checked> ' + esc(s) + "</label>").join("") + "</div></div>" +
+      '<div class="form-actions span-all"><button class="btn" type="button" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">Create key</button></div></form>';
+  }
+  function hookForm(events) {
+    return '<form data-submit="hook-save" class="form-grid">' + field("Endpoint URL", '<input class="input" name="url" type="url" required placeholder="https://…" maxlength="500">', "span-all") +
+      '<div class="field span-all"><span class="field-label">Events</span><label class="row small"><input type="checkbox" name="ev_all" checked> All events</label><div class="row wrap">' + events.map((e) => '<label class="row small"><input type="checkbox" name="ev_' + esc(e) + '"> ' + esc(e) + "</label>").join("") + "</div></div>" +
+      '<div class="form-actions span-all"><button class="btn" type="button" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">Create webhook</button></div></form>';
+  }
+  const secretBox = (title, secret, note) => '<div class="stack gap16"><p>' + esc(note) + '</p><code class="mono secret-box">' + esc(secret) + '</code><div class="row">' + copyBtn(secret, "Copy") + '<span class="spacer"></span><button class="btn btn-primary" type="button" data-action="modal-close">Done</button></div></div>';
+
+  TAB.sales.actions = () => (isManager() ? '<button class="btn" type="button" data-action="digest-send">Send digest now</button>' : "");
+  TAB.leads.actions = (() => { const orig = TAB.leads.actions; return () => (isManager() ? orig() : ""); })();
+
+  Object.assign(actions, {
+    "team-view": (el) => { S.teamView = el.dataset.view === "users" ? "users" : "reps"; renderShell(); loadTab(); },
+    "user-new": () => openModal("Add user", userForm(null), true),
+    "user-edit": (el) => { const u = (S.users || []).find((x) => x.id === el.dataset.id); if (u) openModal("Edit " + (u.name || u.email), userForm(u), true); },
+    "activity-page": (el) => { S.activity.page = Math.max(1, Number(el.dataset.page) || 1); loadTab(); },
+    "today-touch": (el) => openModal("Log touch · " + (el.dataset.name || "lead"), touchForm(el.dataset.id, S.today && S.today.touch_kinds, S.today && S.today.touch_outcomes), true),
+    "today-outcome": (el) => openModal("Log outcome · " + (el.dataset.name || "lead"), outcomeForm(el.dataset.id, el.dataset.status), true),
+    "today-pay": (el) => openModal("Log payment · " + (el.dataset.name || "lead"), paymentForm(el.dataset.id), true),
+    "today-quick": async (el) => {
+      el.disabled = true;
+      try { await api("/sales/outcome", { method: "POST", body: { lead_id: el.dataset.id, patch: { status: el.dataset.status } } }); closeModal(); toast(el.dataset.status === "no_show" ? "Logged as no-show" : "Logged as showed"); loadTab(true); } catch (e) { el.disabled = false; fail(e); }
+    },
+    "rv-paid": async (el) => {
+      if (!confirm("Record " + money(Number(el.dataset.amount)) + " for " + (el.dataset.name || "this instalment") + " as paid today?")) return;
+      el.disabled = true;
+      try { await api("/receivables/" + encodeURIComponent(el.dataset.id) + "/paid", { method: "POST", body: {} }); toast("Payment recorded"); if (S.drawer) openLead(S.drawer.id); loadTab(true); } catch (e) { el.disabled = false; fail(e); }
+    },
+    merge: async (el) => {
+      if (!confirm("Merge " + el.dataset.ref + " into the earlier lead? Its history moves over and the duplicate is erased. This cannot be undone.")) return;
+      el.disabled = true;
+      try { const r = await api("/leads/" + encodeURIComponent(el.dataset.id) + "/merge", { method: "POST", body: { into: el.dataset.into } }); toast("Merged " + r.merged + " into " + r.survivor.ref_code); loadTab(true); } catch (e) { el.disabled = false; fail(e); }
+    },
+    learned: async (el) => {
+      const on = el.dataset.on === "1";
+      if (!confirm(on ? "Route new applications with the learned points? Flags and tier caps stay as configured. You can switch back at any time." : "Switch routing back to the points in config?")) return;
+      try { const r = await api("/calibration/learned", { method: "POST", body: { on } }); toast(on ? "Learned points on (" + r.options + " options)" : "Back to config points"); loadTab(true); } catch (e) { fail(e); }
+    },
+    "attr-view": (el) => { S.attr.view = el.dataset.view; store.set("hq-attr-view", S.attr.view); renderShell(); loadTab(); },
+    "attr-by": (el) => { S.attr.by = el.dataset.by === "week" ? "week" : "month"; renderShell(); loadTab(); },
+    "key-new": () => openModal("New API key", keyForm((S.data && S.data.keys && S.data.keys.scopes) || []), true),
+    "key-revoke": async (el) => {
+      if (!confirm("Revoke this key? Anything using it stops working at once.")) return;
+      try { await api("/api-keys/" + encodeURIComponent(el.dataset.id) + "/revoke", { method: "POST" }); toast("Key revoked"); loadTab(true); } catch (e) { fail(e); }
+    },
+    "hook-new": () => openModal("New webhook", hookForm((S.data && S.data.hooks && S.data.hooks.events) || []), true),
+    "hook-toggle": async (el) => {
+      try { await api("/webhooks/" + encodeURIComponent(el.dataset.id), { method: "PATCH", body: { active: el.dataset.on === "1" } }); loadTab(true); } catch (e) { fail(e); }
+    },
+    "hook-delete": async (el) => {
+      if (!confirm("Delete this webhook?")) return;
+      try { await api("/webhooks/" + encodeURIComponent(el.dataset.id), { method: "DELETE" }); toast("Webhook deleted"); loadTab(true); } catch (e) { fail(e); }
+    },
+  });
+  Object.assign(changes, {
+    "today-rep": (el) => { S.todayRep = el.value; loadTab(); },
+    "activity-entity": (el) => { S.activity.entity = el.value; S.activity.page = 1; loadTab(); },
+    "pipe-move": (el) => { const v = el.value; el.value = ""; if (v) { const c = el.closest(".pipe-card"); movePipeline(el.dataset.id, v, c && c.dataset.name); } },
+    "attr-model": (el) => { S.attr.model = el.value; renderShell(); loadTab(); },
+    "attr-dim": (el) => { S.attr.dim = el.value; renderShell(); loadTab(); },
+  });
+  Object.assign(submits, {
+    "touch-save": async (form) => {
+      const b = formObj(form);
+      const kind = (form.querySelector('input[name="kind"]:checked') || {}).value;
+      try { await api("/leads/" + encodeURIComponent(form.dataset.id) + "/touches", { method: "POST", body: { kind, outcome: b.outcome, note: b.note } }); closeModal(); toast("Touch logged"); if (S.drawer) openLead(S.drawer.id); if (S.tab === "today") loadTab(true); } catch (e) { fail(e); }
+    },
+    "today-won": async (form) => {
+      const b = formObj(form);
+      const n = b.plan === "full" ? null : Number(b.plan);
+      const patch = n ? { status: "won", revenue: Number(b.revenue), payment_plan: n === 2 ? "split_2" : n === 3 ? "split_3" : "monthly", installments_total: n } : { status: "won", revenue: Number(b.revenue), payment_plan: "full" };
+      try { await api("/sales/outcome", { method: "POST", body: { lead_id: form.dataset.id, patch } }); closeModal(); toast("Won. Onboarding started."); loadTab(true); } catch (e) { fail(e); }
+    },
+    "today-lost": async (form) => {
+      const b = formObj(form);
+      if (!b.lost_reason) { toast("Pick a lost reason first.", "err"); return; }
+      try { await api("/sales/outcome", { method: "POST", body: { lead_id: form.dataset.id, patch: { status: "lost", lost_reason: b.lost_reason } } }); closeModal(); toast("Logged as lost"); loadTab(true); } catch (e) { fail(e); }
+    },
+    "today-payment": async (form) => {
+      const b = formObj(form);
+      try { await api("/leads/" + encodeURIComponent(form.dataset.id) + "/payments", { method: "POST", body: { amount: Number(b.amount), paid_at: b.paid_at || null, method: b.method } }); closeModal(); toast("Payment recorded"); loadTab(true); } catch (e) { fail(e); }
+    },
+    "pipe-won": async (form) => {
+      const b = formObj(form);
+      try { await api("/pipeline/move", { method: "POST", body: { lead_id: form.dataset.id, stage: form.dataset.stage, revenue: Number(b.revenue), installments: b.installments ? Number(b.installments) : undefined } }); closeModal(); toast("Won"); loadTab(true); } catch (e) { fail(e); }
+    },
+    "user-save": async (form) => {
+      const b = formObj(form);
+      const body = { email: b.email, name: b.name, role: b.role, rep_id: b.rep_id || null, active: !!b.active };
+      const id = form.dataset.id;
+      try {
+        if (id) await api("/users/" + encodeURIComponent(id), { method: "PATCH", body });
+        else await api("/users", { method: "POST", body });
+        closeModal(); toast(id ? "User saved" : "User added. They can sign in with their email on the login page."); loadTab(true);
+      } catch (e) { fail(e); }
+    },
+    "key-save": async (form) => {
+      const b = formObj(form);
+      const scopes = Object.keys(b).filter((k) => k.startsWith("scope_") && b[k]).map((k) => k.slice(6));
+      try { const r = await api("/api-keys", { method: "POST", body: { name: b.name, scopes } }); openModal("Your new API key", secretBox("API key", r.key, "Copy it now: it is stored as a hash and will not be shown again."), true); loadTab(true); } catch (e) { fail(e); }
+    },
+    "hook-save": async (form) => {
+      const b = formObj(form);
+      const events = b.ev_all ? ["*"] : Object.keys(b).filter((k) => k.startsWith("ev_") && k !== "ev_all" && b[k]).map((k) => k.slice(3));
+      try { const r = await api("/webhooks", { method: "POST", body: { url: b.url, events } }); openModal("Webhook signing secret", secretBox("Secret", r.secret, "Use this secret to verify X-Funnel-Signature. It will not be shown again."), true); loadTab(true); } catch (e) { fail(e); }
+    },
+  });
+
   document.addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-action]");
     if (!el) return;
@@ -2100,12 +2673,16 @@
   });
 
   // ── Boot ───────────────────────────────────────────────────────────────────
-  function boot() {
+  async function boot() {
+    try { S.me = (await api("/me")).user; } catch (e) { S.me = null; }
+    renderMe();
     window.addEventListener("hashchange", route);
     api("/filters").then((o) => { S.options = o; if (!TAB[S.tab].noFilters) renderFilters(); }).catch(() => {});
     route();
     if (S.tab !== "alerts") refreshBanner();
     setInterval(() => { if (!document.hidden && S.tab !== "alerts") refreshBanner(); }, 60000);
+    // Live "waiting" counters on the Today view.
+    setInterval(() => { $$("[data-since]").forEach((el) => { el.textContent = waited(Number(el.getAttribute("data-since"))); }); }, 1000);
   }
   // Deferred scripts run in order before DOMContentLoaded; waiting for it means funnel-map.js is loaded.
   if (document.readyState === "loading" || document.readyState === "interactive") document.addEventListener("DOMContentLoaded", boot, { once: true });

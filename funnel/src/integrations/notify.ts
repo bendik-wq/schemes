@@ -9,7 +9,7 @@ import { isHttps, validOutbound } from "../lib/outbound";
 
 export type NotifyKind =
   | "hot_lead" | "qualified" | "booked" | "rescheduled" | "cancelled" | "call_soon" | "no_show" | "showed" | "won" | "lost"
-  | "ai_call" | "callback_request" | "test" | "complaint" | "noshow_risk";
+  | "ai_call" | "callback_request" | "test" | "complaint" | "noshow_risk" | "needs_outcome";
 
 const HEAD: Record<NotifyKind, string> = {
   hot_lead: "Hot lead (A tier)",
@@ -27,6 +27,7 @@ const HEAD: Record<NotifyKind, string> = {
   test: "Test ping from Funnel HQ",
   complaint: "Spam complaint",
   noshow_risk: "High no-show risk",
+  needs_outcome: "Call needs an outcome",
 };
 
 const WIN_KINDS = new Set<NotifyKind>(["won"]);
@@ -51,7 +52,21 @@ async function post(url: string, body: unknown): Promise<boolean> {
   }
 }
 
-export async function notifyTeam(rt: Runtime, kind: NotifyKind, lead: Lead | null, extra?: string): Promise<{ slack: boolean; discord: boolean }> {
+/** An extra link under the ping, e.g. the signed one-tap outcome page. Only https links on our own origin. */
+export interface PingAction { label: string; url: string }
+
+function ownLink(rt: Runtime, a: PingAction | undefined): PingAction | null {
+  if (!a) return null;
+  try {
+    const u = new URL(a.url);
+    if (u.origin !== new URL(rt.origin).origin || !/^[\w./-]+$/.test(u.pathname)) return null;
+    return { label: chatSafe(a.label, 40).replace(/[<>|]/g, ""), url: u.toString() };
+  } catch {
+    return null;
+  }
+}
+
+export async function notifyTeam(rt: Runtime, kind: NotifyKind, lead: Lead | null, extra?: string, action?: PingAction): Promise<{ slack: boolean; discord: boolean }> {
   if (lead && lead.booking_source === "calendly-direct") return { slack: false, discord: false };
   const s = rt.settings;
   const p = formatPing(kind, lead, rt.origin, extra);
@@ -61,13 +76,14 @@ export async function notifyTeam(rt: Runtime, kind: NotifyKind, lead: Lead | nul
   const slackUrl = (win && pick("SLACK_WINS_WEBHOOK_URL")) || pick("SLACK_WEBHOOK_URL");
   const discordUrl = (win && pick("DISCORD_WINS_WEBHOOK_URL")) || pick("DISCORD_WEBHOOK_URL");
   const out = { slack: false, discord: false };
+  const act = ownLink(rt, action);
   if (slackUrl) {
     const mention = rep?.slack_user_id && /^[A-Z0-9]+$/.test(rep.slack_user_id) ? `<@${rep.slack_user_id}> ` : "";
     out.slack = await post(slackUrl, {
       text: `${p.title}${p.line ? `: ${p.line}` : ""}`,
       blocks: [
         { type: "section", text: { type: "mrkdwn", text: `*${p.title}*${p.line ? `\n${mention}${p.line}` : ""}` } },
-        { type: "context", elements: [{ type: "mrkdwn", text: `<${p.link}|Open in Funnel HQ>` }] },
+        { type: "context", elements: [{ type: "mrkdwn", text: `<${p.link}|Open in Funnel HQ>${act ? ` · <${act.url}|${act.label}>` : ""}` }] },
       ],
       unfurl_links: false,
     });
@@ -75,7 +91,7 @@ export async function notifyTeam(rt: Runtime, kind: NotifyKind, lead: Lead | nul
   if (discordUrl) {
     const mention = rep?.discord_user_id && /^\d+$/.test(rep.discord_user_id) ? `<@${rep.discord_user_id}> ` : "";
     out.discord = await post(discordUrl, {
-      content: `**${p.title}**${p.line ? `\n${mention}${p.line}` : ""}\n${p.link}`,
+      content: `**${p.title}**${p.line ? `\n${mention}${p.line}` : ""}\n${p.link}${act ? `\n${act.label}: <${act.url}>` : ""}`,
       allowed_mentions: { parse: [], users: rep?.discord_user_id && /^\d+$/.test(rep.discord_user_id) ? [rep.discord_user_id] : [] },
     });
   }

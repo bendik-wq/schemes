@@ -31,6 +31,8 @@ import { runCalibration } from "./sales/calibration";
 import { pingClosersFollowUps } from "./sales/followups";
 import { maybeRunAnalyst } from "./sales/analyst";
 import { sweepHotPartials } from "./funnel/application";
+import { hqPublic } from "./routes/hq-public";
+import { v1 } from "./routes/v1";
 
 const app = new Hono<AppEnv>();
 
@@ -171,11 +173,13 @@ app.get("/breakout", (c) => breakoutPage(c));
 app.get("/resources", (c) => resourcesPage(c));
 app.get("/privacy", (c) => privacyPage(c));
 
+app.route("/api/v1", v1);
 app.route("/api", api);
 app.route("/hooks", hooks);
 app.route("/", links);
 
-// Admin
+// Admin: magic-link sign-in, role-aware sign-out and the signed outcome links (mounted first).
+app.route("/", hqPublic);
 async function asset(c: { env: Env; req: { url: string } }, path: string): Promise<Response> {
   const r = await c.env.ASSETS.fetch(new Request(new URL(path, c.req.url).toString()));
   return new Response(r.body, { status: r.status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });

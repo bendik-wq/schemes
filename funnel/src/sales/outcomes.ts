@@ -13,8 +13,12 @@ import { ALL_MARKETING } from "../integrations/sequences";
 import { queueCall, cancelCalls } from "../integrations/elevenlabs";
 import { notifyTeam } from "../integrations/notify";
 import { isHistorical } from "../integrations/booking";
+import { allocatePayments, linkPayment, syncReceivables, unlinkPayment } from "./receivables";
 
 export { isHistorical };
+
+/** Lead columns that shape a payment plan. */
+const DEAL_KEYS = ["revenue", "payment_plan", "installments_total", "next_payment_at", "refunded_at"];
 
 export interface LeadPatch {
   status?: string;
@@ -148,7 +152,12 @@ export async function applyLeadUpdate(
   if (patch.do_not_call === true) { clean.do_not_call_at = now; await suppress(rt, "phone", lead.phone); }
   if (patch.do_not_call === false) clean.do_not_call_at = null;
   await updateLead(rt, lead.id, clean);
-  const fresh = (await getLead(rt, lead.id)) as Lead;
+  let fresh = (await getLead(rt, lead.id)) as Lead;
+  // Instalments follow the deal: created on a won plan, regenerated on changes, cancelled on refund or reopen.
+  if (fresh.status === "won" || prev === "won" || DEAL_KEYS.some((k) => k in clean)) {
+    const r = await syncReceivables(rt, fresh, { reschedule: "next_payment_at" in clean && clean.next_payment_at !== lead.next_payment_at });
+    if (r.created || r.cancelled) fresh = (await getLead(rt, lead.id)) as Lead;
+  }
 
   if (next === prev && !clean.refunded_at) return fresh;
   const historical = isHistorical(lead, now);
@@ -189,11 +198,11 @@ export async function applyLeadUpdate(
 
 export interface Payment { id: string; lead_id: string; amount: number; paid_at: number; method: string | null; note: string | null; created_at: number; }
 
-async function syncCash(rt: Runtime, leadId: string) {
+export async function syncCash(rt: Runtime, leadId: string) {
   await rt.env.DB.prepare("UPDATE leads SET cash_collected = (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE lead_id = ?), updated_at = ? WHERE id = ?").bind(leadId, rt.now(), leadId).run();
 }
 
-export async function recordPayment(rt: Runtime, lead: Lead, input: { amount: unknown; paid_at?: unknown; method?: unknown; note?: unknown }): Promise<Payment> {
+export async function recordPayment(rt: Runtime, lead: Lead, input: { amount: unknown; paid_at?: unknown; method?: unknown; note?: unknown }, opts: { receivableId?: string } = {}): Promise<Payment> {
   const amount = Number(input.amount);
   if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 1e8) throw new ValidationError("amount");
   const paid = toTs(input.paid_at) ?? rt.now();
@@ -204,6 +213,11 @@ export async function recordPayment(rt: Runtime, lead: Lead, input: { amount: un
   await rt.env.DB.prepare("INSERT INTO payments (id, lead_id, amount, paid_at, method, note, created_at) VALUES (?,?,?,?,?,?,?)")
     .bind(p.id, p.lead_id, p.amount, p.paid_at, p.method, p.note, p.created_at).run();
   await syncCash(rt, lead.id);
+  // Instalments: "mark paid" links this payment to that instalment; otherwise it pays the oldest pending one.
+  if (amount > 0) {
+    if (opts.receivableId) await linkPayment(rt, opts.receivableId, p.id);
+    else await allocatePayments(rt, lead.id);
+  }
   // Sent to Meta as CashCollected (or Refund when negative) with the amount as value; the id dedupes.
   if (!isHistorical(lead, rt.now())) {
     await track(rt, { leadId: lead.id }, { name: "payment_recorded", source: "admin", props: { amount }, value: amount, currency: "USD", eventId: `pay_${p.id}` });
@@ -214,6 +228,7 @@ export async function recordPayment(rt: Runtime, lead: Lead, input: { amount: un
 export async function deletePayment(rt: Runtime, leadId: string, paymentId: string): Promise<void> {
   await rt.env.DB.prepare("DELETE FROM payments WHERE id = ? AND lead_id = ?").bind(paymentId, leadId).run();
   await syncCash(rt, leadId);
+  await unlinkPayment(rt, leadId, paymentId);
 }
 
 export async function listPayments(rt: Runtime, leadId: string): Promise<Payment[]> {
