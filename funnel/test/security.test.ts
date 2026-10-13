@@ -275,3 +275,13 @@ describe("lander headline split", () => {
     expect(splitHeadline("No split here.")).toEqual({ h1: "No split here.", h1b: "" });
   });
 });
+
+describe("page cfg keys", () => {
+  it("application cfg never overwrites the cookie-consent string", async () => {
+    const { applicationCfg } = await import("../src/funnel/pages");
+    const rt = { settings: { get: () => "" } } as any;
+    const cfg = applicationCfg(rt, { consentRequired: true, consent: "unknown", geo: { country: "NO" } } as any, null) as Record<string, unknown>;
+    expect("consent" in cfg).toBe(false);
+    expect(cfg.callConsent).toBeTruthy();
+  });
+});

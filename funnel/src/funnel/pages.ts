@@ -211,7 +211,7 @@ export async function smartRoute(c: Ctx): Promise<Response> {
 // ── Apply ─────────────────────────────────────────────────────────────────────
 
 /** Everything apply.js needs: the questions, consent text, Turnstile key and any saved answers. */
-function applicationCfg(rt: Runtime, id: Identity, lead: Lead | null) {
+export function applicationCfg(rt: Runtime, id: Identity, lead: Lead | null) {
   const questions = APPLICATION.map((q) => ({
     id: q.id, type: q.type, title: q.title, help: q.help || "", placeholder: q.placeholder || "", optional: !!q.optional, minLength: q.minLength || 0,
     options: (q.options || []).map((o) => ({ value: o.value, label: o.label })),
@@ -220,7 +220,7 @@ function applicationCfg(rt: Runtime, id: Identity, lead: Lead | null) {
   if (lead) { try { Object.assign(answers, JSON.parse(lead.answers || "{}")); } catch { /* ignore */ } }
   return {
     questions,
-    consent: { label: CALL_CONSENT.label, version: CALL_CONSENT.version },
+    callConsent: { label: CALL_CONSENT.label, version: CALL_CONSENT.version },
     turnstile: rt.settings.get("TURNSTILE_SITE_KEY") || null,
     lead: lead ? { first: lead.first_name || "", last: lead.last_name || "", email: lead.email, phone: lead.phone || "", callConsent: !!lead.call_consent_at, step: lead.step_reached, answers } : null,
     done: lead?.app_completed_at && lead.route ? { route: lead.route } : null,

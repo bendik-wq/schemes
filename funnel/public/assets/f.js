@@ -239,7 +239,7 @@
     var KEY = "_fc";
     function readConsent() {
       var m = d.cookie.match(/(?:^|; )_fc=([01])/);
-      return m ? (m[1] === "1" ? "granted" : "denied") : (cfg.consent || "unknown");
+      return m ? (m[1] === "1" ? "granted" : "denied") : (typeof cfg.consent === "string" ? cfg.consent : "unknown");
     }
     function allowed() { var c = readConsent(); return c !== "denied" && (!cfg.consentRequired || c === "granted"); }
     var loaded = false;

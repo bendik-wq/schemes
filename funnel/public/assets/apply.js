@@ -118,7 +118,7 @@
       // Consent is per number: it is only shown as given while the number is unchanged.
       if (L.callConsent) consent.checked = true;
       f.phone.input.addEventListener("input", function () { if (f.phone.input.value.trim() !== (L.phone || "")) consent.checked = false; });
-      var consentRow = el("label", { class: "check", for: "f-consent" }, [consent, el("span", { text: (cfg.consent && cfg.consent.label) || "" })]);
+      var consentRow = el("label", { class: "check", for: "f-consent" }, [consent, el("span", { text: (cfg.callConsent && cfg.callConsent.label) || "" })]);
       var ts = cfg.turnstile ? el("div", { class: "ts-box cf-turnstile", "data-sitekey": cfg.turnstile, "data-size": "flexible", "data-appearance": "interaction-only" }) : null;
       var status = el("div");
       var btn = el("button", { class: "btn lg", type: "submit", text: "Continue" });
