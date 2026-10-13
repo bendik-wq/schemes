@@ -1,28 +1,39 @@
-/* Operator funnel. Apple-tradition product page: white and paper sections, black sections for
-   rhythm, one blue accent, Geist. Content is visible at rest; motion only when allowed. */
-/* Self-hosted Geist (SIL Open Font License, see /assets/fonts/OFL.txt): no third-party request before consent. */
-@font-face { font-family: "Geist"; src: url("/assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+/* Operator funnel. Warm ivory pages, deep indigo ink, a violet-to-amber accent, Fraunces for display and
+   Manrope for text. Background ornaments (astrolabe, star field, orbits, constellations) stay faint and
+   behind the content; motion only when allowed. */
+/* Self-hosted fonts (SIL Open Font License, see /assets/fonts/OFL.txt): no third-party request before consent. */
+@font-face { font-family: "Fraunces"; src: url("/assets/fonts/Fraunces-Variable.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fraunces"; src: url("/assets/fonts/Fraunces-Italic-Variable.woff2") format("woff2"); font-weight: 100 900; font-style: italic; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/assets/fonts/Manrope-Variable.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
 @font-face { font-family: "Geist Mono"; src: url("/assets/fonts/GeistMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Geist Mono"; src: url("/assets/fonts/GeistMono-Medium.woff2") format("woff2"); font-weight: 500 600; font-display: swap; }
 :root {
   --white: #ffffff;
-  --paper: #f5f5f7;
-  --ink: #1d1d1f;
-  --ink-2: #424245;
-  --grey: #6e6e73;
-  --grey-2: #86868b;
-  --hair: #d2d2d7;
-  --hair-2: #e8e8ed;
-  --black: #000000;
-  --on-dark: #f5f5f7;
-  --on-dark-2: #a1a1a6;
-  --blue: #0a62d6;
-  --blue-press: #0950b0;
-  --blue-hi: #2997ff;
-  --green: #1a8a4a;
+  --ivory: #fbf8f3;
+  --paper: #f5efe4;
+  --ink: #17133a;
+  --ink-2: #3a3463;
+  --grey: #554e80;
+  --grey-2: #7a72a6;
+  --hair: #e3dacb;
+  --hair-2: #eee7da;
+  --black: #120e2e;
+  --night: #0f0b29;
+  --on-dark: #f6f1ff;
+  --on-dark-2: #b9b0e6;
+  --blue: #4b2fe0;
+  --blue-press: #3a20c4;
+  --blue-hi: #8b7bff;
+  --violet: #5b3cf0;
+  --magenta: #c2399a;
+  --amber: #e7893a;
+  --gold: #b07a22;
+  --green: #12805c;
   --red: #c4242b;
-  --display: "Geist", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-  --text: "Geist", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --aura: linear-gradient(100deg, #5b3cf0 0%, #9b36c9 38%, #d6408a 68%, #ef8a3a 100%);
+  --btn: linear-gradient(120deg, #3f27d6 0%, #6a2fe0 45%, #a8339f 100%);
+  --display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --text: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --mono: "Geist Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   --r: 18px;
   --r-lg: 28px;
@@ -372,3 +383,121 @@ body.plain { background: var(--paper); min-height: 100vh; display: grid; place-c
 @media (max-width: 760px) {
   .apply-card { border-radius: 20px; margin-inline: -6px; }
 }
+
+/* ───────────── Typography, colour and the sky (v5) ───────────── */
+body { background: var(--ivory); color: var(--ink); font-family: var(--text); font-weight: 450; letter-spacing: -.005em; position: relative; isolation: isolate; }
+h1, h2, h3, .h2, .h3 { font-weight: 560; font-optical-sizing: auto; }
+h1 { letter-spacing: -.028em; line-height: 1.02; }
+h2, .h2 { letter-spacing: -.025em; }
+h3, .h3 { letter-spacing: -.015em; }
+h1 .h1b, h2 span, .h2 span { font-style: italic; font-weight: 420; color: var(--magenta); background: var(--aura); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; -webkit-box-decoration-break: clone; box-decoration-break: clone; padding-right: .08em; }
+.black h2 span { background: linear-gradient(100deg, #b6a8ff, #f0a3cf 55%, #f6c27a); -webkit-background-clip: text; background-clip: text; }
+.eyebrow { display: inline-flex; align-items: center; gap: 12px; font: 700 12.5px/1.3 var(--text); letter-spacing: .16em; text-transform: uppercase; color: var(--violet); }
+.eyebrow::before, .eyebrow::after { content: ""; width: 9px; height: 9px; flex: none; background: var(--gold); clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
+.kicker { color: var(--violet); }
+.sub { font-family: var(--text); font-weight: 500; letter-spacing: -.012em; color: var(--ink-2); }
+.page-landing .hero .sub { font-size: clamp(17px, 1.6vw, 20px); line-height: 1.5; }
+.brand { font: 600 19px var(--display); letter-spacing: -.02em; }
+.brand svg { color: var(--violet); }
+.poster-title, .fig-v, .statement p, .faq summary, .g-line, .brand-mark { letter-spacing: -.015em; }
+.assure, .locked, .wa-line, .muted { color: var(--grey); }
+a { color: var(--blue); }
+
+/* nav */
+.nav { background: rgba(251,248,243,.74); border-bottom-color: rgba(91,60,240,.1); }
+
+/* buttons: indigo to plum, with a soft halo */
+.btn { background: var(--btn); background-size: 140% 100%; background-position: 0 0; font-weight: 650; letter-spacing: 0; box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 10px 28px -12px rgba(75,47,224,.7); transition: background-position .4s, transform .15s, box-shadow .3s, opacity .2s; }
+.btn:hover { background: var(--btn); background-size: 140% 100%; background-position: 100% 0; box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 14px 34px -12px rgba(168,51,159,.65); }
+.btn.sm { box-shadow: none; }
+.btn.light { background: var(--on-dark); color: var(--ink); box-shadow: none; }
+.btn.ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--hair); }
+.consent .btn:not(.ghost) { box-shadow: none; }
+
+/* the sky: a fixed aura and star field behind everything */
+body::before, body::after { content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none; }
+body::before {
+  background:
+    radial-gradient(60vw 46vw at 6% -6%, rgba(91,60,240,.16), transparent 62%),
+    radial-gradient(52vw 40vw at 100% 4%, rgba(239,138,58,.15), transparent 60%),
+    radial-gradient(70vw 50vw at 50% 112%, rgba(194,57,154,.12), transparent 62%),
+    var(--ivory);
+}
+body::after { z-index: -1; background: url("/assets/sky/stars.svg") 0 0 / 480px 480px repeat; opacity: .5;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.55) 45%, #000 100%); mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.55) 45%, #000 100%); }
+.paper { background: rgba(245,239,228,.72); }
+.page-apply { background: transparent; }
+
+/* hero: a slow astrolabe behind the headline */
+.hero { position: relative; isolation: isolate; }
+.hero::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 50%; width: min(1100px, 150vw); aspect-ratio: 1; margin: calc(min(1100px, 150vw) / -2) 0 0 calc(min(1100px, 150vw) / -2);
+  background: url("/assets/sky/astrolabe.svg") center / contain no-repeat; opacity: .16; pointer-events: none; animation: turn 360s linear infinite;
+  -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent 100%); mask-image: radial-gradient(closest-side, #000 55%, transparent 100%); }
+.page-landing .hero::before { top: 78%; }
+@keyframes turn { to { transform: rotate(360deg); } }
+
+/* film: a halo and a gilt hairline */
+.film .wide { position: relative; }
+.film .wide::before { content: ""; position: absolute; z-index: -1; left: 6%; right: 6%; top: 6%; height: min(520px, 50vw); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(91,60,240,.32), rgba(194,57,154,.16) 55%, transparent); filter: blur(30px); }
+.player { box-shadow: 0 0 0 1px rgba(176,122,34,.35), 0 0 0 7px rgba(255,255,255,.55), 0 0 0 8px rgba(91,60,240,.12), 0 40px 90px -36px rgba(40,20,120,.6); background: var(--night); }
+.player .poster { background:
+    url("/assets/sky/astrolabe.svg") center / 92% no-repeat,
+    radial-gradient(90% 70% at 50% 10%, #2a1d6e 0%, #150f3a 55%, #0c0822 100%); background-blend-mode: soft-light, normal; }
+.player .bar i { background: var(--aura); }
+.listen-icon { background: var(--btn); }
+.poster-sub { color: var(--on-dark-2); }
+
+/* application: orbits behind a gilt-edged card */
+.apply-sec { position: relative; isolation: isolate; }
+.apply-sec::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 40px; width: min(1400px, 190vw); aspect-ratio: 1.4; transform: translateX(-50%);
+  background: url("/assets/sky/orbits.svg") center / contain no-repeat; opacity: .2; pointer-events: none; }
+.apply-card { border: 1px solid transparent;
+  background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(140deg, rgba(91,60,240,.45), rgba(194,57,154,.25) 45%, rgba(231,137,58,.45)) border-box;
+  box-shadow: 0 40px 100px -50px rgba(40,20,120,.45), 0 2px 0 rgba(255,255,255,.8) inset; }
+.progress { background: rgba(91,60,240,.1); }
+.progress i { background: var(--aura); }
+.step-n { color: var(--magenta); }
+.step .help, .check { color: var(--ink-2); }
+.opt { border-color: var(--hair); }
+.opt:hover { border-color: rgba(91,60,240,.45); background: #fcfbff; }
+.opt kbd { background: var(--ivory); color: var(--violet); border-color: var(--hair); }
+.opt[aria-pressed="true"], .opt[aria-checked="true"] { border-color: var(--violet); background: #f4f1ff; box-shadow: 0 0 0 1px var(--violet) inset; }
+.opt[aria-pressed="true"] kbd, .opt[aria-checked="true"] kbd { background: var(--violet); border-color: var(--violet); }
+.field input, .field textarea { border-color: var(--hair); background: #fffdf9; }
+.field input:focus, .field textarea:focus { border-color: var(--violet); box-shadow: 0 0 0 4px rgba(91,60,240,.14); background: #fff; }
+.check input { accent-color: var(--violet); }
+.notice { background: #f4f1ff; }
+.spinner { border-color: rgba(91,60,240,.15); border-top-color: var(--magenta); }
+.step-foot .hint { color: var(--grey-2); }
+.apply-main { position: relative; isolation: isolate; }
+.apply-main::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 0; width: min(1300px, 180vw); aspect-ratio: 1.4; transform: translateX(-50%); background: url("/assets/sky/orbits.svg") center / contain no-repeat; opacity: .16; pointer-events: none; }
+
+/* cards elsewhere */
+.cal, .plain-card { box-shadow: 0 0 0 1px rgba(91,60,240,.12), 0 30px 80px -40px rgba(40,20,120,.4); }
+.note-card, .prep li, .kit li, .fit-col { background: rgba(255,255,255,.7); box-shadow: 0 0 0 1px rgba(91,60,240,.1); }
+.prep li::before { background: var(--btn); }
+.kit .num { color: var(--violet); }
+.weeks .wk { color: var(--violet); }
+.faq summary::after { border-color: var(--violet); }
+body.plain { background: transparent; }
+
+/* night sections and the footer: indigo with constellations */
+.black { background: radial-gradient(80% 120% at 50% 0%, #22185a 0%, var(--black) 60%); }
+.guarantee .watermark { color: rgba(255,255,255,.04); }
+.foot { position: relative; isolation: isolate; overflow: hidden; background: radial-gradient(90% 140% at 50% 0%, #22185a 0%, var(--night) 70%); color: var(--on-dark-2); }
+.foot::before { content: ""; position: absolute; inset: 0; z-index: -1; background: url("/assets/sky/constellations.svg") center / cover no-repeat; opacity: .5; pointer-events: none; }
+.foot a, .foot .linkish { color: var(--on-dark); }
+
+/* mobile sticky CTA + consent pick up the ivory */
+.sticky-cta { background: rgba(251,248,243,.86); border-top-color: rgba(91,60,240,.1); }
+.consent { background: rgba(255,253,249,.97); box-shadow: 0 0 0 1px rgba(91,60,240,.14), 0 20px 60px -20px rgba(40,20,120,.4); }
+
+@media (max-width: 760px) {
+  .hero::before { opacity: .1; }
+  .page-landing .hero::before { top: 62%; }
+  .eyebrow { font-size: 11px; letter-spacing: .13em; gap: 9px; }
+  .player { box-shadow: 0 0 0 1px rgba(176,122,34,.35), 0 30px 70px -30px rgba(40,20,120,.55); }
+}
+html, body { overflow-x: clip; }
+.hero, .film, .apply-sec, .apply-main { overflow-x: clip; }
