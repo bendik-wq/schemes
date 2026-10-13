@@ -31,6 +31,14 @@ export function safeJson(v: unknown): string {
   return JSON.stringify(v).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
+/** Splits a lander headline into an ink line and a gradient line at the colon, else at the last comma. */
+export function splitHeadline(text: string): { h1: string; h1b: string } {
+  const colon = text.indexOf(": ");
+  const at = colon > 0 ? colon + 1 : text.lastIndexOf(", ") > 0 ? text.lastIndexOf(", ") + 1 : -1;
+  if (at <= 0) return { h1: text, h1b: "" };
+  return { h1: text.slice(0, at), h1b: text.slice(at).trim() };
+}
+
 /** Escapes text and wraps hyphenated words, and short sentences ("No agency."), in no-wrap spans. */
 export function nowrapHyphens(text: string): string {
   const parts = text.split(/(?<=[.!?])\s+/);
@@ -137,8 +145,7 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
     const key = `${opts.industry.id}/${angle!.id}`;
     if (!preview) { id.lander = key; setLanderCookie(c, key); }
     eyebrow = angle!.pre(opts.industry);
-    h1 = angle!.headline(opts.industry);
-    h1b = "";
+    ({ h1, h1b } = splitHeadline(angle!.headline(opts.industry)));
     sub = angle!.sub(opts.industry);
     path = `/for/${key}`;
   } else {
