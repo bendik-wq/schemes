@@ -55,7 +55,7 @@ export const ANGLES: Angle[] = [
     id: "agency",
     label: "Replace the agency",
     pre: (i) => `For ${i.owners} doing $1M+`,
-    headline: (i) => `${cap(i.owners)}: 56 days to stop renting ${i.rent}.`,
+    headline: (i) => `${cap(i.owners)}: stop renting ${i.rent}. Own it in 56 days.`,
     sub: (i) => `In eight weeks your team builds and runs its own pages, ads tracking and sales dashboard on Claude Code. The ${i.one} owns the machine, not the agency.`,
   },
   {

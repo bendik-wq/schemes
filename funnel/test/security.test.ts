@@ -268,7 +268,9 @@ describe("headline no-wrap hyphens", () => {
 describe("lander headline split", () => {
   it("splits at the colon, else the last comma", async () => {
     const { splitHeadline } = await import("../src/funnel/pages");
-    expect(splitHeadline("Dental practice owners: 56 days to stop renting it.")).toEqual({ h1: "Dental practice owners:", h1b: "56 days to stop renting it." });
+    expect(splitHeadline("Dental practice owners: stop renting the agency. Own it in 56 days.")).toEqual({ h1: "Dental practice owners: stop renting the agency.", h1b: "Own it in 56 days." });
+    expect(splitHeadline("Dental: in 56 days, Meta optimises for buyers, not clicks.")).toEqual({ h1: "Dental: in 56 days, Meta optimises for buyers,", h1b: "not clicks." });
+    expect(splitHeadline("Owners: one very long payoff that keeps going on and on and on.")).toEqual({ h1: "Owners: one very long payoff that keeps going on and on and on.", h1b: "" });
     expect(splitHeadline("Every lead, call and close for gyms, on one screen in 56 days.")).toEqual({ h1: "Every lead, call and close for gyms,", h1b: "on one screen in 56 days." });
     expect(splitHeadline("No split here.")).toEqual({ h1: "No split here.", h1b: "" });
   });

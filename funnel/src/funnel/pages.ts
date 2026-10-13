@@ -31,12 +31,19 @@ export function safeJson(v: unknown): string {
   return JSON.stringify(v).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
-/** Splits a lander headline into an ink line and a gradient line at the colon, else at the last comma. */
+/**
+ * Splits a lander headline into an ink line and a short gradient payoff (at most seven words):
+ * the last sentence, else the part after the last comma, else after the colon. A long payoff stays ink.
+ */
 export function splitHeadline(text: string): { h1: string; h1b: string } {
-  const colon = text.indexOf(": ");
-  const at = colon > 0 ? colon + 1 : text.lastIndexOf(", ") > 0 ? text.lastIndexOf(", ") + 1 : -1;
-  if (at <= 0) return { h1: text, h1b: "" };
-  return { h1: text.slice(0, at), h1b: text.slice(at).trim() };
+  const words = (t: string) => t.trim().split(/\s+/).length;
+  const cuts = [text.search(/[.!?]\s+\S[^.!?]*[.!?]?$/), text.lastIndexOf(", "), text.indexOf(": ")];
+  for (const i of cuts) {
+    if (i <= 0) continue;
+    const h1 = text.slice(0, i + 1).trim(), h1b = text.slice(i + 1).trim();
+    if (h1b && words(h1b) <= 7 && words(h1) >= 2) return { h1, h1b };
+  }
+  return { h1: text, h1b: "" };
 }
 
 /** Escapes text and wraps hyphenated words, and short sentences ("No agency."), in no-wrap spans. */

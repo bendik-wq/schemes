@@ -1,26 +1,30 @@
-# Design system (Operator v4, Apple-tradisjon)
+# Design system (Operator v8, Apple-like with flow)
 
-Reference: `claude-code-site/public/assets/op.css`.
+Reference implementation: `funnel/public/assets/site.css` (the v6–v8 blocks at the end are current).
 
 ## Tokens
 | Token | Value | Use |
 |---|---|---|
-| white / paper | #ffffff / #f5f5f7 | Alternating light sections |
-| ink / ink-2 / grey / hair | #1d1d1f / #424245 / #6e6e73 / #d2d2d7 | Text, secondary, dividers |
-| black / on-dark / on-dark-2 | #000 / #f5f5f7 / #a1a1a6 | Film, guarantee, closer |
-| blue / blue-hi | #0a62d6 / #2997ff | One accent: buttons, links, progress |
-| green | #1a8a4a | Checks and "live" states only |
+| white / paper | #ffffff / #f6f7fb | Page and quiet sections |
+| ink / ink-2 | #0a0b14 / #2b2f45 | Headlines / body and sub copy (never mid-grey text) |
+| grey / grey-2 / hair | #3e4463 / #5f6688 / #dfe2ee | Fine print, hints, dividers (blue-tinted, not neutral grey) |
+| blue / violet / rose | #2f5bff / #6a4dff / #ff5c9a | Accents |
+| flow | linear-gradient(95deg, #2f6bff, #6a4dff 38%, #b14dff 68%, #ff5c9a) | Headline payoff line, progress bar |
+| btn | linear-gradient(100deg, #2f5bff, #5a4dff 55%, #8b4dff) | Buttons |
 
-Type: **Geist** for display and text, **Geist Mono** for terminal/UI. Headlines are 600 weight with tight tracking (-.04em). The second line of a headline goes in grey.
+Type: **Inter** (variable with optical size, self-hosted, OFL) for everything; `font-feature-settings: "ss03"`. h1 660 weight, -0.028em, one scale site-wide `clamp(38px, 4.6vw, 60px)`. Fine print at 0 tracking. Mono only where code is shown.
+
+Headline = an ink line plus a short gradient payoff (≤ 7 words) on its own line, rendered with `box-decoration-break: slice` so one gradient flows across wraps. Hyphenated words and short sentences are kept on one line (no-wrap spans).
 
 ## Rules
-- One accent colour. Black sections create rhythm; no gradients on surfaces.
-- Bento tiles: radius 28px, mini UIs that show the deliverable (not icons).
-- Buttons: pill, solid blue, subtle sheen every ~5s. The secondary action is a text link with ›.
-- Figures: big numbers, thin left dividers, no boxes.
-- Forms: 12px radius inputs, blue focus ring, 5 steps with a thin progress bar.
-- Content is visible at rest; reveal animations only under `.js`, plus `prefers-reduced-motion`.
-- Mobile: single column at 760px; the terminal preview hides; there is no horizontal scroll.
+- Background flow, never decoration: a soft ambient aurora painted as the body background (colour at the edges, white centre) and one silk ribbon (`scripts/gen-flow.mjs`) that appears only from behind the film. Nothing behind body copy or form fields.
+- The film is the hero: whole player above the fold on a 1440×900 laptop; dark poster with a bright white play button and a light halo.
+- Application card: white, hairline border, soft shadow; inline progress bar that reveals one full-width gradient by step; "Step n of m"; option rows with keycaps and a clear hover.
+- Buttons: pill, gradient, soft glow (none inside the card).
+- Eyebrow: a quiet white chip with a violet dot.
+- Motion only under `prefers-reduced-motion: no-preference`: hero fade-and-rise, ribbon sway, play hover scale.
+- Mobile: single column at 760px, name fields side by side, no horizontal scroll, ribbon hidden.
+- Video frames: use `contain: paint` on the player to avoid compositor seams.
 
 ## The product shot
 Show the offer working: for a software/AI offer a macOS window with terminal lines appearing (staggered `animation-delay`) and a preview pane. For a service, use a dashboard or a timeline UI. For health, use a plan or report UI. Never use a stock photo.

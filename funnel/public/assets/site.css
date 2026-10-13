@@ -705,3 +705,13 @@ body.page-privacy, body.page-resources { background-size: 100% 520px; }
 }
 .poster-play, .player:hover .poster-play { box-shadow: 0 0 0 1px rgba(255,255,255,.35), 0 0 44px rgba(150,140,255,.35), 0 12px 28px -12px rgba(0,0,0,.5); }
 @media (max-width: 760px) { .poster-play { box-shadow: 0 0 0 1px rgba(255,255,255,.35), 0 0 30px rgba(150,140,255,.35); } }
+
+/* Round 3: one gradient flowing across wrapped lines; resources/privacy wash fades out; light halo */
+.h1b, h1 .h1b { -webkit-box-decoration-break: slice; box-decoration-break: slice; }
+body.page-privacy, body.page-resources { background:
+    radial-gradient(760px 480px at calc(50% - 560px) 100px, rgba(47,107,255,.14), transparent 65%),
+    radial-gradient(760px 480px at calc(50% + 580px) 140px, rgba(255,92,154,.10), transparent 65%),
+    var(--white);
+  background-repeat: no-repeat; background-size: auto; }
+.poster-play, .player:hover .poster-play { backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: 0 0 0 10px rgba(255,255,255,.10), 0 0 40px 6px rgba(140,120,255,.35), 0 18px 40px -14px rgba(0,0,0,.55); }
+@media (max-width: 760px) { .poster-play { box-shadow: 0 0 0 7px rgba(255,255,255,.10), 0 0 28px 4px rgba(140,120,255,.35); } }
