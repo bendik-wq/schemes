@@ -17,17 +17,19 @@ export interface SettingDef {
   def?: string;
   kind?: "text" | "bool" | "number" | "select" | "url";
   options?: string[];
+  /** Only the owner may change it (security-relevant: where links, mail and data go). See isOwnerOnly. */
+  ownerOnly?: boolean;
 }
 
 export const SETTINGS: SettingDef[] = [
-  { key: "PUBLIC_URL", group: "site", label: "Public URL", kind: "url", help: "Your live domain, e.g. https://apply.example.com. Email links use it." },
+  { key: "PUBLIC_URL", ownerOnly: true, group: "site", label: "Public URL", kind: "url", help: "Your live domain, e.g. https://apply.example.com. Email links use it." },
   { key: "SITE_NAME", group: "site", label: "Site name", help: "Shown in titles and emails." },
   { key: "REFERRAL_REWARD", group: "site", label: "Referral reward text", help: "Only a real reward you will honour. Empty = no reward line." },
 
   { key: "RESEND_API_KEY", group: "email", label: "Resend API key", secret: true, help: "resend.com → API keys. Without it, emails are simulated." },
-  { key: "EMAIL_FROM", group: "email", label: "From", help: "Name <name@yourdomain.com> on a verified Resend domain." },
+  { key: "EMAIL_FROM", ownerOnly: true, group: "email", label: "From", help: "Name <name@yourdomain.com> on a verified Resend domain." },
   { key: "COHORT_NOTICE_DAYS", group: "email", label: "Cohort apply-by note (days before)", kind: "number", def: "4", help: "0 turns it off." },
-  { key: "EMAIL_REPLY_TO", group: "email", label: "Reply-to" },
+  { key: "EMAIL_REPLY_TO", ownerOnly: true, group: "email", label: "Reply-to" },
   { key: "BUSINESS_ADDRESS", group: "email", label: "Postal address", help: "Required in every email (CAN-SPAM, PECR)." },
   { key: "EMAIL_SIGNATURE", group: "email", label: "Signature name", def: "Bendik" },
   { key: "RESEND_WEBHOOK_SECRET", group: "email", label: "Webhook signing secret", secret: true, help: "Resend → Webhooks → your endpoint (/hooks/resend) → Signing secret (whsec_…). Bounces and complaints are rejected without it." },
@@ -55,7 +57,7 @@ export const SETTINGS: SettingDef[] = [
   { key: "ELEVENLABS_LLM", group: "voice", label: "Agent LLM", def: "claude-sonnet-5-5" },
   { key: "ELEVENLABS_WEBHOOK_SECRET", group: "voice", label: "Post-call webhook secret", secret: true },
   { key: "ELEVENLABS_INIT_SECRET", group: "voice", label: "Inbound init secret", secret: true, help: "Sent by ElevenLabs as x-funnel-secret." },
-  { key: "AI_CALL_CALLBACK_NUMBER", group: "voice", label: "Callback number (E.164)" },
+  { key: "AI_CALL_CALLBACK_NUMBER", ownerOnly: true, group: "voice", label: "Callback number (E.164)" },
   { key: "AI_CALL_CONFIRM", group: "voice", label: "Confirm calls", kind: "bool", def: "true" },
   { key: "AI_CALL_SPEED_TO_LEAD", group: "voice", label: "Speed-to-lead calls", kind: "bool", def: "true" },
   { key: "AI_CALL_REBOOK", group: "voice", label: "Rebook calls", kind: "bool", def: "true" },
@@ -93,12 +95,12 @@ export const SETTINGS: SettingDef[] = [
   { key: "WHATSAPP_VERIFY_TOKEN", group: "whatsapp", label: "Verify token", secret: true },
   { key: "WHATSAPP_APP_SECRET", group: "whatsapp", label: "App secret", secret: true },
 
-  { key: "TURNSTILE_SITE_KEY", group: "turnstile", label: "Site key" },
+  { key: "TURNSTILE_SITE_KEY", ownerOnly: true, group: "turnstile", label: "Site key" },
   { key: "TURNSTILE_SECRET_KEY", group: "turnstile", label: "Secret key", secret: true },
 
   { key: "LEAD_WEBHOOK_URL", group: "crm", label: "CRM webhook URL", secret: true },
   { key: "LEAD_WEBHOOK_SECRET", group: "crm", label: "CRM webhook signing secret", secret: true, help: "When set, every CRM post carries X-Funnel-Signature: t=<unix>,v1=HMAC-SHA256(secret, t + \".\" + body). Verify it on your side." },
-  { key: "WEBHOOK_ALLOWED_HOSTS", group: "crm", label: "Webhook host allowlist", help: "Comma-separated hosts (e.g. hooks.zapier.com, api.example.com). When set, webhook subscriptions may only post to these hosts." },
+  { key: "WEBHOOK_ALLOWED_HOSTS", ownerOnly: true, group: "crm", label: "Webhook host allowlist", help: "Comma-separated hosts (e.g. hooks.zapier.com, api.example.com). When set, webhook subscriptions may only post to these hosts." },
 
   { key: "VSL_MAIN_SRC", group: "video", label: "Main VSL (MP4 or HLS)" },
   { key: "VSL_MAIN_POSTER", group: "video", label: "Main VSL poster" },
@@ -109,15 +111,15 @@ export const SETTINGS: SettingDef[] = [
   { key: "VSL_PRECALL_CAPTIONS", group: "video", label: "Pre-call captions (VTT URL)" },
   { key: "VSL_PRECALL_SRC", group: "video", label: "Pre-call video" },
 
-  { key: "CONSENT_REQUIRED_EU", group: "privacy", label: "Consent banner in EU/UK/EEA/CH", kind: "bool", def: "true" },
-  { key: "IP_ANONYMIZE", group: "privacy", label: "Store IP as a hash only", kind: "bool", def: "false" },
+  { key: "CONSENT_REQUIRED_EU", ownerOnly: true, group: "privacy", label: "Consent banner in EU/UK/EEA/CH", kind: "bool", def: "true" },
+  { key: "IP_ANONYMIZE", ownerOnly: true, group: "privacy", label: "Store IP as a hash only", kind: "bool", def: "false" },
   { key: "BLOCKLIST", group: "privacy", label: "Blocklist (emails/domains, comma separated)" },
 
   { key: "PRECALL_EMAILS_PER_DAY", group: "pacing", label: "Pre-call emails per day (0 = off)", kind: "number", def: "6" },
   { key: "SALES_TIMEZONE", group: "pacing", label: "Sales time zone", def: "Europe/Oslo" },
   // Managed from Insights → Scoring calibration by the owner; refused on the Integrations screen.
-  { key: "LEARNED_ROUTING", group: "pacing", label: "Use learned points for routing (managed)", kind: "bool", def: "false", help: "Turned on and off by the owner on Insights → Scoring calibration." },
-  { key: "LEARNED_POINTS", group: "pacing", label: "Learned points table (managed)", help: "Built from the active scoring model when learned routing is turned on." },
+  { key: "LEARNED_ROUTING", ownerOnly: true, group: "pacing", label: "Use learned points for routing (managed)", kind: "bool", def: "false", help: "Turned on and off by the owner on Insights → Scoring calibration." },
+  { key: "LEARNED_POINTS", ownerOnly: true, group: "pacing", label: "Learned points table (managed)", help: "Built from the active scoring model when learned routing is turned on." },
 
   { key: "VAPI_API_KEY", group: "vapi", label: "Vapi private key", secret: true },
   { key: "VAPI_PUBLIC_KEY", group: "vapi", label: "Vapi public key" },
@@ -128,6 +130,14 @@ export const SETTINGS: SettingDef[] = [
 ];
 
 const DEFS = new Map(SETTINGS.map((s) => [s.key, s]));
+
+/**
+ * Settings only the owner may change: every secret (API keys, signing secrets, webhook URLs), every URL
+ * setting (where links and data go) and the ones flagged ownerOnly (sender identity, consent, allowlists).
+ */
+export function isOwnerOnly(def: SettingDef): boolean {
+  return !!def.ownerOnly || !!def.secret || def.kind === "url";
+}
 
 export function settingDef(key: string): SettingDef | undefined {
   return DEFS.get(key);

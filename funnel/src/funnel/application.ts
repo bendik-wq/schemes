@@ -10,13 +10,16 @@ import { linkVisitorToLead } from "../lib/identity";
 import { newId, refCode } from "../lib/ids";
 import { kvGate, kvGet, kvGetJson, kvIncr, kvSet } from "../lib/kv";
 import { normalizePhone, countryTimezone, callableNumber } from "../lib/phone";
-import { clip } from "../lib/text";
-import { isSuppressed } from "../lib/suppress";
+import { clip, escHtml } from "../lib/text";
+import { signShort, verifyShort } from "../lib/crypto";
+import { signingSecret } from "../lib/secret";
+import { forwardEvent } from "../tracking/forward";
+import { isSuppressed, leadEmailStatus } from "../lib/suppress";
 import { track, whoFromIdentity } from "../tracking/track";
 import { getLead, getLeadByEmail, parseAnswers, updateLead, effectiveTier, type Answers, type Lead } from "./leads";
 import { scoreApplication } from "./scoring";
 import { pickCloser, routeFor, bookingUrlFor } from "./routing";
-import { enqueueSequence, cancelSequences, sendOneOff } from "../integrations/email";
+import { enqueueSequence, cancelSequences, renderEmail, sendOneOff, sendViaResend, unsubscribeUrl } from "../integrations/email";
 import { queueCall } from "../integrations/elevenlabs";
 import { notifyTeam } from "../integrations/notify";
 import { validTimezone } from "../integrations/sequences";
@@ -127,7 +130,16 @@ async function lastTouch(rt: Runtime, id: Identity) {
   return { s, cur, v, ftLander: ftLander?.lander ?? null };
 }
 
-export async function saveContact(rt: Runtime, id: Identity, input: ContactInput, opts: { skipTurnstile?: boolean } = {}): Promise<ContactResult> {
+export async function saveContact(
+  rt: Runtime, id: Identity, input: ContactInput,
+  opts: {
+    skipTurnstile?: boolean;
+    /** No bot check ran (no-JS): the lead is stored but reported and emailed only after its inbox confirms (see nojsContact). */
+    unverified?: boolean;
+    /** Last gate before a new lead is inserted (after validation); false refuses with a rate-limit answer. */
+    beforeCreate?: () => Promise<boolean>;
+  } = {},
+): Promise<ContactResult> {
   const email = validEmail(input.email);
   if (!email) return { ok: false, status: 400, code: "email", field: "email", message: "Please enter a valid email address." };
   if (isDisposable(email)) return { ok: false, status: 400, code: "email_disposable", field: "email", message: "Please use your work or personal email, not a temporary one." };
@@ -186,6 +198,7 @@ export async function saveContact(rt: Runtime, id: Identity, input: ContactInput
     return { ok: true, leadId: linked.id, ref: linked.ref_code, created: false, phoneCallable };
   }
 
+  if (opts.beforeCreate && !(await opts.beforeCreate())) return { ok: false, status: 403, code: "rate", message: "Too many applications right now. Please try again later." };
   const leadId = newId("l");
   const ref = refCode();
   const emailSuppressed = await isSuppressed(rt, "email", email);
@@ -214,6 +227,12 @@ export async function saveContact(rt: Runtime, id: Identity, input: ContactInput
   id.leadId = leadId;
   if (emailSuppressed) await updateLead(rt, leadId, { unsubscribed_at: now });
   const lead = (await getLead(rt, leadId))!;
+  if (opts.unverified) {
+    // Stored only: no ad platform, CRM or sequence hears of it until the inbox confirms (confirmNojsLead).
+    await kvSet(rt.env, `nojs_unverified:${leadId}`, String(now));
+    await track(rt, { ...who, leadId }, { name: "lead_captured", props: { step: 1, nojs: true }, localOnly: true, eventId: nojsCaptureId(leadId) });
+    return { ok: true, leadId, ref, created: true, phoneCallable };
+  }
   await track(rt, { ...who, leadId }, { name: "lead_captured", props: { step: 1 } });
   await enqueueSequence(rt, lead, "abandoned");
   return { ok: true, leadId, ref, created: true, phoneCallable };
@@ -455,20 +474,115 @@ export async function submitApplication(rt: Runtime, id: Identity, input: { tz?:
   return { ok: true, route, tier, ...(offer || {}) };
 }
 
+/** No-JS leads created per day (all IPs), counted only once a submission has passed validation. */
+export const NOJS_DAILY_CAP = 50;
+
+/** The stored-only lead_captured event of a no-JS lead; forwarded under the same id once confirmed. */
+export function nojsCaptureId(leadId: string): string {
+  return `nojscap_${leadId}`;
+}
+
+/** Still waiting for its inbox to confirm (created by the no-JS form, no bot check). */
+export async function nojsUnverified(rt: Runtime, leadId: string | null | undefined): Promise<boolean> {
+  return !!leadId && (await kvGet(rt.env, `nojs_unverified:${leadId}`)) != null;
+}
+
+async function nojsSig(rt: Runtime, leadId: string): Promise<string> {
+  return signShort(await signingSecret(rt.env), `nv|${leadId}`);
+}
+
+export async function nojsConfirmUrl(rt: Runtime, leadId: string): Promise<string> {
+  return `${rt.origin}/api/apply/nojs/confirm/${leadId}/${await nojsSig(rt, leadId)}`;
+}
+
+export async function verifyNojsSig(rt: Runtime, leadId: string, sig: string): Promise<boolean> {
+  return /^l[0-9a-z]{19}$/.test(leadId || "") && verifyShort(await signingSecret(rt.env), `nv|${leadId}`, sig || "");
+}
+
+/**
+ * The one email an unconfirmed no-JS lead gets: a signed link to confirm the address. Once per lead,
+ * never to a suppressed, unsubscribed, bounced or complained address. Simulated without Resend.
+ */
+async function sendNojsConfirm(rt: Runtime, lead: Lead): Promise<boolean> {
+  if (lead.unsubscribed_at || (await isSuppressed(rt, "email", lead.email)) || (await leadEmailStatus(rt, lead.id))) return false;
+  if (!(await kvGate(rt.env, `nojs_mail:${lead.id}`, 365 * 86_400_000, rt.now()))) return false;
+  const url = await nojsConfirmUrl(rt, lead.id);
+  const first = escHtml(lead.first_name || "there");
+  const rendered = renderEmail({
+    subject: `Confirm your email to continue your ${BRAND.name} application`,
+    preheader: "One click and you can finish your application.",
+    paragraphs: [
+      `Hi ${first},`,
+      "Thanks for starting your application. Please confirm this is your email address so we can continue.",
+      "If you did not start an application, ignore this email and we will not write again.",
+    ],
+    cta: { label: "Confirm my email", path: "/apply" },
+  }, {
+    link: () => url,
+    unsubUrl: await unsubscribeUrl(rt, lead.id),
+    pixelUrl: null,
+    address: rt.settings.get("BUSINESS_ADDRESS") || "[postal address not set]",
+    sigName: escHtml(rt.settings.get("EMAIL_SIGNATURE") || BRAND.name),
+    company: rt.settings.get("SITE_NAME") || BRAND.name,
+  });
+  const s = rt.settings;
+  if (!(s.has("RESEND_API_KEY") && s.has("EMAIL_FROM") && s.has("BUSINESS_ADDRESS"))) {
+    await track(rt, { leadId: lead.id }, { name: "email_sent", source: "server", props: { sequence: "nojs_confirm", simulated: true }, localOnly: true });
+    return true;
+  }
+  const r = await sendViaResend(rt, lead.email, rendered, await unsubscribeUrl(rt, lead.id), `nojs_${lead.id}`);
+  if (!r.ok) console.error("nojs confirm email failed", r.error);
+  else await track(rt, { leadId: lead.id }, { name: "email_sent", source: "server", props: { sequence: "nojs_confirm" }, localOnly: true });
+  return r.ok;
+}
+
 /**
  * No-JS fallback (POST /api/apply/nojs, form-encoded): the same validation as the contact step. Turnstile
- * cannot run without JavaScript, so the route applies stricter rate limits and a honeypot instead.
+ * cannot run without JavaScript, so the lead is stored unconfirmed: no ad-platform Lead event, no CRM post,
+ * no sequence. It gets one email with a signed confirm link (confirmNojsLead does the rest). The daily cap
+ * counts only submissions that passed validation, so junk posts cannot use it up.
  */
 export async function nojsContact(rt: Runtime, id: Identity, form: Record<string, unknown>): Promise<ContactResult> {
   if (String(form.website ?? "").trim()) return { ok: false, status: 400, code: "bad", message: "Please try again." };
   const name = clip(form.name ?? form.first_name, 120);
   const [first, ...rest] = name.split(/\s+/);
-  return saveContact(rt, id, {
+  const r = await saveContact(rt, id, {
     first_name: first || "",
     last_name: form.last_name ?? rest.join(" "),
     email: form.email,
     phone: form.phone,
     phone_country: form.phone_country,
     call_consent: form.call_consent === "on" || form.call_consent === "true",
-  }, { skipTurnstile: true });
+  }, {
+    skipTurnstile: true,
+    unverified: true,
+    beforeCreate: async () => (await kvIncr(rt.env, `nojs_day:${new Date(rt.now()).toISOString().slice(0, 10)}`)) <= NOJS_DAILY_CAP,
+  });
+  if (r.ok && r.created) {
+    const lead = await getLead(rt, r.leadId);
+    if (lead) await sendNojsConfirm(rt, lead);
+  }
+  return r;
+}
+
+/**
+ * The confirm link was opened by a person: the lead becomes a normal one. Its stored lead_captured event
+ * is forwarded now (same event id, so it is never sent twice) and the abandoned sequence starts.
+ * Returns false when there was nothing to confirm (already confirmed, or not a no-JS lead).
+ */
+export async function confirmNojsLead(rt: Runtime, lead: Lead, id: Identity): Promise<boolean> {
+  // Single use: only the request that deletes the marker runs the side effects.
+  const row = await rt.env.DB.prepare("DELETE FROM kv_state WHERE key = ? RETURNING value").bind(`nojs_unverified:${lead.id}`).first<{ value: string }>().catch(() => null);
+  if (!row) return false;
+  const ev = await rt.env.DB.prepare("SELECT id, ts, props FROM events WHERE id = ?").bind(nojsCaptureId(lead.id)).first<{ id: string; ts: number; props: string | null }>();
+  if (ev && !id.isBot) {
+    let props: Record<string, unknown> = {};
+    try { props = ev.props ? JSON.parse(ev.props) : {}; } catch { props = {}; }
+    const who = { ...whoFromIdentity(id, "/apply"), leadId: lead.id };
+    rt.waitUntil(forwardEvent(rt, { id: ev.id, ts: ev.ts, name: "lead_captured", who, props }));
+  }
+  await track(rt, { ...whoFromIdentity(id, "/apply"), leadId: lead.id }, { name: "email_confirmed", props: { nojs: true }, localOnly: true });
+  const fresh = await getLead(rt, lead.id);
+  if (fresh && fresh.status === "partial") await enqueueSequence(rt, fresh, "abandoned");
+  return true;
 }

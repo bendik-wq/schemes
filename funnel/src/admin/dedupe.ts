@@ -12,6 +12,7 @@ import { getLead, parseAnswers, updateLead, type Lead } from "../funnel/leads";
 import { suppress } from "../lib/suppress";
 import { cancelAllEmails } from "../integrations/email";
 import { cancelCalls } from "../integrations/elevenlabs";
+import { confirmBooking } from "../integrations/booking";
 import { eraseLead } from "../sales/erase";
 import { syncCash } from "../sales/outcomes";
 import { syncReceivables } from "../sales/receivables";
@@ -172,7 +173,17 @@ export async function mergeLeads(rt: Runtime, aId: string, bId: string): Promise
   }
   await db.batch(stmts);
 
-  await updateLead(rt, S, mergePatch(survivor, loser));
+  // Referral credit the loser earned moves to the survivor before the erase trigger
+  // (trg_leads_growth_erase deletes rows WHERE referrer_lead_id = the erased lead). A referral of oneself
+  // that the merge creates (the survivor referred the loser, or the reverse) is dropped.
+  await db.batch([
+    db.prepare("UPDATE OR IGNORE lead_referrals SET referrer_lead_id = ? WHERE referrer_lead_id = ?").bind(S, L),
+    db.prepare("UPDATE OR IGNORE visitor_referrals SET referrer_lead_id = ? WHERE referrer_lead_id = ?").bind(S, L),
+    db.prepare("DELETE FROM lead_referrals WHERE lead_id = referrer_lead_id"),
+  ]);
+
+  const patch = mergePatch(survivor, loser);
+  await updateLead(rt, S, patch);
   // Detach the loser's identifiers so its erasure cannot reach the merged history (shared browser, bookings by email, calls by phone).
   await db.prepare("UPDATE leads SET email = ?, phone = NULL, visitor_id = NULL, updated_at = ? WHERE id = ?").bind(`merged+${L}@invalid.invalid`, rt.now(), L).run();
   for (const t of tables) if (!KNOWN_TABLES.includes(t) && t !== "lead_revops") await db.prepare(`DELETE FROM ${t} WHERE lead_id = ?`).bind(L).run();
@@ -180,5 +191,11 @@ export async function mergeLeads(rt: Runtime, aId: string, bId: string): Promise
   await syncCash(rt, S);
   const fresh = (await getLead(rt, S)) as Lead;
   await syncReceivables(rt, fresh);
+  // The loser held the live, verified booking: its reminders and confirm call were cancelled above, so
+  // start them for the survivor the way a confirmed booking does (no second Meta Schedule event or ping).
+  if (patch.booking_ref && patch.booking_ref === loser.booking_ref && fresh.booking_verified && fresh.status === "booked"
+    && !fresh.booking_cancelled_at && fresh.call_at && fresh.call_at > rt.now()) {
+    await confirmBooking(rt, fresh);
+  }
   return { survivor: (await getLead(rt, S)) as Lead, loser_ref: loser.ref_code, tables };
 }

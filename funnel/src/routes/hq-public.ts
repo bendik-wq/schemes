@@ -20,6 +20,11 @@ import { salesTz } from "../admin/stats";
 
 export const hqPublic = new Hono<AppEnv>();
 
+/** This request's own origin (the Worker only answers on its configured routes and custom domains). */
+export function requestOrigin(c: Ctx): string {
+  return new URL(c.req.url).origin;
+}
+
 function page(title: string, inner: string, status = 200): Response {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow"><meta name="color-scheme" content="light dark"><title>${escHtml(title)} · Funnel HQ</title>
@@ -45,10 +50,13 @@ hqPublic.post("/admin/login/email", async (c) => {
   const rt = c.get("rt");
   const form = await c.req.parseBody().catch(() => ({} as Record<string, unknown>));
   const ip = c.req.header("cf-connecting-ip") || "unknown";
-  const r = await createMagicLink(c.env, rt.origin, form.email, ip, Date.now());
+  // The link goes back to the host this request reached, never to the DB-editable PUBLIC_URL: a sign-in
+  // link on someone else's domain would hand them the session (account takeover).
+  const origin = requestOrigin(c);
+  const r = await createMagicLink(c.env, origin, form.email, ip, Date.now());
   if (!r.ok) return c.redirect(r.status === 429 ? "/admin/login?e=magic_locked" : "/admin/login?e=magic_bad", 303);
   if (r.url && r.user) {
-    await sendMagicEmail(rt, r.user.email, r.user.name, r.url);
+    await sendMagicEmail({ ...rt, origin }, r.user.email, r.user.name, r.url);
     await audit(rt, r.user.id, ip, { action: "login_link_sent", entity: "user", entity_id: r.user.id });
   }
   return c.redirect("/admin/login?m=sent", 303);

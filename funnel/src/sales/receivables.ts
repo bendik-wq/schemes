@@ -1,8 +1,9 @@
 // Receivables: one row per instalment of a won deal on a payment plan.
 // Generated when a deal is won with a plan other than "paid in full" and two or more instalments;
 // regenerated (pending rows only) when the deal value, plan or instalment count changes; cancelled when the
-// deal is refunded or reopened. Payments recorded on the lead are matched to the oldest pending instalment,
-// and "mark paid" records a payment in the ledger and links it. leads.next_payment_at mirrors the next
+// deal is refunded or reopened. Payments recorded on the lead pay instalments in order by running balance
+// (an instalment is paid only once the cash covers it), and "mark paid" claims the instalment, then records
+// a payment in the ledger and links it. leads.next_payment_at mirrors the next
 // pending instalment so the round-1 views and pings keep working.
 
 import type { Runtime } from "../app";
@@ -54,22 +55,55 @@ async function setNextPayment(rt: Runtime, leadId: string): Promise<void> {
   ).bind(leadId, rt.now()).run();
 }
 
-/** Match recorded payments that are not linked yet to the oldest pending instalments. */
+/**
+ * Reconcile instalments with the cash actually collected, by running balance. The pool is the lead's net
+ * payments minus the instalments already marked paid; pending instalments are paid in order only while the
+ * pool covers their full amount, so a partial payment leaves the instalment pending (its credit carries to
+ * the next allocation) and one large payment can pay several. When the pool goes negative (a payment was
+ * deleted or refunded) the latest paid instalments go back to pending. Returns how many were marked paid.
+ */
 export async function allocatePayments(rt: Runtime, leadId: string): Promise<number> {
   const db = rt.env.DB;
-  const free = ((await db.prepare(
-    `SELECT p.id, p.amount, p.paid_at FROM payments p WHERE p.lead_id = ? AND p.amount > 0
-       AND NOT EXISTS (SELECT 1 FROM receivables r WHERE r.paid_payment_id = p.id) ORDER BY p.paid_at, p.created_at`,
-  ).bind(leadId).all<{ id: string; amount: number; paid_at: number }>()).results) || [];
-  if (!free.length) return 0;
-  const pending = ((await db.prepare("SELECT id, amount FROM receivables WHERE lead_id = ? AND status = 'pending' ORDER BY seq").bind(leadId).all<{ id: string; amount: number }>()).results) || [];
-  let n = 0;
-  for (let i = 0; i < Math.min(free.length, pending.length); i++) {
-    await db.prepare("UPDATE receivables SET status = 'paid', paid_payment_id = ?, updated_at = ? WHERE id = ? AND status = 'pending'").bind(free[i].id, rt.now(), pending[i].id).run();
-    n++;
+  const now = rt.now();
+  const cash = Number((await db.prepare("SELECT COALESCE(SUM(amount), 0) AS s FROM payments WHERE lead_id = ?").bind(leadId).first<{ s: number }>())?.s) || 0;
+  const rows = ((await db.prepare("SELECT id, seq, amount, status, paid_payment_id FROM receivables WHERE lead_id = ? AND status IN ('pending', 'paid') ORDER BY seq")
+    .bind(leadId).all<{ id: string; seq: number; amount: number; status: string; paid_payment_id: string | null }>()).results) || [];
+  if (!rows.length) return 0;
+  const cents = (x: number) => Math.round(x * 100);
+  let pool = cents(cash) - rows.filter((r) => r.status === "paid").reduce((s, r) => s + cents(r.amount), 0);
+  let changed = 0, n = 0;
+  // Over-allocated: un-pay from the latest instalment back (never one claimed by "mark paid" mid-flight).
+  for (const r of [...rows].reverse()) {
+    if (pool >= 0) break;
+    if (r.status !== "paid" || !r.paid_payment_id) continue;
+    await db.prepare("UPDATE receivables SET status = 'pending', paid_payment_id = NULL, updated_at = ? WHERE id = ? AND status = 'paid'").bind(now, r.id).run();
+    r.status = "pending";
+    pool += cents(r.amount);
+    changed++;
   }
-  if (n) await setNextPayment(rt, leadId);
+  // The payment that completed an instalment is its link: the latest one not linked yet, else the latest.
+  const latest = await db.prepare(
+    `SELECT p.id FROM payments p WHERE p.lead_id = ? AND p.amount > 0
+     ORDER BY EXISTS (SELECT 1 FROM receivables r WHERE r.paid_payment_id = p.id), p.paid_at DESC, p.created_at DESC LIMIT 1`,
+  ).bind(leadId).first<{ id: string }>();
+  for (const r of rows) {
+    if (r.status !== "pending") continue;
+    if (pool < cents(r.amount)) break; // paid in order: a short pool stops here and stays as partial credit
+    const up = await db.prepare("UPDATE receivables SET status = 'paid', paid_payment_id = ?, updated_at = ? WHERE id = ? AND status = 'pending'").bind(latest?.id ?? null, now, r.id).run();
+    if (!up.meta?.changes) continue;
+    pool -= cents(r.amount);
+    n++; changed++;
+  }
+  if (changed) await setNextPayment(rt, leadId);
   return n;
+}
+
+/** Cash collected toward the next pending instalment that does not cover it yet (0 when none). */
+export async function partialCredit(rt: Runtime, leadId: string): Promise<number> {
+  const r = await rt.env.DB.prepare(
+    `SELECT (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE lead_id = ?1) - (SELECT COALESCE(SUM(amount), 0) FROM receivables WHERE lead_id = ?1 AND status = 'paid') AS s`,
+  ).bind(leadId).first<{ s: number }>();
+  return Math.max(0, Math.round((Number(r?.s) || 0) * 100) / 100);
 }
 
 /**
@@ -118,19 +152,35 @@ export async function syncReceivables(rt: Runtime, lead: Lead, opts: { reschedul
   return { created: plan.length, cancelled: pending.length };
 }
 
-/** A payment was deleted: its instalment goes back to pending. */
+/** A payment was deleted: its instalment goes back to pending, then the running balance is reconciled. */
 export async function unlinkPayment(rt: Runtime, leadId: string, paymentId: string): Promise<void> {
   const r = await rt.env.DB.prepare("UPDATE receivables SET status = 'pending', paid_payment_id = NULL, updated_at = ? WHERE lead_id = ? AND paid_payment_id = ?").bind(rt.now(), leadId, paymentId).run();
   if (r.meta?.changes) await setNextPayment(rt, leadId);
+  await allocatePayments(rt, leadId);
+}
+
+/**
+ * "Mark paid": claim a pending instalment atomically, so a double click or two people at once record one
+ * payment, not two. False when it is not pending any more. Undo with releaseClaim when recording fails.
+ */
+export async function claimReceivable(rt: Runtime, id: string): Promise<boolean> {
+  const r = await rt.env.DB.prepare("UPDATE receivables SET status = 'paid', paid_payment_id = NULL, updated_at = ? WHERE id = ? AND status = 'pending'").bind(rt.now(), id).run();
+  return !!r.meta?.changes;
+}
+
+export async function releaseClaim(rt: Runtime, id: string): Promise<void> {
+  await rt.env.DB.prepare("UPDATE receivables SET status = 'pending', updated_at = ? WHERE id = ? AND status = 'paid' AND paid_payment_id IS NULL").bind(rt.now(), id).run();
 }
 
 export async function getReceivable(rt: Runtime, id: string): Promise<Receivable | null> {
   return (await rt.env.DB.prepare("SELECT * FROM receivables WHERE id = ?").bind(id).first<Receivable>()) || null;
 }
 
-/** Link a just-recorded payment to an instalment and mark it paid. */
+/** Link a just-recorded payment to an instalment (pending, or claimed by claimReceivable) and mark it paid. */
 export async function linkPayment(rt: Runtime, receivableId: string, paymentId: string): Promise<boolean> {
-  const r = await rt.env.DB.prepare("UPDATE receivables SET status = 'paid', paid_payment_id = ?, updated_at = ? WHERE id = ? AND status = 'pending'").bind(paymentId, rt.now(), receivableId).run();
+  const r = await rt.env.DB.prepare(
+    "UPDATE receivables SET status = 'paid', paid_payment_id = ?, updated_at = ? WHERE id = ? AND (status = 'pending' OR (status = 'paid' AND paid_payment_id IS NULL))",
+  ).bind(paymentId, rt.now(), receivableId).run();
   const row = await getReceivable(rt, receivableId);
   if (row) await setNextPayment(rt, row.lead_id);
   return !!r.meta?.changes;

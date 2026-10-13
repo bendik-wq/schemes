@@ -21,7 +21,20 @@ export async function purgeOld(rt: Runtime, force = false): Promise<{ events: nu
   await rt.env.DB.prepare("UPDATE voice_calls SET transcript = NULL, recording_url = NULL WHERE created_at < ?").bind(cutoff).run();
   await rt.env.DB.prepare("UPDATE whatsapp_messages SET body = NULL WHERE created_at < ?").bind(cutoff).run();
   // Short-lived counters (rate limits, login failures, gates) older than two days.
-  await rt.env.DB.prepare("DELETE FROM kv_state WHERE (key LIKE 'rl:%' OR key LIKE 'login_fail:%' OR key LIKE 'continue%' OR key LIKE 'triggers:%') AND updated_at < ?").bind(rt.now() - 2 * DAY).run();
+  await rt.env.DB.prepare(
+    `DELETE FROM kv_state WHERE (key LIKE 'rl:%' OR key LIKE 'login_fail:%' OR key LIKE 'continue%' OR key LIKE 'triggers:%'
+       OR key LIKE 'magic_ip:%' OR key LIKE 'magic_em:%' OR key LIKE 'apirl:%' OR key LIKE 'nojs_day:%' OR key LIKE 'nojs_mail:%') AND updated_at < ?`,
+  ).bind(rt.now() - 2 * DAY).run();
+  // Single-use sign-in nonces live 15 minutes; unused ones go after a day.
+  await rt.env.DB.prepare("DELETE FROM kv_state WHERE key LIKE 'magic:%' AND updated_at < ?").bind(rt.now() - DAY).run();
+  // MX verdicts are cached a week at most.
+  await rt.env.DB.prepare("DELETE FROM kv_state WHERE key LIKE 'mx:%' AND updated_at < ?").bind(rt.now() - 8 * DAY).run();
+  // Per-call no-show pings (the call is within 72 h of the ping), unconfirmed no-JS leads.
+  await rt.env.DB.prepare("DELETE FROM kv_state WHERE (key LIKE 'noshowping:%' OR key LIKE 'nojs_unverified:%') AND updated_at < ?").bind(rt.now() - 30 * DAY).run();
+  // Hot-partial marks: swept within minutes, kept a while so one partial is not pinged twice.
+  await rt.env.DB.prepare("DELETE FROM kv_state WHERE key LIKE 'hotpartial:%' AND updated_at < ?").bind(rt.now() - 90 * DAY).run();
+  // Audit log: who did what and when stays; the before/after detail (which can hold lead data) goes after 13 months.
+  await rt.env.DB.prepare("UPDATE audit_log SET before = NULL, after = NULL WHERE ts < ? AND (before IS NOT NULL OR after IS NOT NULL)").bind(cutoff).run();
   await rt.env.DB.prepare("UPDATE visitors SET ft_landing = NULL, ft_click_id = NULL WHERE last_seen_at < ?").bind(cutoff).run();
   await rt.env.DB.prepare("UPDATE sessions SET click_id = NULL, landing_path = NULL WHERE started_at < ?").bind(cutoff).run();
   const sixYears = rt.now() - 6 * 365 * DAY;

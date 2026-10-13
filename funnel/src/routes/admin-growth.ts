@@ -10,6 +10,7 @@ import { CohortError, assignMember, cohortsReport, deleteCohort, saveCohort, sen
 import { referralsReport } from "../growth/referrals";
 import { ExperimentError, createExperiment, deleteDraft, experimentsReport, startExperiment, stopExperiment } from "../growth/experiments";
 import { proofSig } from "./links";
+import { currentUser } from "../admin/auth";
 
 export const adminGrowth = new Hono<AppEnv>();
 
@@ -41,9 +42,12 @@ adminGrowth.get("/proof", async (c) => {
     rt.env.DB.prepare("SELECT id, first_name, last_name, ref_code, closed_at FROM leads WHERE status = 'won' AND refunded_at IS NULL ORDER BY closed_at DESC LIMIT 50")
       .all<{ id: string; first_name: string | null; last_name: string | null; ref_code: string; closed_at: number | null }>(),
   ]);
+  // The signed submit link is a bearer credential for that client's proof form: owners and managers only.
+  const role = currentUser(c)?.role;
+  const mayLink = role === "owner" || role === "manager";
   const withLinks = await Promise.all((clients.results || []).map(async (l) => ({
     id: l.id, name: [l.first_name, l.last_name].filter(Boolean).join(" ") || l.ref_code, closed_at: l.closed_at,
-    link: `${rt.origin}/proof/submit?ref=${encodeURIComponent(l.id)}&sig=${encodeURIComponent(await proofSig(rt, l.id))}`,
+    link: mayLink ? `${rt.origin}/proof/submit?ref=${encodeURIComponent(l.id)}&sig=${encodeURIComponent(await proofSig(rt, l.id))}` : null,
   })));
   return c.json({
     items,

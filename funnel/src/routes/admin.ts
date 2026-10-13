@@ -7,7 +7,7 @@ import { confirmBooking } from "../integrations/booking";
 import { Hono } from "hono";
 import type { AppEnv, Ctx, Runtime } from "../app";
 import { APPLICATION, FAQS, LOST_REASONS, OBJECTIONS, STATUSES, VIDEOS } from "../config";
-import { SETTINGS, loadSettings, maskValue, saveSetting, settingDef, type SettingDef } from "../settings";
+import { SETTINGS, isOwnerOnly, loadSettings, maskValue, saveSetting, settingDef, type SettingDef } from "../settings";
 import { logoutEverywhere } from "../admin/auth";
 import { getLead, parseAnswers, type Lead } from "../funnel/leads";
 import { LINK_KINDS, archiveLink, createLink, linkStats } from "../funnel/tracked-links";
@@ -49,7 +49,7 @@ import { audit, auditReport, diff } from "../admin/audit";
 import { UserError, createUser, listUsers, updateUser } from "../admin/users";
 import { MergeError, dataQuality, duplicatesReport, mergeLeads } from "../admin/dedupe";
 import { movePatch, pipelineReport, setVerbal } from "../sales/pipeline";
-import { getReceivable, listReceivables, receivablesDue } from "../sales/receivables";
+import { claimReceivable, getReceivable, listReceivables, receivablesDue, releaseClaim } from "../sales/receivables";
 import { TouchError, listTouches, logTouch, salesActivity, todayView, TOUCH_KINDS, TOUCH_OUTCOMES } from "../sales/today";
 import { attributionReport, cohortsReport } from "../admin/attribution";
 import { exportCsv } from "../admin/exports";
@@ -295,11 +295,14 @@ adminApi.post("/receivables/:id/paid", async (c) => {
   const lead = await visibleLead(c, r.lead_id);
   if (!lead) return bad(c, "lead not found", 404);
   const b = await body(c);
+  // Claim first: a double click (or two people at once) records one payment, not two.
+  if (!(await claimReceivable(rt, r.id))) return bad(c, "This instalment is not pending.", 409);
   try {
     const p = await recordPayment(rt, lead, { amount: r.amount, paid_at: b.paid_at, method: b.method, note: `Instalment ${r.seq}` }, { receivableId: r.id });
     await audit(rt, userOf(c), ipOf(c), { action: "payment_add", entity: "payment", entity_id: p.id, after: { lead_id: lead.id, amount: p.amount, receivable: r.id } });
     return c.json({ ok: true, payment: p });
   } catch (e) {
+    await releaseClaim(rt, r.id);
     if (e instanceof ValidationError) return bad(c, "Could not record the payment.");
     throw e;
   }
@@ -875,7 +878,7 @@ function integrationEntry(def: SettingDef, s: Runtime["settings"]) {
   const source = s.source(def.key);
   return {
     key: def.key, group: def.group, label: def.label, help: def.help || null, kind: def.kind || "text", options: def.options || null,
-    secret: !!def.secret, source, locked: source === "env", set: s.has(def.key),
+    secret: !!def.secret, owner_only: isOwnerOnly(def), source, locked: source === "env", set: s.has(def.key),
     // maskValue never returns a secret: "set" or the last 4 of a long one.
     value: maskValue(def, s.get(def.key)),
   };
@@ -898,6 +901,8 @@ adminApi.put("/integrations", async (c) => {
   const key = typeof b.key === "string" ? b.key : "";
   const def = settingDef(key);
   if (!def) return bad(c, "Unknown setting.");
+  // Keys, webhook URLs, the public URL, sender identity: owner only (a manager must not redirect mail, links or data).
+  if (isOwnerOnly(def) && userOf(c).role !== "owner") return c.json({ error: "Only the owner can change this setting." }, 403);
   if (key === "LEARNED_ROUTING" || key === "LEARNED_POINTS") return bad(c, "The owner switches learned routing on Insights → Scoring calibration.", 409);
   if (rt.settings.source(key) === "env") return bad(c, "This value is set as an environment variable (wrangler secret or var). Change it there.", 409);
   const raw = b.value == null ? "" : typeof b.value === "string" || typeof b.value === "number" || typeof b.value === "boolean" ? String(b.value).trim() : null;

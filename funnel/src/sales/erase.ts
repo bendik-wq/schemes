@@ -4,7 +4,7 @@
 import type { Runtime } from "../app";
 import { getLead } from "../funnel/leads";
 import { suppress } from "../lib/suppress";
-import { signedHeaders } from "../integrations/webhooks";
+import { allowedHosts, listSubs, signedHeaders, validWebhookUrl } from "../integrations/webhooks";
 
 export async function eraseLead(rt: Runtime, leadId: string): Promise<{ ok: boolean; ref?: string }> {
   const lead = await getLead(rt, leadId);
@@ -28,6 +28,14 @@ export async function eraseLead(rt: Runtime, leadId: string): Promise<{ ok: bool
     db.prepare("DELETE FROM lead_revops WHERE lead_id = ?").bind(lead.id),
     db.prepare("DELETE FROM touches WHERE lead_id = ?").bind(lead.id),
     db.prepare("DELETE FROM receivables WHERE lead_id = ?").bind(lead.id),
+    // The audit trail keeps who did what and when, never the person's data: before/after can hold notes,
+    // names and amounts typed about this lead (lead rows by id; payment rows name the lead in their JSON).
+    db.prepare("UPDATE audit_log SET before = NULL, after = NULL WHERE entity = 'lead' AND entity_id = ?").bind(lead.id),
+    db.prepare(
+      `UPDATE audit_log SET before = NULL, after = NULL WHERE entity IN ('payment', 'receivable') AND (
+         (before IS NOT NULL AND json_valid(before) AND json_extract(before, '$.lead_id') = ?1)
+         OR (after IS NOT NULL AND json_valid(after) AND json_extract(after, '$.lead_id') = ?1))`,
+    ).bind(lead.id),
     db.prepare("DELETE FROM leads WHERE id = ?").bind(lead.id),
   ];
   for (const v of visitors) {
@@ -37,12 +45,17 @@ export async function eraseLead(rt: Runtime, leadId: string): Promise<{ ok: bool
     stmts.push(db.prepare("DELETE FROM visitors WHERE id = ?").bind(v));
   }
   await db.batch(stmts);
-  // Tell the CRM so it can erase its copy too (id and ref only).
+  // Tell the CRM and every active webhook subscription so they can erase their copies too (id and ref only).
+  // Erasure goes to every subscription whatever events it picked: it is a legal duty, not a feed.
+  const body = JSON.stringify({ event: "lead_erased", event_id: `erased_${lead.id}`, ts: new Date(rt.now()).toISOString(), lead: { id: lead.id, ref: lead.ref_code } });
+  const targets: Array<{ url: string; secret: string | undefined }> = [];
   const url = rt.settings.get("LEAD_WEBHOOK_URL");
-  if (url && url.startsWith("https://")) {
-    const body = JSON.stringify({ event: "lead_erased", event_id: `erased_${lead.id}`, lead: { id: lead.id, ref: lead.ref_code } });
-    const headers = { "content-type": "application/json", ...(await signedHeaders(rt.settings.get("LEAD_WEBHOOK_SECRET"), body, `erased_${lead.id}`, rt.now())) };
-    rt.waitUntil(fetch(url, { method: "POST", headers, body }).catch(() => undefined));
+  if (url && url.startsWith("https://")) targets.push({ url, secret: rt.settings.get("LEAD_WEBHOOK_SECRET") || undefined });
+  const hosts = allowedHosts(rt);
+  for (const sub of await listSubs(rt)) if (sub.active && validWebhookUrl(sub.url, hosts)) targets.push({ url: sub.url, secret: sub.secret });
+  for (const t of targets) {
+    const headers = { "content-type": "application/json", ...(await signedHeaders(t.secret, body, `erased_${lead.id}`, rt.now())) };
+    rt.waitUntil(fetch(t.url, { method: "POST", headers, body, redirect: "manual" }).catch(() => undefined));
   }
   console.log("lead erased", lead.ref_code);
   return { ok: true, ref: lead.ref_code };

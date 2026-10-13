@@ -1437,7 +1437,9 @@
   const STATE_BADGE = { connected: ["Connected", "b-green"], partial: ["Partly set up", "b-amber"], off: ["Not connected", "b-grey"], defaults: ["Using defaults", "b-grey"] };
   function settingRow(x) {
     const val = x.set ? '<div class="setting-value">' + esc(x.value) + "</div>" : '<div class="setting-value unset">Not set</div>';
-    const src = x.locked ? '<span class="lock" title="Set as an environment variable. Change it with wrangler.">locked (env)</span>' : x.source === "default" ? '<span class="faint small">default</span>' : "";
+    const ownerLock = !x.locked && x.owner_only && !(S.me && S.me.role === "owner");
+    if (ownerLock) x = Object.assign({}, x, { locked: true });
+    const src = ownerLock ? '<span class="lock" title="Only the owner can change this setting.">owner only</span>' : x.locked ? '<span class="lock" title="Set as an environment variable. Change it with wrangler.">locked (env)</span>' : x.source === "default" ? '<span class="faint small">default</span>' : "";
     let input = "";
     if (!x.locked) {
       if (x.kind === "bool") input = sel("value", [{ value: "", label: "Default" }, { value: "true", label: "On" }, { value: "false", label: "Off" }], x.source === "db" ? x.value : "", { sm: true, label: x.label });

@@ -10,7 +10,7 @@ import { newId, randomToken } from "../lib/ids";
 
 export const WEBHOOK_EVENTS = [
   "lead_captured", "app_submitted", "lead_qualified", "booking_scheduled", "booking_rescheduled", "booking_cancelled",
-  "call_showed", "call_no_show", "deal_won", "deal_lost", "payment_recorded", "lead_status_changed", "unsubscribed",
+  "call_showed", "call_no_show", "deal_won", "deal_lost", "payment_recorded", "lead_status_changed", "unsubscribed", "lead_erased",
 ] as const;
 
 export interface WebhookSub { id: string; url: string; events: string; secret: string; active: number; created_at: number }

@@ -234,7 +234,11 @@ async function send(p: Prepared): Promise<{ ok: boolean; status: number; error?:
       method: "POST",
       headers: { "content-type": "application/json", ...(p.headers || {}), ...signed },
       body,
+      // Never follow a redirect: a 3xx could bounce the signed lead payload to a host nobody vetted
+      // (internal addresses, outside WEBHOOK_ALLOWED_HOSTS). A redirect is a failed delivery.
+      redirect: "manual",
     });
+    if (r.status >= 300 && r.status < 400) return { ok: false, status: r.status, error: `redirect ${r.status} not followed` };
     if (r.ok) return { ok: true, status: r.status };
     const t = (await r.text().catch(() => "")).slice(0, 300);
     return { ok: false, status: r.status, error: t };
@@ -279,7 +283,7 @@ async function finish(rt: Runtime, logId: string, attempts: number, r: { ok: boo
       .bind(r.status, attempts, now, logId).run();
     return;
   }
-  const permanent = attempts >= MAX_ATTEMPTS || (r.status >= 400 && r.status < 500 && r.status !== 429 && r.status !== 408);
+  const permanent = attempts >= MAX_ATTEMPTS || (r.status >= 300 && r.status < 500 && r.status !== 429 && r.status !== 408);
   const next = permanent ? null : now + BACKOFF_MIN[Math.min(attempts - 1, BACKOFF_MIN.length - 1)] * 60_000;
   await rt.env.DB.prepare("UPDATE forward_log SET status=?, http_status=?, error=?, attempts=?, next_at=?, updated_at=? WHERE id=?")
     .bind(permanent ? "failed" : "retry", r.status, (r.error || "").slice(0, 300), attempts, next, now, logId).run();
