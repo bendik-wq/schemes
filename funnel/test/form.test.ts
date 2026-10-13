@@ -84,14 +84,20 @@ async function applyJs(): Promise<string> {
 }
 
 describe("scoring after moving blockers out of the flow", () => {
-  it("blockers is after submit, optional and worth 0 points, and is last", () => {
+  it("blockers is after submit, optional and worth 0 points, and the after-submit questions come last", () => {
     const i = APPLICATION.findIndex((q) => q.id === "blockers");
     const q = APPLICATION[i];
-    expect(i).toBe(APPLICATION.length - 1);
+    const firstPost = APPLICATION.findIndex((x) => x.afterSubmit);
+    expect(i).toBe(firstPost);
     expect(q.afterSubmit && q.optional).toBe(true);
     expect((q.options || []).every((o) => o.points === 0)).toBe(true);
-    for (const x of APPLICATION.slice(0, -1)) expect(x.afterSubmit).toBeFalsy();
+    for (const x of APPLICATION.slice(0, firstPost)) expect(x.afterSubmit).toBeFalsy();
+    for (const x of APPLICATION.slice(firstPost)) expect(x.afterSubmit && x.optional).toBe(true);
+    // Round 3: "where did you hear about us" sits next to it, also optional and worth nothing.
+    const h = APPLICATION.find((x) => x.id === "heard_about");
+    expect(h?.afterSubmit && h.optional && (h.options || []).every((o) => o.points === 0)).toBe(true);
   });
+
   it("max score is unchanged, so the thresholds keep their meaning", () => {
     let max = 0;
     for (const q of APPLICATION) {

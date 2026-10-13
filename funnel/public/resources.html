@@ -23,15 +23,22 @@
   <section class="hero compact">
     <div class="wrap">
       <p class="eyebrow" data-slot="first" data-private>Thank you for applying.</p>
-      <h1 class="h2">Not the right time for the program. <span>Here is where to start.</span></h1>
-      <p class="sub">Asymmetrical is built for businesses past $1M a year with real spend to replace. Until then, these will help you build the foundations yourself.</p>
+      <h1 class="h2"><span class="h1a" data-slot="h1">Not the right time for the program.</span> <span data-slot="h1b">Here is where to start.</span></h1>
+      <p class="sub" data-slot="sub"></p>
     </div>
   </section>
   <section>
-    <div class="wrap narrow"><ol class="kit" data-slot="resources"></ol>
-      <p class="muted center">When the business grows, apply again. We read every application.</p>
+    <div class="wrap narrow">
+      <ol class="kit" data-when="kit" data-slot="resources"></ol>
+      <p class="kit-empty" data-when="kit-empty" data-slot="empty"></p>
+      <p class="muted center" data-slot="again">When the business grows, apply again. We read every application.</p>
+      <p class="review-line" data-section="review">
+        <span data-when="review-open"><span data-slot="review">Think we got this wrong?</span> <a data-review href="/" data-track="review_request" data-slot="reviewLink">Ask for a review</a></span>
+        <span data-when="review-done" role="status" data-slot="reviewDone"></span>
+      </p>
     </div>
   </section>
+
   <section class="forward" data-section="forward">
     <div class="wrap narrow"><div class="note-card">
       <h2 class="h3">Not the owner?</h2>

@@ -270,11 +270,19 @@ describe("growth emails", () => {
 });
 
 describe("page templates", () => {
-  it("keep headline → film → application, then the offer, guarantees and proof", () => {
+  it("keep headline → film → application, then the product shots, offer, guarantees, proof and FAQ", () => {
     const html = readFileSync("public/index.html", "utf8") as string;
     const at = (s: string) => { const i = html.indexOf(s); expect(i, s).toBeGreaterThan(-1); return i; };
-    const order = [at('data-slot="h1"'), at('data-section="video"'), at('data-section="application"'), at('data-section="offer"'), at('data-section="guarantee_band"'), at('data-section="proof"'), at('data-section="weeks"')];
+    const order = [
+      at('data-slot="h1"'), at('data-section="mobile_apply"'), at('data-section="video"'), at('data-section="application"'), at('data-section="founder"'), at('class="apply-card"'),
+      at('data-section="product"'), at('data-section="offer"'), at('data-section="guarantee_band"'), at('data-section="proof"'), at('data-section="faq"'),
+    ];
     expect([...order].sort((a, b) => a - b)).toEqual(order);
+    // Round 3 trim: one week timeline (the offer stack), one guarantee band, no footer guarantee in the no-film card.
+    expect(html).not.toContain('data-section="weeks"');
+    expect(html).not.toContain("nofilmFoot");
+    expect(html.split('data-section="guarantee_band"').length).toBe(2);
+
     expect(html).toContain('data-section="cohort"');
     expect(html).toContain('data-section="referral"');
     expect(readFileSync("public/book.html", "utf8")).toContain('data-section="proof"');

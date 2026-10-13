@@ -86,11 +86,11 @@ function blockersLine(c: C): string {
   return ph.length ? `You mentioned what has held you back so far: ${joinAnd(ph.slice(0, 3))}.` : "";
 }
 
-/** "Most dental practices rent the marketing agency and the booking widget." or a generic line. */
+/** "Many dental practices rent the marketing agency and the booking widget." or a generic line. No implied client base. */
 function rentLine(c: C): string {
   return c.d.industry
-    ? `Most ${c.d.industry.many} I speak to rent ${c.d.industry.rent}, and a few other pieces besides.`
-    : "Most founders I speak to rent an agency for ads, a tool for pages, another for tracking and someone to build the reports.";
+    ? `Many ${c.d.industry.many} rent ${c.d.industry.rent}, and a few other pieces besides.`
+    : "Many founders rent an agency for ads, a tool for pages, another for tracking and someone to build the reports.";
 }
 
 function spendLine(c: C): string {
@@ -119,6 +119,8 @@ function oneClick(c: C, path: string, fallback: string): string {
 
 const prepList = BREAKOUT.prep.map((p) => escHtml(p.charAt(0).toLowerCase() + p.slice(1).replace(/\.$/, "")));
 const resourceTitle = (i: number) => escHtml(RESOURCES[i]?.title || "the resources page");
+/** A starter-kit item is only promised by email once it has a real link (the /resources page hides the rest). */
+const hasResource = (i: number) => !!RESOURCES[i]?.url;
 
 // ── Abandoned application ─────────────────────────────────────────────────────
 
@@ -184,7 +186,8 @@ const ta: Record<string, Template> = {
     subject: "Application received, and a call makes sense",
     preheader: "The next step is a strategy call.",
     paragraphs: body(c,
-      "Thanks for applying. I've read your application, and it looks like a good fit for a strategy call " + withCloser(c) + ".",
+      // Sent two minutes after submit, by the system: it must not claim a person has read anything yet.
+      "Thanks for applying. Your application came through, and on your answers a strategy call " + withCloser(c) + " makes sense. I'll read it properly before we speak.",
       bizQuote(c),
       goalLine(c),
       "On the call we look at what you rent today, what your team could own instead, and whether the eight weeks make sense for you. Price is covered there too, once we know the scope.",
@@ -196,7 +199,7 @@ const ta: Record<string, Template> = {
     subject: "How much of your week this really takes",
     preheader: "Three to four hours, one person, eight weeks.",
     paragraphs: body(c,
-      "The question I hear most from founders is about time, so here is the plain answer.",
+      "A common question is how much time this takes, so here is the plain answer.",
       "It takes three to four hours a week from you or the person who will own the machine, for eight weeks. Less after that.",
       hasBlocker(c, "time")
         ? "You mentioned not having the time to lead it. That is common, and it is why the right person is often not the founder. We can talk about who on your team it should be."
@@ -286,7 +289,7 @@ const tb: Record<string, Template> = {
     subject: "Thanks for applying. One short video first",
     preheader: "Five minutes that answer the usual questions.",
     paragraphs: body(c,
-      "Thanks for your application. I've read it.",
+      "Thanks for your application. It came through, and I'll read it properly before we speak.",
       bizQuote(c),
       "Before we talk, there is a short video that answers what most founders ask first: what it costs, how much time it takes, and what to bring to a call.",
       "Watch it when you have five minutes. If it still makes sense afterwards, you can pick a time on the same page.",
@@ -308,7 +311,7 @@ const tb: Record<string, Template> = {
     preheader: "Timing matters. So does knowing your options.",
     paragraphs: body(c,
       timelineLine(c) || "Timing is often the real question with something like this.",
-      "That is fine. Plenty of founders talk to us months before they start, simply to understand what owning their growth stack would involve.",
+      "That is fine. Talking months before you start is a sensible way to understand what owning your growth stack would involve.",
       "A call now commits you to nothing. It just means that when the timing is right, you already know the shape of it.",
     ),
     cta: { label: "Watch the five-minute video", path: "/breakout" },
@@ -350,7 +353,7 @@ const tb: Record<string, Template> = {
     paragraphs: body(c,
       "Here is an exercise that is useful whether or not we ever speak.",
       "List everything you pay for each month to get customers: the agency, the page builder, the tracking tool, the reporting, the freelancer. Then add it up for a year.",
-      spendLine(c) || "Most founders find the total higher than they expected.",
+      spendLine(c) || "The total is often higher than people expect.",
       "Then ask which of those you would own if you stopped paying tomorrow. That answer is usually what the call is about.",
     ),
     cta: { label: "Talk it through on a call", path: c.bookPath },
@@ -374,41 +377,44 @@ const tc: Record<string, Template> = {
     subject: "About your application, honestly",
     preheader: "Not a fit yet, and why that is fine.",
     paragraphs: body(c,
-      "Thank you for applying. I read your application, and I'll be straight with you: the program isn't the right fit yet.",
+      "Thank you for applying. I'll be straight with you: on your answers, the program isn't the right fit yet.",
       "The program is built for owners of businesses doing $1M or more a year, with enough spend on agencies and software that owning it instead pays for the effort. Before that point there are better uses of your time and money.",
-      "I've put together a few resources that are useful at any stage. They cost nothing and there is no pitch at the end of them.",
+      hasResource(0) || hasResource(1) || hasResource(2)
+        ? "There are a few resources on the next page that are useful at any stage. They cost nothing and there is no pitch at the end of them."
+        : "Over the next few weeks I'll send a few short notes you can use on your own, whatever stage you are at. No pitch at the end of them.",
+      "If you think we got it wrong, the next page has a link to ask for a second look.",
     ),
-    cta: { label: "Open the resources", path: "/resources" },
+    cta: { label: "See the next step", path: "/resources" },
   }),
   tc_2: (c) => ({
     subject: "A worksheet for what you rent today",
     preheader: "One page, ten minutes.",
     paragraphs: body(c,
-      `The first resource worth ten minutes is ${resourceTitle(0)}.`,
-      "It is a one-page worksheet. You list every tool, agency and freelancer you pay to get customers, and what each costs a year.",
-      "Most people find at least one thing they forgot they were paying for. Either way, you end up knowing your real cost of getting customers, which helps every decision after it.",
+      hasResource(0) ? `The first resource worth ten minutes is ${resourceTitle(0)}.` : "Here is an exercise worth ten minutes, whatever you decide later.",
+      "List every tool, agency and freelancer you pay to get customers, and what each costs a year. One page is enough.",
+      "People often find at least one thing they forgot they were paying for. Either way, you end up knowing your real cost of getting customers, which helps every decision after it.",
     ),
-    cta: { label: "Get the worksheet", path: "/resources" },
+    ...(hasResource(0) ? { cta: { label: "Get the worksheet", path: "/resources" } } : {}),
   }),
   tc_3: (c) => ({
     subject: "Tracking you can check yourself",
     preheader: "Why the Pixel alone misses things.",
     paragraphs: body(c,
-      `Next on the list is ${resourceTitle(1)}.`,
-      "If you run any ads, it explains why the browser Pixel misses part of what happens and what the Conversions API changes.",
-      "Even if you don't build anything yourself, it helps you ask better questions of whoever runs your ads.",
+      hasResource(1) ? `Next on the list is ${resourceTitle(1)}.` : "A short note on tracking, if you run any ads.",
+      "The browser Pixel misses part of what happens: ad blockers, privacy settings and declined cookies hide some events. The Conversions API sends the important ones from your own server instead.",
+      "Even if you don't build anything yourself, knowing this helps you ask better questions of whoever runs your ads.",
     ),
-    cta: { label: "Read the tracking guide", path: "/resources" },
+    ...(hasResource(1) ? { cta: { label: "Read the tracking guide", path: "/resources" } } : {}),
   }),
   tc_4: (c) => ({
     subject: "Thirty minutes with Claude Code",
     preheader: "Build a small internal tool yourself.",
     paragraphs: body(c,
-      `The third resource is ${resourceTitle(2)}.`,
-      "It walks you through building a small internal tool in about thirty minutes. No programming background needed, just a problem you'd like to stop doing by hand.",
+      hasResource(2) ? `The third resource is ${resourceTitle(2)}.` : "One thing worth trying on your own: half an hour with Claude Code.",
+      "Pick a small problem you'd like to stop doing by hand, a report or a checklist, and ask it to build a tool for that. No programming background needed.",
       "It is the quickest way I know to find out whether this way of working suits you.",
     ),
-    cta: { label: "Try the walkthrough", path: "/resources" },
+    ...(hasResource(2) ? { cta: { label: "Try the walkthrough", path: "/resources" } } : {}),
   }),
   tc_5: (c) => ({
     subject: "One weekly habit worth more than any tool",
@@ -567,7 +573,7 @@ const triggers: Record<string, Template> = {
     paragraphs: body(c,
       "A short note on what comes after the film, if you're weighing it up.",
       "The next step is an application. It takes about three minutes and asks what you sell, roughly what you spend on agencies and software, and what matters most right now.",
-      "I read every one. If it looks like a fit you can book a strategy call straight away. If not, I'll tell you and point you to something useful instead.",
+      "If it looks like a fit you can book a strategy call straight away, and I read every application before we speak. If not, you'll be told so plainly.",
     ),
     cta: { label: "Start your application", path: "/apply" },
   }),
@@ -605,7 +611,8 @@ const triggers: Record<string, Template> = {
     subject: "Thinking it over is reasonable",
     preheader: "Three questions that usually settle it.",
     paragraphs: body(c,
-      "Taking time over a decision like this is sensible. Here are three questions that tend to settle it for founders.",
+      "Taking time over a decision like this is sensible. Here are three questions that tend to settle it.",
+
       "What do you pay each year for growth you don't own? Who on your team could give this three to four hours a week? And what would you build first if you could?",
       "If you have answers, a call is a good next step. If you don't yet, the call can help you find them, with no obligation either way.",
     ),
@@ -626,7 +633,7 @@ const triggers: Record<string, Template> = {
     subject: "Why there is no price on the website",
     preheader: "And how we handle it on the call.",
     paragraphs: body(c,
-      "A word on cost, since it is the first thing most founders want to know.",
+      "A word on cost, since it is usually the first question.",
       "There is no price on the website because it depends on how much we build and how much of it we do for you. A number without the scope would be a guess.",
       "On the call you'll hear the price plainly, once we both understand what you need. There is no charge for the call, and nothing is sold on it unless it fits.",
       spendLine(c) ? spendLine(c) + " That helps us compare it with what you pay today." : "",
@@ -858,7 +865,7 @@ const pc: Record<string, Template> = {
     paragraphs: body(c,
       "Week eight is the handover. Your team ships a change on its own, and we review it with them.",
       "By then the VSL page, the tracking, the dashboard and the follow-up are live on your accounts, and your people have built most of it with their own hands.",
-      "After that your team runs it. Some founders keep a monthly session with us; most don't need to.",
+      "After that your team runs it. If you want a monthly session after that, we can set one up.",
     ),
     cta: PRE,
   }),
@@ -890,7 +897,7 @@ const pc: Record<string, Template> = {
     paragraphs: body(c,
       "If you could change one thing about how " + yours(c) + " gets and follows up with customers, what would it be?",
       blockersLine(c),
-      "Most founders know the answer straight away. It is usually the thing they've been meaning to fix for a year.",
+      "Often the answer comes straight away: the thing that has been on the list for a year.",
       "Start the call with that, and we'll work outwards from it.",
     ),
     cta: PRE,

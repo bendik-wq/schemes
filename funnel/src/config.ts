@@ -105,7 +105,19 @@ export const HEADLINES = [
     h1b: "No agency. No retainer. Yours.",
     sub: "Ads, pages and follow-up that qualify and book your sales calls hands-free. Built with your team on Claude Code, owned by you. Live by day 56, or we keep working at no extra cost.",
   },
+  // Optional third variant (round 3), stated around ownership. Off until the HEADLINE_C setting is on (see
+  // HEADLINES_OPT_IN); ?v=c always previews it.
+  {
+    id: "c",
+    eyebrow: "For founders doing $1M+ a year",
+    h1: "In 56 days, your team owns the machine",
+    h1b: "that books your sales calls.",
+    sub: "A VSL page, Meta ads with server-side tracking and follow-up that books the call. Built with your team on Claude Code, on your own accounts. Live by day 56, or we keep working at no extra cost.",
+  },
 ];
+
+/** Headline variants that only join the random draw when their setting is on (id → setting key). */
+export const HEADLINES_OPT_IN: Record<string, string> = { c: "HEADLINE_C" };
 
 export const LANDING = {
   ctaLabel: "Apply for a strategy call",
@@ -135,19 +147,44 @@ export const LANDING = {
     { label: "Weeks 6–7", title: "Dashboard and follow-up", body: "The sales dashboard and the email follow-up go live." },
     { label: "Week 8", title: "Handover", body: "Your team ships a change on its own. We review and hand over." },
   ],
-  /** Shown in place of the film while no film is configured (VSL_MAIN_SRC empty). */
+  /**
+   * Shown in place of the film while no film is configured (VSL_MAIN_SRC empty and no VSL_INTRO_SRC). On phones
+   * only the first `mobileItems` of LANDING.system show; the rest sit behind a "See all six" disclosure (no JS).
+   */
   noFilm: {
     title: "What we build with you in eight weeks",
-    sub: "Built with your team on Claude Code, on your accounts. Yours to keep and change.",
-    foot: "Live by the end of week eight, or we keep working with you at no extra cost.",
+    sub: "On your own accounts. Yours to keep and change.",
+    mobileItems: 3,
+    more: "See all six",
   },
   /** Below the application: compact, calm, revealed with it. */
   below: {
-    weeksKicker: "How the eight weeks work",
-    weeksTitle: "One system a fortnight. Your team alongside.",
     faqKicker: "Questions",
     faqTitle: "What founders ask first.",
-    faqIds: ["what", "cost", "time", "tech", "agency", "results"],
+    faqIds: ["what", "cost", "time", "tech", "guarantee", "data", "agency", "results"],
+  },
+  /** Under the hero sub, phones only, never while the page is gated: a quiet jump to the application. */
+  mobileApply: "Apply in about 3 minutes",
+  /**
+   * The founder block above the application. Rendered only when the FOUNDER_PHOTO_URL setting is set; the two
+   * lines come from FOUNDER_BIO (owner-written, true statements only) and the link from FOUNDER_LINKEDIN.
+   */
+  founder: { kicker: "Who you will speak to", role: "Founder, Asym" },
+  /** Intro clip (VSL_INTRO_SRC): plays in the film slot while there is no main film. Never gates the page. */
+  intro: { label: "A short intro from Bendik", title: "A short intro" },
+  /**
+   * Product as proof: real screenshots of Funnel HQ (the dashboard behind this funnel) rendered with synthetic
+   * demo data, each captioned "Demo data". Files live in public/assets/product/.
+   */
+  product: {
+    kicker: "What your team will own",
+    title: "The dashboard behind this page.",
+    sub: "Funnel HQ runs this funnel. In the eight weeks your team builds its own version on your accounts and learns to change it.",
+    shots: [
+      { src: "/assets/product/overview.webp", width: 1200, height: 750, alt: "Funnel HQ overview with demo data: visitors, play rate, applications, booked calls, revenue and a daily trend for the last 30 days.", caption: "Overview: every step from first visit to cash." },
+      { src: "/assets/product/funnel-map.webp", width: 1200, height: 750, alt: "Funnel HQ funnel map with demo data: each traffic source, page, decision and automation as a box with its live count and conversion rate.", caption: "Funnel map: where people move on and where they drop off." },
+      { src: "/assets/product/today.webp", width: 1200, height: 750, alt: "Funnel HQ Today screen with demo data: the day's calls, each with the lead's key answers and likely objections, and buttons to call or log the outcome.", caption: "Today: the calls and follow-ups for your team." },
+    ],
   },
   softCta: "Ready already? Start your application",
   fit: {
@@ -167,9 +204,10 @@ export const LANDING = {
 export const BREAKOUT = {
   eyebrow: "Your application is in",
   h1: "One more step before we talk.",
-  sub: "Watch this short video. It answers the questions most founders have before the call, including the cost and how much time it takes.",
+  sub: "Watch this short video. It answers the usual questions before a call, including the cost and how much time it takes.",
   /** Used while no breakout video is configured. */
-  subNoVideo: "Pick a time that suits you. On the call we cover the cost, the time it takes and whether it fits your business.",
+  h1NoVideo: "Pick a time that suits you.",
+  subNoVideo: "On the call we cover the cost, the time it takes and whether it fits your business.",
   bookedEyebrow: "You're booked",
   bookedH1: "Here is how to get the most from the call.",
   prep: [
@@ -191,7 +229,7 @@ export const FAQS: Faq[] = [
   { id: "results", q: "Will this grow my revenue?", topics: ["results"], a: "It gives you the machine and the data to grow on purpose. What it produces depends on your offer, your market and your team. We will not promise you a number." },
   { id: "claude", q: "Are you part of Anthropic?", topics: ["trust"], a: "No. Asymmetrical AI Solutions is an independent company. We build on Claude Code because it is the best tool for the job." },
   { id: "data", q: "Who owns the code and data?", topics: ["ownership"], a: "You do. Everything runs on your accounts: your domain, your Cloudflare, your ad account. We never hold your data hostage." },
-  { id: "after", q: "What happens after eight weeks?", topics: ["after"], a: "Your team runs it. Some founders keep a monthly session with us, most don't need to." },
+  { id: "after", q: "What happens after eight weeks?", topics: ["after"], a: "Your team runs it. If you want a monthly session after that, we can set one up." },
 ];
 
 // Application questions. Points sum to the score; flags drive hard caps and copy.
@@ -208,6 +246,15 @@ export interface Question {
   optional?: boolean;
   /** Asked after submit as an optional "help us prepare" question; never part of the scored flow. Keep these last. */
   afterSubmit?: boolean;
+  /** Text answers only: "url" accepts a website address (validated server-side, stored as https://host/path). */
+  format?: "url";
+  /**
+   * Rendered inside another question's screen instead of on its own step: an optional companion field (the
+   * company website on the business step, the "Other" text under "Where did you first hear about us?").
+   */
+  inlineWith?: string;
+  /** Visible label for an inline field. */
+  label?: string;
 }
 
 export const APPLICATION: Question[] = [
@@ -249,6 +296,8 @@ export const APPLICATION: Question[] = [
     { value: "not_now", label: "Not right now", points: 0, flags: ["not_ready"] },
   ] },
   { id: "why_now", type: "text", title: "Why now? What would change if this worked?", placeholder: "A few sentences is plenty.", minLength: 0, optional: true, lengthPoints: [ { min: 160, points: 5 }, { min: 60, points: 3 } ] },
+  // Shown on the business step under the description, not as its own step. Optional, 0 points (round 3).
+  { id: "company_url", type: "text", format: "url", inlineWith: "business", optional: true, title: "Company website", label: "Company website (optional)", placeholder: "yourcompany.com" },
   // After submit (optional, scores 0): shown under the result so the scored flow stays short.
   { id: "blockers", type: "multi", title: "What has held you back so far?", help: "Optional. Pick any that apply, so Bendik can prepare.", optional: true, afterSubmit: true, options: [
     { value: "dev_capacity", label: "No one to build it", points: 0 },
@@ -258,6 +307,16 @@ export const APPLICATION: Question[] = [
     { value: "time", label: "No time to lead it", points: 0 },
     { value: "ai_doubt", label: "Not sure AI can do this", points: 0 },
   ] },
+  // After submit, next to the prep question (round 3). Optional, 0 points; "other" opens a short text field.
+  { id: "heard_about", type: "multi", title: "Where did you first hear about us?", help: "Optional.", optional: true, afterSubmit: true, options: [
+    { value: "meta_ads", label: "An ad on Facebook or Instagram", points: 0 },
+    { value: "linkedin", label: "LinkedIn", points: 0 },
+    { value: "search", label: "Google or another search engine", points: 0 },
+    { value: "referral", label: "Someone recommended you", points: 0 },
+    { value: "youtube", label: "YouTube or a podcast", points: 0 },
+    { value: "other", label: "Somewhere else", points: 0 },
+  ] },
+  { id: "heard_about_other", type: "text", inlineWith: "heard_about", optional: true, afterSubmit: true, title: "Where else?", label: "Where? (optional)", placeholder: "e.g. a newsletter" },
 ];
 
 /**
@@ -312,6 +371,15 @@ export const CONSENT_COUNTRIES = [
   "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "GB", "NO", "IS", "LI", "CH",
 ];
 
+/**
+ * Text reminders about a booked call: a separate, unticked box under the phone field. Consent is stored per
+ * number (sms_consent), never implied by the call consent, and STOP withdraws it at once.
+ */
+export const SMS_CONSENT = {
+  version: "2026-10-sms-v1",
+  label: "Text me reminders about my call (up to three per booking). Reply STOP at any time.",
+};
+
 export const CALL_CONSENT = {
   version: "2026-10-v1",
   label: "Yes, Asymmetrical AI Solutions may call me about my application, including with an AI assistant. Calls may be recorded. This is not a condition of buying anything, and I can say stop at any time.",
@@ -343,8 +411,8 @@ export type Status = (typeof STATUSES)[number];
 export const ECONOMICS = { avgDeal: 30000, currency: "USD" };
 
 /**
- * Starter kit on /resources. `url` is optional (https or a same-site path); without one the item shows
- * "Coming soon" instead of a dead title.
+ * Starter kit on /resources. `url` is optional (https or a same-site path); items without one are not shown to
+ * prospects at all. With no linked item the page says so in one honest line (RESOURCES_EMPTY).
  */
 export interface Resource { title: string; body: string; url?: string; }
 export const RESOURCES: Resource[] = [
@@ -352,6 +420,29 @@ export const RESOURCES: Resource[] = [
   { title: "Server-side tracking, explained", body: "Why the Pixel alone under-reports, and what the Conversions API changes." },
   { title: "Your first Claude Code session", body: "A 30-minute walkthrough to build your first internal tool." },
 ];
+
+/**
+ * /resources (C tier). The sub-line follows the lead's own flags (scoring.ts); the first matching key wins,
+ * `low` covers everything else (a low score without a hard cap). None of them names a score.
+ */
+export const RESOURCES_PAGE = {
+  h1: "Not the right time for the program.",
+  h1b: "Here is where to start.",
+  h1bEmpty: "Here is what happens next.",
+  sub: {
+    excluded_industry: "We don't take on businesses in a small number of restricted industries, and from your description yours is one of them. That is a rule about the industry, not about you.",
+    no_business: "The program is built for people who already run a business with customers and spend. When yours is up and running, apply again.",
+    under_1m: "Asymmetrical is built for businesses past $1M a year with real spend to replace. Before that point there are better uses of your time and money.",
+    low: "From your answers, the program isn't the right fit yet: the timing, the scope or the spend doesn't line up. That can change, and the door stays open.",
+  } as Record<string, string>,
+  /** The order the flags are checked in. */
+  subOrder: ["excluded_industry", "no_business", "under_1m"],
+  empty: "There is nothing to download here yet. Over the next few weeks we will send you a few short notes you can use on your own, with no pitch attached.",
+  again: "When the business grows, apply again. We read every application.",
+  review: "Think we got this wrong?",
+  reviewLink: "Ask for a review",
+  reviewDone: "Thanks. Your application is with the team for a second look, and you will hear back by email.",
+};
 
 /** The call, as sold on /book and /breakout. */
 export const OFFER = {

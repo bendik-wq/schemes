@@ -11,6 +11,9 @@ import { signingSecret } from "../lib/secret";
 import { getLead, updateLead, effectiveTier, type Lead } from "../funnel/leads";
 import { sameOrigin } from "../admin/auth";
 import { assetVersion, attendanceConfirmed } from "../funnel/pages";
+import { RESOURCES_PAGE } from "../config";
+import { notifyText } from "../integrations/notify";
+import { chatSafe } from "../lib/text";
 import { formatCallTime, leadTimezone } from "../integrations/email";
 import type { Runtime } from "../app";
 import { buildDestination, getLink } from "../funnel/tracked-links";
@@ -320,7 +323,54 @@ links.post("/proof/submit", async (c) => {
   return c.html(plainPage("Thank you", "<p>Thank you for taking the time. Nothing is published until we have checked the wording with you, and only in the ways you ticked.</p><p><a class=\"btn\" href=\"/\">Done</a></p>"));
 });
 
+// ── C tier: "Think we got this wrong? Ask for a review" ──────────────────────
+// Signed per lead (the /resources page signs it for the lead's own browser). Like /go/confirm, a GET records the
+// request only when a person started the navigation (Sec-Fetch-User: ?1); scanners and prefetchers get a button.
+
+async function reviewLead(c: Ctx): Promise<Lead | null> {
+  const rt = c.get("rt");
+  const leadId = c.req.param("lead") || "";
+  if (!LEAD_ID.test(leadId) || !(await verifyShort(await signingSecret(rt.env), `rv|${leadId}`, c.req.param("sig") || ""))) return null;
+  const lead = await getLead(rt, leadId);
+  return lead && lead.app_completed_at && effectiveTier(lead) === "C" ? lead : null;
+}
+
+/** Records the request once (lead_revops.review_requested_at) and pings the team the first time only. */
+export async function requestReview(rt: Runtime, lead: Lead): Promise<boolean> {
+  const now = rt.now();
+  const r = await rt.env.DB.prepare(
+    `INSERT INTO lead_revops (lead_id, review_requested_at, updated_at) VALUES (?,?,?)
+     ON CONFLICT(lead_id) DO UPDATE SET review_requested_at = excluded.review_requested_at, updated_at = excluded.updated_at
+     WHERE lead_revops.review_requested_at IS NULL`,
+  ).bind(lead.id, now, now).run();
+  if (!r.meta?.changes) return false;
+  await track(rt, { leadId: lead.id }, { name: "review_requested", source: "server", localOnly: true });
+  const name = chatSafe([lead.first_name, lead.last_name].filter(Boolean).join(" ") || "Lead", 60);
+  rt.waitUntil(notifyText(rt, "Review requested (C tier)", [`${name} · ${chatSafe(lead.ref_code, 20)} thinks the routing got it wrong.`, `${rt.origin}/admin#lead=${encodeURIComponent(lead.id)}`]));
+  return true;
+}
+
+const reviewDone = () => unsubPage("Thank you", escHtml(RESOURCES_PAGE.reviewDone), null);
+
+links.get("/go/review/:lead/:sig", async (c) => {
+  const lead = await reviewLead(c);
+  if (!lead) return c.redirect("/resources", 302);
+  if (userNavigation(c)) { await requestReview(c.get("rt"), lead); return c.html(reviewDone()); }
+  return c.html(unsubPage("Ask for a review", "If your situation is different from what the application suggested, ask and the team will look at it again.",
+    `<form method="post" action="/go/review/${escHtml(lead.id)}/${escHtml(c.req.param("sig"))}"><button class="btn" type="submit">Ask for a review</button></form>`));
+});
+
+links.post("/go/review/:lead/:sig", async (c) => {
+  if (!sameOrigin(c)) return c.text("Cross-site request refused", 403);
+  const lead = await reviewLead(c);
+  if (!lead) return c.redirect("/resources", 303);
+  await requestReview(c.get("rt"), lead);
+  return c.html(reviewDone());
+});
+
+
 links.post("/go/requalify", async (c) => {
+
   if (!sameOrigin(c)) return c.text("Cross-site request refused", 403);
   const rt = c.get("rt");
   const id = await resolveIdentity(c, { page: false });

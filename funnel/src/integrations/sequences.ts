@@ -15,6 +15,8 @@ export interface Step {
   anchor?: "enqueue" | "call";
   /** Skip this step at send time when true (re-checked against fresh lead data). */
   skipIf?: (lead: Lead) => boolean;
+  /** How late this step may still go out (ms); later it is skipped as "stale". Overrides maxLateMs() defaults. */
+  maxLateMs?: number;
 }
 
 export interface Sequence {
@@ -73,7 +75,8 @@ export const SEQUENCES: Record<string, Sequence> = {
       { template: "bk_confirm", offset: 0 },
       { template: "bk_48h", offset: -48 * H, anchor: "call" },
       { template: "bk_24h", offset: -24 * H, anchor: "call" },
-      { template: "bk_3h", offset: -3 * H, anchor: "call" },
+      // Round 3: only for people who already confirmed; everyone else gets bk_2h instead (never both).
+      { template: "bk_3h", offset: -3 * H, anchor: "call", skipIf: (l) => !attendanceConfirmedFor(l) },
       { template: "bk_1h", offset: -1 * H, anchor: "call" },
       { template: "bk_10m", offset: -10 * M, anchor: "call" },
       // Appended: two hours before, only when attendance is not confirmed for this call time.
@@ -84,7 +87,8 @@ export const SEQUENCES: Record<string, Sequence> = {
   precall: {
     id: "precall", label: "Pre-call barrage", trigger: "Verified booking (times computed per lead)",
     steps: [], // dynamic, see precallTimes()/precallPlan()
-    stopIf: (l) => l.status !== "booked" || !!l.booking_cancelled_at || !l.call_at || l.call_at - Date.now() < 2 * H,
+    // Stops once attendance is confirmed for this call (they are coming; the reminders carry on).
+    stopIf: (l) => l.status !== "booked" || !!l.booking_cancelled_at || !l.call_at || l.call_at - Date.now() < 2 * H || attendanceConfirmedFor(l),
   },
   no_show: {
     id: "no_show", label: "No-show: rebook", trigger: "No-show logged",
@@ -199,15 +203,88 @@ export function validTimezone(tz: string | null | undefined): tz is string {
 
 export const PRECALL_SLOTS: Array<[number, number]> = [[7, 30], [9, 30], [12, 0], [14, 30], [17, 0], [19, 30]];
 
-/** Which of the six daily slots to use for a given per-day count (spread evenly). */
+/**
+ * Which of the six daily slots to use for a given per-day count, spread evenly and centred, so one a day lands
+ * mid-afternoon (14:30) rather than at 07:30, inside the 08:00–20:00 quiet-hours window.
+ */
 export function slotsForPerDay(perDay: number): Array<[number, number]> {
   const n = Math.max(0, Math.min(PRECALL_SLOTS.length, Math.floor(perDay)));
   if (n === 0) return [];
   if (n >= PRECALL_SLOTS.length) return PRECALL_SLOTS;
   const out: Array<[number, number]> = [];
-  for (let i = 0; i < n; i++) out.push(PRECALL_SLOTS[Math.floor((i * PRECALL_SLOTS.length) / n)]);
+  for (let i = 0; i < n; i++) out.push(PRECALL_SLOTS[Math.floor(((i + 0.5) * PRECALL_SLOTS.length) / n)]);
   return out;
 }
+
+// ── Sending safety (round 3): stale steps, quiet hours, the daily marketing cap ──
+
+/** Default pre-call emails per day, and the hard total per booking whatever the setting says. */
+export const PRECALL_PER_DAY_DEFAULT = 1;
+export const PRECALL_MAX_TOTAL = 5;
+/** Stop the pre-call run after this many sent in a row with no open. */
+export const PRECALL_UNOPENED_STOP = 3;
+
+/** First touches after the lead's own action: no use an hour later. */
+export const FIRST_TOUCH = new Set(["ab_1", "ta_1", "tb_1", "tc_1"]);
+/** A reply to something the lead just did (submitting the application): sent at night too, like a receipt. */
+export const REPLY_TO_ACTION = new Set(["ta_1", "tb_1", "tc_1"]);
+/** Transactional sequences: never held for quiet hours and never counted in the daily marketing cap. */
+export const TRANSACTIONAL = new Set(["booked", "continue", "voice", "test"]);
+
+const LATE_BY_SEQUENCE: Record<string, number> = {
+  abandoned: 12 * H, tier_a: 12 * H, tier_b: 12 * H, tier_c: 12 * H, behaviour: 2 * H, nurture: 3 * D,
+  precall: 6 * H, no_show: 12 * H, post_call: 12 * H, cancelled: 12 * H, cohort: 12 * H, lost: 3 * D, won: 3 * D,
+};
+
+/**
+ * How late an email may still go out, in ms, or null for no limit (one-offs sent at once, the booking
+ * confirmation, which only has to arrive before the call). Pure.
+ * - first touches (ab_1, ta_1, tb_1, tc_1): 45 minutes
+ * - call-anchored reminders: a quarter of their distance to the call, 5 minutes to 12 hours (bk_24h: 6 h,
+ *   bk_1h: 15 min); they are also skipped once the call has started
+ * - behaviour triggers 2 h, tier sequences 12 h, pre-call 6 h, nurture, lost and won 3 days
+ */
+export function maxLateMs(seqId: string, stepIndex: number, template: string): number | null {
+  const step = SEQUENCES[seqId]?.steps[stepIndex];
+  if (step?.maxLateMs != null) return step.maxLateMs;
+  if (FIRST_TOUCH.has(template)) return 45 * M;
+  if (step?.anchor === "call") return Math.min(12 * H, Math.max(5 * M, Math.abs(step.offset) / 4));
+  return LATE_BY_SEQUENCE[seqId] ?? null;
+}
+
+/** Quiet hours in the lead's own time zone: email goes out 08:00–20:00 local. */
+export const QUIET = { start: 8, end: 20 };
+
+/** Does this email wait for daytime? Everything except transactional mail, call-anchored reminders and receipts. */
+export function respectsQuietHours(seqId: string, stepIndex: number, template: string): boolean {
+  if (TRANSACTIONAL.has(seqId) || REPLY_TO_ACTION.has(template)) return false;
+  return SEQUENCES[seqId]?.steps[stepIndex]?.anchor !== "call";
+}
+
+/** Next local 08:00 strictly after the current local day (tomorrow morning). Pure. */
+export function nextLocalMorning(now: number, tz: string): number {
+  const zone = validTimezone(tz) ? tz : "UTC";
+  const p = localParts(now, zone);
+  const t = new Date(Date.UTC(p.y, p.mo - 1, p.d) + D);
+  return zonedTime(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), QUIET.start, 0, zone);
+}
+
+/** Local midnight that starts the current day in `tz`. Pure. */
+export function localDayStart(now: number, tz: string): number {
+  const zone = validTimezone(tz) ? tz : "UTC";
+  const p = localParts(now, zone);
+  return zonedTime(p.y, p.mo, p.d, 0, 0, zone);
+}
+
+/** null when `now` is inside 08:00–20:00 local; otherwise the time it may go out (today or tomorrow 08:00). Pure. */
+export function quietUntil(now: number, tz: string): number | null {
+  const zone = validTimezone(tz) ? tz : "UTC";
+  const p = localParts(now, zone);
+  if (p.hh >= QUIET.start && p.hh < QUIET.end) return null;
+  if (p.hh < QUIET.start) return zonedTime(p.y, p.mo, p.d, QUIET.start, 0, zone);
+  return nextLocalMorning(now, zone);
+}
+
 
 /**
  * Pre-call send times: local slots from 90 min after booking until 3 h before the call,

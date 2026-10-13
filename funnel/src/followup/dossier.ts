@@ -30,6 +30,11 @@ export interface Dossier {
   /** Illustrative first build, keyed by spend band. Always labelled illustrative in copy. */
   firstBuild: { spendMid: number; spendLabel: string; build: string } | null;
   hasApplication: boolean;
+  /** "Where did you first hear about us?" (after submit, optional): picked options, plus the escaped "other" text. */
+  heardAbout: Choice[];
+  heardAboutOther: string;
+  /** The company website as typed and validated (https://host/path), escaped, or "". */
+  website: string;
 }
 
 function choice(qid: string, v: unknown): Choice | null {
@@ -75,7 +80,11 @@ export function buildDossier(lead: Partial<Lead> | null | undefined): Dossier {
     tier: (l.tier_override || l.tier || null) as string | null,
     firstBuild: fb ? { spendMid: fb.mid, spendLabel: fb.label, build: fb.build } : null,
     hasApplication: Object.keys(a).length > 0,
+    heardAbout: (Array.isArray(a.heard_about) ? a.heard_about : []).map((h) => choice("heard_about", h)).filter((x): x is Choice => !!x),
+    heardAboutOther: typeof a.heard_about_other === "string" ? quoteSafe(a.heard_about_other, 120) : "",
+    website: typeof a.company_url === "string" && /^https:\/\/[^\s"'<>]+$/.test(a.company_url) ? escHtml(a.company_url.slice(0, 200)) : "",
   };
+
 }
 
 export function fmtMoney(n: number): string {
