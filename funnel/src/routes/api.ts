@@ -4,13 +4,13 @@ import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
 import type { AppEnv, Ctx } from "../app";
 import { resolveIdentity, setConsentCookies } from "../lib/identity";
-import { kvIncr } from "../lib/kv";
+import { kvGate, kvIncr } from "../lib/kv";
 import { sha256Hex } from "../lib/crypto";
 import { ipKey } from "../admin/auth";
 import { whoFromIdentity, track } from "../tracking/track";
 import { collectBeacon, BEACON_MAX_BYTES, type BeaconBody } from "../tracking/collect";
 import { recordHeartbeat } from "../tracking/vsl";
-import { saveContact, saveAnswers, submitApplication } from "../funnel/application";
+import { saveContact, saveAnswers, submitApplication, bookInlineSlot, nojsContact, sweepHotPartials } from "../funnel/application";
 import { getLead } from "../funnel/leads";
 import { verifyClientBooking } from "../integrations/calendly";
 
@@ -98,6 +98,14 @@ api.post("/consent", async (c) => {
   return c.json({ ok: true, consent: v });
 });
 
+// Strong partial applications: the team ping is due ~20 minutes after the mark. Swept on application
+// traffic at most once a minute (the cron in src/index.ts may also call sweepHotPartials).
+api.use("/apply/*", async (c, next) => {
+  await next();
+  const rt = c.get("rt");
+  rt.waitUntil((async () => { if (await kvGate(c.env, "gate:hot_partial", 60_000)) await sweepHotPartials(rt); })());
+});
+
 api.post("/apply/contact", async (c) => {
   if (await rateLimited(c, "contact", 20, 10 * 60_000)) return c.json({ ok: false, code: "rate", message: "Too many attempts. Please wait a few minutes." }, 429);
   const b = await readJson<Record<string, unknown>>(c, 4096);
@@ -105,12 +113,12 @@ api.post("/apply/contact", async (c) => {
   const id = await resolveIdentity(c, { page: false });
   const r = await saveContact(c.get("rt"), id, b);
   if (!r.ok) return c.json(r, r.status);
-  return c.json({ ok: true, ref: r.ref });
+  return c.json({ ok: true, ref: r.ref, phone_callable: r.phoneCallable });
 });
 
 api.post("/apply/answers", async (c) => {
   if (await rateLimited(c, "answers", 80, 10 * 60_000)) return c.json({ ok: false, error: "rate" }, 429);
-  const b = await readJson<{ answers?: Record<string, unknown>; step?: number }>(c, 8192);
+  const b = await readJson<{ answers?: Record<string, unknown>; step?: number; draft?: boolean }>(c, 8192);
   if (!b) return c.json({ ok: false }, 400);
   const id = await resolveIdentity(c, { page: false });
   const r = await saveAnswers(c.get("rt"), id, b);
@@ -119,9 +127,40 @@ api.post("/apply/answers", async (c) => {
 
 api.post("/apply/submit", async (c) => {
   if (await rateLimited(c, "submit", 20, 10 * 60_000)) return c.json({ ok: false, error: "rate" }, 429);
+  const b = await readJson<{ tz?: string }>(c, 512);
   const id = await resolveIdentity(c, { page: false });
-  const r = await submitApplication(c.get("rt"), id);
+  const r = await submitApplication(c.get("rt"), id, { tz: b?.tz });
   return c.json(r, r.ok ? 200 : 400);
+});
+
+/** Book one of the offered times from the form (A tier, or tiers in INLINE_BOOKING_TIERS). */
+api.post("/apply/book", async (c) => {
+  if (await rateLimited(c, "book", 5, 10 * 60_000)) return c.json({ ok: false, code: "rate", message: "Too many attempts. Please use the full calendar.", route: "/book" }, 429);
+  const b = await readJson<{ start?: string; tz?: string }>(c, 512);
+  if (!b) return c.json({ ok: false, code: "bad", message: "Please try again." }, 400);
+  const id = await resolveIdentity(c, { page: false });
+  const r = await bookInlineSlot(c.get("rt"), id, b);
+  return c.json(r, r.ok ? 200 : r.status);
+});
+
+/**
+ * No-JS fallback: a plain form post (name, email, phone) creates the lead like the contact step, then
+ * 303 to /apply, where the rest needs JavaScript. Turnstile cannot run here, so the limits are tighter.
+ */
+api.post("/apply/nojs", async (c) => {
+  const back = (q: string) => c.redirect(`/apply${q}`, 303);
+  if (await rateLimited(c, "nojs", 3, 60 * 60_000)) return back("?nojs=rate");
+  // Day-wide ceiling across all IPs: this route has no bot challenge.
+  if ((await kvIncr(c.env, `nojs_day:${new Date().toISOString().slice(0, 10)}`)) > 50) return back("?nojs=rate");
+  const len = Number(c.req.header("content-length") || 0);
+  if (len > 4096) return back("?nojs=bad");
+  const type = c.req.header("content-type") || "";
+  if (!/application\/x-www-form-urlencoded|multipart\/form-data/.test(type)) return back("?nojs=bad");
+  const form = (await c.req.parseBody().catch(() => ({}))) as Record<string, unknown>;
+  const id = await resolveIdentity(c, { page: false });
+  const r = await nojsContact(c.get("rt"), id, form);
+  if (!r.ok) return back(`?nojs=${encodeURIComponent(r.code)}`);
+  return back("");
 });
 
 /** Calendly postMessage report from the browser. A claim: verified with the API when possible. */

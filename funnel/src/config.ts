@@ -175,6 +175,8 @@ export interface Question {
   options?: Option[];
   lengthPoints?: Array<{ min: number; points: number }>;
   optional?: boolean;
+  /** Asked after submit as an optional "help us prepare" question; never part of the scored flow. Keep these last. */
+  afterSubmit?: boolean;
 }
 
 export const APPLICATION: Question[] = [
@@ -210,7 +212,14 @@ export const APPLICATION: Question[] = [
     { value: "6_plus", label: "Six months or more", points: 4 },
     { value: "exploring", label: "Just exploring", points: 0, flags: ["exploring"] },
   ] },
-  { id: "blockers", type: "multi", title: "What has held you back so far?", help: "Pick all that apply.", options: [
+  { id: "readiness", type: "single", title: "If it is a fit, are you ready to invest in it now?", options: [
+    { value: "yes", label: "Yes, if it fits", points: 15 },
+    { value: "partner", label: "Yes, with my partner or board", points: 9, flags: ["partner"] },
+    { value: "not_now", label: "Not right now", points: 0, flags: ["not_ready"] },
+  ] },
+  { id: "why_now", type: "text", title: "Why now? What would change if this worked?", placeholder: "A few sentences is plenty.", minLength: 0, optional: true, lengthPoints: [ { min: 160, points: 5 }, { min: 60, points: 3 } ] },
+  // After submit (optional, scores 0): shown under the result so the scored flow stays short.
+  { id: "blockers", type: "multi", title: "What has held you back so far?", help: "Optional. Pick any that apply, so Bendik can prepare.", optional: true, afterSubmit: true, options: [
     { value: "dev_capacity", label: "No one to build it", points: 0 },
     { value: "agency_lockin", label: "Locked into an agency or retainer", points: 0 },
     { value: "tracking", label: "Tracking I can't trust", points: 0 },
@@ -218,15 +227,17 @@ export const APPLICATION: Question[] = [
     { value: "time", label: "No time to lead it", points: 0 },
     { value: "ai_doubt", label: "Not sure AI can do this", points: 0 },
   ] },
-  { id: "readiness", type: "single", title: "If it is a fit, are you ready to invest in it now?", options: [
-    { value: "yes", label: "Yes, if it fits", points: 15 },
-    { value: "partner", label: "Yes, with my partner or board", points: 9, flags: ["partner"] },
-    { value: "not_now", label: "Not right now", points: 0, flags: ["not_ready"] },
-  ] },
-  { id: "why_now", type: "text", title: "Why now? What would change if this worked?", placeholder: "A few sentences is plenty.", minLength: 0, optional: true, lengthPoints: [ { min: 160, points: 5 }, { min: 60, points: 3 } ] },
 ];
 
+/**
+ * Max raw score: role 20 + revenue 25 + spend 20 + goal 10 + timeline 15 + readiness 15 + why-now 5 = 110,
+ * clamped to 100. Moving `blockers` (0 points) after submit left the maximum unchanged, so A ≥ 70 and B ≥ 40
+ * keep their meaning (a strong owner with no why-now still reaches A; tests check this).
+ */
 export const TIER_THRESHOLDS = { A: 70, B: 40 };
+
+/** Tiers that get the native slot picker after submit (setting INLINE_BOOKING_TIERS overrides, e.g. "A,B"). */
+export const TIER_INLINE_BOOKING_DEFAULT = "A";
 
 /** Hard caps: any flag in maxC caps the tier at C; any in maxB caps at B. */
 export const TIER_RULES = {
@@ -251,6 +262,9 @@ export const PERSONAL_EMAIL_DOMAINS = [
   "gmail.com", "googlemail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com",
   "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "online.no", "hotmail.no", "yahoo.no",
 ];
+
+/** An incomplete application this strong pings the team if it is still incomplete after `afterMin` minutes. */
+export const APPLICATION_HOT_PARTIAL = { role: ["owner", "co_owner"], revenue: ["3m_10m", "10m_plus"], afterMin: 20 };
 
 export const DISPOSABLE_DOMAINS = [
   "mailinator.com", "guerrillamail.com", "10minutemail.com", "tempmail.com", "temp-mail.org", "yopmail.com",

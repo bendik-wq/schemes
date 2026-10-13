@@ -2,9 +2,9 @@
 // Imported people (booking_source = 'calendly-direct') only ever get field updates.
 
 import type { Runtime } from "../app";
-import { hmacHex, safeEqual } from "../lib/crypto";
+import { hmacHex, safeEqual, sha256Hex } from "../lib/crypto";
 import { newId, randomToken, refCode } from "../lib/ids";
-import { kvGate, kvGet, kvSet } from "../lib/kv";
+import { kvGate, kvGet, kvGetJson, kvSet } from "../lib/kv";
 import { getLead, getLeadByEmail, type Lead } from "../funnel/leads";
 import { saveSetting } from "../settings";
 import { applyCalendlyQualification } from "../sales/qualify";
@@ -328,6 +328,187 @@ export async function importCalendlyHistory(rt: Runtime): Promise<{ imported: nu
   if (r.next) await kvSet(rt.env, "calendly:import_token", r.next);
   else await rt.env.DB.prepare("DELETE FROM kv_state WHERE key = 'calendly:import_token'").run();
   return { imported, done: !r.next };
+}
+
+// ── Inline booking (Scheduling API) ───────────────────────────────────────────
+// The form shows a few open times right after submit; the Worker books through the API, so the browser
+// never talks to Calendly (CSP connect-src 'self'). The webhook for the same invitee arrives later and is
+// a no-op: markBooked claims each booking ref once.
+
+const MIN = 60_000;
+const DAY = 86_400_000;
+
+export interface EventTypeRef { uri: string; locations: Array<{ kind: string; location?: string }> }
+
+function schedKey(u: string): string {
+  try {
+    const x = new URL(u);
+    return (x.hostname.replace(/^www\./, "") + x.pathname).toLowerCase().replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+/** Pure: the active event type whose scheduling URL is the configured booking URL (query ignored). */
+export function matchEventType(collection: Array<Record<string, any>>, bookingUrl: string): EventTypeRef | null {
+  const want = schedKey(bookingUrl);
+  if (!want) return null;
+  const hit = collection.find((e) => e && e.active !== false && schedKey(String(e.scheduling_url || "")) === want);
+  if (!hit || !isApiUri(hit.uri)) return null;
+  const locations = Array.isArray(hit.locations)
+    ? hit.locations.slice(0, 5).map((l: any) => ({ kind: String(l?.kind || "").slice(0, 40), location: typeof l?.location === "string" ? l.location.slice(0, 200) : undefined }))
+    : [];
+  return { uri: hit.uri, locations };
+}
+
+/** The event type behind a booking URL (closer calendar or BOOKING_URL_A/B). Cached a day (misses 10 minutes). */
+export async function resolveEventType(rt: Runtime, bookingUrl: string): Promise<EventTypeRef | null> {
+  if (!rt.settings.has("CALENDLY_API_TOKEN") || !schedKey(bookingUrl)) return null;
+  const key = `cal_et:${(await sha256Hex(schedKey(bookingUrl))).slice(0, 24)}`;
+  const cached = await kvGetJson<{ at: number; et: EventTypeRef | null } | null>(rt.env, key, null);
+  if (cached && rt.now() - cached.at < (cached.et ? DAY : 10 * MIN)) return cached.et;
+  const owners: string[] = [];
+  if (rt.settings.get("CALENDLY_ORG_URI")) owners.push(`organization=${encodeURIComponent(rt.settings.get("CALENDLY_ORG_URI"))}`);
+  let user = rt.settings.get("CALENDLY_USER_URI");
+  if (!user && !owners.length) {
+    const me = await api(rt, "/users/me");
+    user = me.ok ? String(me.json.resource?.uri || "") : "";
+  }
+  if (user) owners.push(`user=${encodeURIComponent(user)}`);
+  let et: EventTypeRef | null = null;
+  outer: for (const owner of owners) {
+    let page: string | null = null;
+    for (let i = 0; i < 3; i++) {
+      const r = await api(rt, `/event_types?${owner}&count=100${page ? `&page_token=${encodeURIComponent(page)}` : ""}`);
+      if (!r.ok) break;
+      et = matchEventType(r.json.collection || [], bookingUrl);
+      if (et) break outer;
+      page = (r.json.pagination?.next_page_token as string | null) || null;
+      if (!page) break;
+    }
+  }
+  await kvSet(rt.env, key, JSON.stringify({ at: rt.now(), et }));
+  return et;
+}
+
+/** Pure: open start times (ISO UTC) from an event_type_available_times response: sorted, unique, not too soon. */
+export function parseAvailable(collection: unknown, now: number): string[] {
+  if (!Array.isArray(collection)) return [];
+  const out = new Set<string>();
+  for (const x of collection.slice(0, 500)) {
+    if (!x || (x as any).status !== "available") continue;
+    const t = Date.parse(String((x as any).start_time || ""));
+    if (Number.isFinite(t) && t > now + 10 * MIN) out.add(new Date(t).toISOString());
+  }
+  return [...out].sort();
+}
+
+/** Open times for an event type over the next `days` days (Calendly allows at most 7). Cached ~60 s. */
+export async function availableTimes(rt: Runtime, eventTypeUri: string, days = 5, opts: { fresh?: boolean } = {}): Promise<string[] | null> {
+  if (!isApiUri(eventTypeUri) || !rt.settings.has("CALENDLY_API_TOKEN")) return null;
+  const span = Math.min(7, Math.max(1, Math.round(days)));
+  const key = `cal_slots:${(await sha256Hex(eventTypeUri)).slice(0, 24)}:${span}`;
+  if (!opts.fresh) {
+    const c = await kvGetJson<{ at: number; slots: string[] } | null>(rt.env, key, null);
+    if (c && rt.now() - c.at < 60_000) return c.slots.filter((s) => Date.parse(s) > rt.now() + 10 * MIN);
+  }
+  const start = rt.now() + 2 * MIN;
+  const end = start + span * DAY - MIN;
+  const q = `event_type=${encodeURIComponent(eventTypeUri)}&start_time=${encodeURIComponent(new Date(start).toISOString())}&end_time=${encodeURIComponent(new Date(end).toISOString())}`;
+  const r = await api(rt, `/event_type_available_times?${q}`);
+  if (!r.ok) return null;
+  const slots = parseAvailable(r.json.collection, rt.now());
+  await kvSet(rt.env, key, JSON.stringify({ at: rt.now(), slots }));
+  return slots;
+}
+
+/** Pure: at most `perDay` times on each of the first `maxDays` local days, spread across the day. */
+export function pickSlots(slots: string[], tz: string, perDay = 6, maxDays = 5): string[] {
+  const opts: Intl.DateTimeFormatOptions = { year: "numeric", month: "2-digit", day: "2-digit" };
+  let fmt: Intl.DateTimeFormat;
+  try { fmt = new Intl.DateTimeFormat("en-CA", { ...opts, timeZone: tz }); }
+  catch { fmt = new Intl.DateTimeFormat("en-CA", { ...opts, timeZone: "UTC" }); }
+  const days = new Map<string, string[]>();
+  for (const s of slots) {
+    const k = fmt.format(new Date(s));
+    if (!days.has(k)) {
+      if (days.size >= maxDays) break;
+      days.set(k, []);
+    }
+    days.get(k)!.push(s);
+  }
+  const out: string[] = [];
+  for (const list of days.values()) {
+    if (list.length <= perDay) { out.push(...list); continue; }
+    const at = new Set<number>();
+    for (let i = 0; i < perDay; i++) at.add(Math.round((i * (list.length - 1)) / (perDay - 1)));
+    for (const i of [...at].sort((a, b) => a - b)) out.push(list[i]);
+  }
+  return out;
+}
+
+/** Pure: the location to send with a booking. Video kinds need nothing; an outbound phone call uses the lead's number. */
+export function inviteeLocation(locs: EventTypeRef["locations"], phone: string | null): { kind: string; location?: string } | undefined {
+  if (!locs.length) return undefined;
+  const conf = locs.find((l) => /_conference$/.test(l.kind));
+  if (conf) return { kind: conf.kind };
+  const l = locs[0];
+  if (l.kind === "outbound_call") return phone ? { kind: l.kind, location: phone } : undefined;
+  if (l.location) return { kind: l.kind, location: l.location };
+  return { kind: l.kind };
+}
+
+export type BookResult =
+  | { ok: true; inviteeUri: string; eventUri: string; invitee: CalendlyInvitee }
+  | { ok: false; status: number; taken: boolean };
+
+/** POST /invitees for the lead at `startUtc`. Tracking carries the lead id so every later sync matches strongly. */
+export async function bookInvitee(
+  rt: Runtime, lead: Lead, eventTypeUri: string, startUtc: string, tz: string, locations: EventTypeRef["locations"] = [],
+): Promise<BookResult> {
+  if (!isApiUri(eventTypeUri) || !rt.settings.has("CALENDLY_API_TOKEN")) return { ok: false, status: 0, taken: false };
+  const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || lead.email;
+  const body: Record<string, unknown> = {
+    event_type: eventTypeUri,
+    start_time: startUtc,
+    invitee: { name, first_name: lead.first_name || undefined, last_name: lead.last_name || undefined, email: lead.email, timezone: tz },
+    tracking: {
+      salesforce_uuid: lead.id,
+      utm_source: lead.utm_source || undefined, utm_medium: lead.utm_medium || undefined,
+      utm_campaign: lead.utm_campaign || undefined, utm_content: lead.utm_content || undefined,
+    },
+  };
+  const loc = inviteeLocation(locations, lead.phone);
+  if (loc) body.location = loc;
+  let r: Awaited<ReturnType<typeof api>>;
+  try {
+    r = await api(rt, "/invitees", { method: "POST", body: JSON.stringify(body) });
+  } catch {
+    return { ok: false, status: 0, taken: false };
+  }
+  if (!r.ok) {
+    const msg = JSON.stringify(r.json).slice(0, 2000);
+    const taken = r.status === 409 || ((r.status === 400 || r.status === 422) && /no longer available|not available|unavailable|already (been )?(booked|taken)|taken/i.test(msg));
+    return { ok: false, status: r.status, taken };
+  }
+  const res = (r.json.resource || {}) as Record<string, any>;
+  const invitee = parseInvitee(res);
+  invitee.tracking = { ...invitee.tracking, salesforce_uuid: lead.id };
+  const eventUri = String(res.event || "");
+  if (!isApiUri(invitee.uri) || !isApiUri(eventUri)) return { ok: false, status: r.status, taken: false };
+  return { ok: true, inviteeUri: invitee.uri, eventUri, invitee };
+}
+
+/**
+ * Run the normal booking pipeline for a booking the Worker just made for the lead's own browser: read it
+ * back from the API (exact time, join URL, host) and apply it as a strong match; if that read lags, apply
+ * what POST /invitees returned. markBooked claims the ref once, so the webhook for this invitee is a no-op.
+ */
+export async function applyInlineBooking(rt: Runtime, lead: Lead, b: Extract<BookResult, { ok: true }>, startUtc: string): Promise<string> {
+  const v = await verifyClientBooking(rt, lead, b.eventUri, b.inviteeUri);
+  if (v === "verified") return "verified";
+  const ev: CalendlyEvent = { uri: b.eventUri, name: "", start: Date.parse(startUtc) || null, status: "active", joinUrl: null, hostEmail: null };
+  return applyInvitee(rt, ev, b.invitee, { createDirect: false, ownBrowserLeadId: lead.id });
 }
 
 /** Match bookings that arrived before their lead existed. */

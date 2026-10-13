@@ -13,8 +13,22 @@ const CA_AREA = new Set([
   "672", "683", "705", "709", "742", "753", "778", "780", "782", "807", "819", "825", "867", "873", "879", "902", "905",
 ]);
 
-/** Normalise to E.164 (+<digits>). Uses the visitor's country for numbers typed without a prefix. */
-export function normalizePhone(raw: unknown, defaultCountry: string | null): string | null {
+/** Digits after the "+" in E.164. apply.js applies the same 8–15 rule (keep the two in step). */
+export const PHONE_MIN_DIGITS = 8;
+export const PHONE_MAX_DIGITS = 15;
+
+/** A country the form's dial-code picker may send: an ISO code present in DIAL, else null. */
+export function dialCountry(v: unknown): string | null {
+  const c = String(v ?? "").trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(c) && Object.prototype.hasOwnProperty.call(DIAL, c) ? c : null;
+}
+
+/**
+ * Normalise to E.164 (+<digits>). Numbers typed without a prefix use the country picked in the form
+ * (when it is a known dial code), else the visitor's country.
+ */
+export function normalizePhone(raw: unknown, defaultCountry: string | null, pickedCountry?: unknown): string | null {
+  defaultCountry = dialCountry(pickedCountry) || defaultCountry;
   let s = String(raw ?? "").trim();
   if (!s) return null;
   if (/[a-z]/i.test(s.replace(/ext\.?\s*\d+$/i, ""))) return null;
@@ -30,7 +44,7 @@ export function normalizePhone(raw: unknown, defaultCountry: string | null): str
     digits = "+" + cc + national;
   }
   const d = digits.slice(1).replace(/\D/g, "");
-  if (d.length < 8 || d.length > 15) return null;
+  if (d.length < PHONE_MIN_DIGITS || d.length > PHONE_MAX_DIGITS) return null;
   if (d.startsWith("0")) return null;
   return "+" + d;
 }

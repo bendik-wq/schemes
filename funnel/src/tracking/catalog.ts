@@ -82,6 +82,15 @@ export const EVENTS: Record<string, EventDef> = {
   exit_intent: { micro: true, client: true },
   faq_open: { micro: true, client: true },
   app_back: { micro: true, client: true },
+  // Application form analytics (client, local only; never field values)
+  app_view: { micro: true, client: true },
+  app_step_view: { micro: true, client: true },
+  app_step_done: { micro: true, client: true },
+  app_error: { micro: true, client: true },
+  slot_view: { micro: true, client: true },
+  slot_pick: { micro: true, client: true },
+  slot_booked: { micro: true, client: true },
+  slot_failed: { micro: true, client: true },
   booking_date_selected: { micro: true, client: true },
   booking_page_ready: { micro: true, client: true },
 };

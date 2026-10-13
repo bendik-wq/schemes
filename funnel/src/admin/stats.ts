@@ -461,17 +461,43 @@ export async function applicationReport(rt: Runtime, f: Filters) {
     `SELECT l.step_reached, l.app_completed_at, l.app_started_at, l.created_at, l.answers, l.score, l.tier, l.tier_override, l.qual_flags
      FROM leads l WHERE l.booking_source = 'funnel' AND l.created_at >= ?${ld.sql} LIMIT 20000`, [f.since, ...ld.binds]);
   const vdE = visitorDims(f, "e.visitor_id");
-  const [starts, backs] = await Promise.all([
-    one<{ n: number }>(rt, `SELECT COUNT(DISTINCT e.visitor_id) AS n FROM events e WHERE e.name = 'page_view' AND e.path = '/apply' AND e.is_bot = 0 AND e.ts >= ?${vdE.sql}`, [f.since, ...vdE.binds]),
+  const median = (xs: number[]): number | null => {
+    const s = xs.filter((x) => Number.isFinite(x) && x >= 0).sort((a, b) => a - b);
+    return s.length ? s[Math.floor(s.length / 2)] : null;
+  };
+  // Starts: the /apply page, or the form embedded under the film becoming half visible (app_view).
+  const [starts, backs, stepViews, stepDone, errors] = await Promise.all([
+    one<{ n: number }>(rt, `SELECT COUNT(DISTINCT e.visitor_id) AS n FROM events e WHERE ((e.name = 'page_view' AND e.path = '/apply') OR e.name = 'app_view') AND e.is_bot = 0 AND e.ts >= ?${vdE.sql}`, [f.since, ...vdE.binds]),
     all<{ step: string; n: number }>(rt, `SELECT json_extract(e.props, '$.step') AS step, COUNT(*) AS n FROM events e WHERE e.name = 'app_back' AND e.is_bot = 0 AND e.ts >= ?${vdE.sql} GROUP BY step`, [f.since, ...vdE.binds]),
+    all<{ step: string; n: number }>(rt, `SELECT json_extract(e.props, '$.step') AS step, COUNT(*) AS n FROM events e WHERE e.name = 'app_step_view' AND e.is_bot = 0 AND e.ts >= ?${vdE.sql} GROUP BY step`, [f.since, ...vdE.binds]),
+    all<{ step: string; ms: number | null; first: number | null; abandoned: number | null }>(rt,
+      `SELECT json_extract(e.props, '$.step') AS step, json_extract(e.props, '$.ms') AS ms, json_extract(e.props, '$.ms_first') AS first,
+        json_extract(e.props, '$.abandoned') AS abandoned
+       FROM events e WHERE e.name = 'app_step_done' AND e.is_bot = 0 AND e.ts >= ?${vdE.sql} LIMIT 50000`, [f.since, ...vdE.binds]),
+    all<{ step: string; code: string; n: number }>(rt, `SELECT json_extract(e.props, '$.step') AS step, json_extract(e.props, '$.code') AS code, COUNT(*) AS n FROM events e WHERE e.name = 'app_error' AND e.is_bot = 0 AND e.ts >= ?${vdE.sql} GROUP BY step, code`, [f.since, ...vdE.binds]),
   ]);
   const completed = leads.filter((l) => l.app_completed_at);
   const backBy = new Map(backs.map((b) => [String(b.step), num(b.n)]));
+  const viewsBy = new Map(stepViews.map((b) => [String(b.step), num(b.n)]));
   const steps = APPLICATION.map((q, i) => {
-    const reached = leads.filter((l) => l.app_completed_at || l.step_reached >= i + 1).length;
-    return { id: q.id, title: q.title, step: i + 1, reached, backs: backBy.get(String(i + 1)) || 0 };
+    const key = String(i + 1);
+    // After-submit questions are optional: "reached" there is everyone who finished.
+    const reached = q.afterSubmit ? completed.length : leads.filter((l) => l.app_completed_at || l.step_reached >= i + 1).length;
+    const done = stepDone.filter((d) => String(d.step) === key);
+    const abandoned = done.filter((d) => num(d.abandoned) === 1).length;
+    const errs = errors.filter((e) => String(e.step) === key);
+    return {
+      id: q.id, title: q.title, step: i + 1, reached, backs: backBy.get(key) || 0, after_submit: !!q.afterSubmit,
+      views: viewsBy.get(key) || 0,
+      median_ms: median(done.filter((d) => num(d.abandoned) !== 1).map((d) => num(d.ms))),
+      median_hesitation_ms: median(done.filter((d) => d.first != null).map((d) => num(d.first))),
+      abandon_rate: pct(abandoned, viewsBy.get(key) || done.length),
+      errors: errs.reduce((s, e) => s + num(e.n), 0),
+    };
   });
   steps.forEach((s, i) => Object.assign(s, { kept: i ? pct(s.reached, steps[i - 1].reached) : null }));
+  const errorCodes: Record<string, number> = {};
+  for (const e of errors) { const k = String(e.code || "unknown"); errorCodes[k] = (errorCodes[k] || 0) + num(e.n); }
   const parsed = completed.map((l) => { try { return JSON.parse(l.answers || "{}") as Record<string, unknown>; } catch { return {}; } });
   const questions = APPLICATION.filter((q) => q.type === "single" || q.type === "multi").map((q) => {
     const total = parsed.filter((a) => a[q.id] != null).length;
@@ -504,6 +530,7 @@ export async function applicationReport(rt: Runtime, f: Filters) {
     tiers: { A: tier("A"), B: tier("B"), C: tier("C") },
     score_histogram: hist.map((n, i) => ({ from: i * 10, to: i * 10 + 9, n })),
     flags: Object.entries(flags).sort((a, b) => b[1] - a[1]).map(([flag, n]) => ({ flag, n })),
+    errors: Object.entries(errorCodes).sort((a, b) => b[1] - a[1]).map(([code, n]) => ({ code, n })),
   };
 }
 
