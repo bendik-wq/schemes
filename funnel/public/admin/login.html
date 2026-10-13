@@ -15,13 +15,23 @@
       <span class="brand-mark" aria-hidden="true">A</span>
       <h1 class="login-title">Funnel HQ</h1>
       <p class="login-sub">Sign in to see your funnel, leads and sales.</p>
+      <form class="login-form" method="post" action="/admin/login/email">
+        <div class="login-ok" id="login-ok" role="status" hidden>If that address has access, a sign-in link is on its way. It works once and expires in 15 minutes.</div>
+        <div class="login-error" id="login-magic-error" role="alert" hidden></div>
+        <label class="field">
+          <span class="field-label">Work email</span>
+          <input class="input" type="email" name="email" autocomplete="email" required autofocus>
+        </label>
+        <button class="btn btn-primary" type="submit">Email me a sign-in link</button>
+      </form>
+      <div class="login-or">or, for the owner</div>
       <form class="login-form" method="post" action="/admin/login">
         <div class="login-error" id="login-error" role="alert" hidden>Wrong password. Try again.</div>
         <label class="field">
-          <span class="field-label">Password</span>
-          <input class="input" type="password" name="password" autocomplete="current-password" required autofocus>
+          <span class="field-label">Admin password</span>
+          <input class="input" type="password" name="password" autocomplete="current-password" required>
         </label>
-        <button class="btn btn-primary" type="submit">Sign in</button>
+        <button class="btn" type="submit">Sign in with password</button>
       </form>
       <p class="login-foot">Asymmetrical AI Solutions · private dashboard</p>
     </div>

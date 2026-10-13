@@ -39,17 +39,52 @@ import { backfillAdTouch, parseSpendCsv, syncMetaSpend, upsertSpend } from "../i
 import { checkDeliverability, deliverabilityPayload, resumeMarketing } from "../integrations/resend-webhook";
 import { checkEmailDns } from "../integrations/email-dns";
 import { parseStageValues, recomputeStageValues, stageValueTable } from "../sales/values";
-import { activateModel, calibrationReport, runCalibration } from "../sales/calibration";
+import { activateModel, calibrationReport, runCalibration, setLearnedRouting } from "../sales/calibration";
 import { scoreUpcomingCalls, upcomingByRisk } from "../sales/noshow";
 import { followUpsDue, paymentsDue, pingClosersFollowUps } from "../sales/followups";
 import { latestAiReport, runAnalyst } from "../sales/analyst";
 import { maybeSendDigest } from "../sales/digest";
+import { currentUser, leadVisible, logoutHere, repScope, type AdminUser } from "../admin/auth";
+import { audit, auditReport, diff } from "../admin/audit";
+import { UserError, createUser, listUsers, updateUser } from "../admin/users";
+import { MergeError, dataQuality, duplicatesReport, mergeLeads } from "../admin/dedupe";
+import { movePatch, pipelineReport, setVerbal } from "../sales/pipeline";
+import { getReceivable, listReceivables, receivablesDue } from "../sales/receivables";
+import { TouchError, listTouches, logTouch, salesActivity, todayView, TOUCH_KINDS, TOUCH_OUTCOMES } from "../sales/today";
+import { attributionReport, cohortsReport } from "../admin/attribution";
+import { exportCsv } from "../admin/exports";
+import { API_SCOPES, ApiKeyError, createKey, listKeys, revokeKey } from "../admin/api-keys";
+import { WebhookError, createSub, deleteSub, setSubActive, subsPayload } from "../integrations/webhooks";
 
 export { csvCell };
 
 export const adminApi = new Hono<AppEnv>();
 
 const rtOf = (c: Ctx): Runtime => c.get("rt");
+/** The signed-in user (set by requireAdmin). Fails closed to a viewer with no leads if it is missing. */
+const userOf = (c: Ctx): AdminUser => currentUser(c) || { id: "unknown", email: null, name: "Unknown", role: "viewer", rep_id: null, breakglass: false };
+const ipOf = (c: Ctx) => c.req.header("cf-connecting-ip") || null;
+const isRep = (u: AdminUser) => u.role === "closer" || u.role === "setter";
+/** A lead the current user may see, or null (reps only see their own). */
+async function visibleLead(c: Ctx, id: string): Promise<Lead | null> {
+  const lead = await getLead(rtOf(c), id);
+  return lead && leadVisible(userOf(c), lead) ? lead : null;
+}
+/** Owners and managers may look at one rep's view with ?rep=; reps always get their own. */
+function scopeFor(c: Ctx): string | null | undefined {
+  const u = userOf(c);
+  const s = repScope(u);
+  if (s !== undefined) return s;
+  const q = c.req.query("rep");
+  return q && /^[A-Za-z0-9_-]{1,40}$/.test(q) ? q : undefined;
+}
+const LEAD_AUDIT_KEYS = ["status", "tier_override", "closer_id", "setter_id", "revenue", "notes", "lost_reason", "objection", "industry", "revenue_band", "budget_band",
+  "willing_to_invest", "temperature", "follow_up_at", "decision_maker", "fit_rating", "offer", "payment_plan", "installments_total", "next_payment_at",
+  "contract_signed_at", "refunded_at", "refund_amount", "loi_signed_at", "target_business", "do_not_call_at"];
+async function auditLead(c: Ctx, action: string, before: Lead, after: Lead) {
+  const d = diff(before as unknown as Record<string, unknown>, after as unknown as Record<string, unknown>, LEAD_AUDIT_KEYS);
+  if (Object.keys(d.after).length) await audit(rtOf(c), userOf(c), ipOf(c), { action, entity: "lead", entity_id: before.id, before: d.before, after: d.after });
+}
 const filters = (c: Ctx): Filters => parseFilters((k) => c.req.query(k), rtOf(c).now(), salesTz(rtOf(c)));
 const body = async (c: Ctx): Promise<Record<string, unknown>> => {
   const b = await c.req.json().catch(() => ({}));
@@ -132,6 +167,16 @@ adminApi.post("/calibration/activate", async (c) => {
   if (!/^sm[0-9a-z]{19}$/.test(id)) return bad(c, "bad id");
   return (await activateModel(rtOf(c), id)) ? c.json({ ok: true }) : bad(c, "Model not found.", 404);
 });
+// Learned points for routing: the owner's explicit switch (default off).
+adminApi.post("/calibration/learned", async (c) => {
+  const u = userOf(c);
+  if (u.role !== "owner") return c.json({ error: "Only the owner can change how leads are routed." }, 403);
+  const b = await body(c);
+  const r = await setLearnedRouting(rtOf(c), b.on === true);
+  if (!r.ok) return bad(c, r.error || "Could not save", 422);
+  await audit(rtOf(c), u, ipOf(c), { action: b.on === true ? "learned_routing_on" : "learned_routing_off", entity: "setting", entity_id: "LEARNED_ROUTING", after: { on: b.on === true, version: r.version || null } });
+  return c.json(r);
+});
 
 // ── Weekly analyst and digest ────────────────────────────────────────────────
 
@@ -175,22 +220,214 @@ adminApi.post("/links/:code/archive", async (c) => {
 
 adminApi.get("/sales", async (c) => {
   const rt = rtOf(c);
+  const f = filters(c);
   const reps = await listReps(rt);
-  const [team, risk, fu, pay] = await Promise.all([salesTeam(rt, filters(c)), upcomingByRisk(rt), followUpsDue(rt, reps), paymentsDue(rt, reps)]);
+  const scope = scopeFor(c);
+  if (scope === null) return c.json({ scoped: true, linked: false });
+  const [team, risk, fu, pay, activity] = await Promise.all([salesTeam(rt, f), upcomingByRisk(rt), followUpsDue(rt, reps, scope), paymentsDue(rt, reps, scope), salesActivity(rt, f.since, scope)]);
   const closer = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name || id : null);
-  return c.json({ ...team, upcoming_risk: { ...risk, rows: risk.rows.map((r) => ({ ...r, closer: closer(r.closer_id) })) }, follow_ups: fu, payments_due: pay });
+  const mine = <T extends { closer_id: string | null }>(rows: T[]) => (scope ? rows.filter((r) => r.closer_id === scope) : rows);
+  const riskRows = mine(risk.rows).map((r) => ({ ...r, closer: closer(r.closer_id) }));
+  return c.json({
+    ...team, call_log: mine(team.call_log), needs_outcome: mine(team.needs_outcome), reps: scope ? team.reps.filter((r) => r.id === scope) : team.reps,
+    upcoming_risk: { ...risk, rows: riskRows }, follow_ups: fu, payments_due: pay, activity, scoped: !!scope,
+  });
 });
 adminApi.post("/sales/noshow/score", async (c) => c.json({ ok: true, scored: await scoreUpcomingCalls(rtOf(c), true) }));
 adminApi.post("/sales/outcome", async (c) => {
   const b = await body(c);
-  const lead = await getLead(rtOf(c), typeof b.lead_id === "string" ? b.lead_id : "");
+  const lead = await visibleLead(c, typeof b.lead_id === "string" ? b.lead_id : "");
   if (!lead) return bad(c, "lead not found", 404);
-  const patch = b.patch && typeof b.patch === "object" && !Array.isArray(b.patch) ? (b.patch as LeadPatch) : {};
+  const patch = b.patch && typeof b.patch === "object" && !Array.isArray(b.patch) ? ({ ...(b.patch as LeadPatch) }) : {};
+  if (isRep(userOf(c))) { delete patch.closer_id; delete patch.setter_id; }
   try {
     const fresh = await applyLeadUpdate(rtOf(c), lead, patch, { source: "admin" });
+    await auditLead(c, "outcome", lead, fresh);
     return c.json({ ok: true, lead: publicLead(fresh) });
   } catch (e) {
     if (e instanceof ValidationError) return bad(c, `Invalid ${e.message}`);
+    throw e;
+  }
+});
+
+// ── Pipeline, forecast and receivables ───────────────────────────────────────
+
+adminApi.get("/pipeline", async (c) => {
+  const scope = scopeFor(c);
+  if (scope === null) return c.json({ scoped: true, linked: false, stages: [], forecast: [], weighted: 0 });
+  return c.json(await pipelineReport(rtOf(c), scope));
+});
+adminApi.post("/pipeline/move", async (c) => {
+  const rt = rtOf(c);
+  const b = await body(c);
+  const lead = await visibleLead(c, typeof b.lead_id === "string" ? b.lead_id : "");
+  if (!lead) return bad(c, "lead not found", 404);
+  let mv: ReturnType<typeof movePatch>;
+  try {
+    mv = movePatch(String(b.stage || ""), lead, { revenue: b.revenue, installments: b.installments });
+  } catch (e) {
+    return bad(c, errMsg(e), 422);
+  }
+  try {
+    const fresh = await applyLeadUpdate(rt, lead, mv.patch as LeadPatch, { source: "admin" });
+    if (mv.verbal !== null) await setVerbal(rt, lead.id, mv.verbal);
+    await auditLead(c, "pipeline_move", lead, fresh);
+    if (mv.verbal !== null) await audit(rt, userOf(c), ipOf(c), { action: "pipeline_move", entity: "lead", entity_id: lead.id, after: { stage: b.stage } });
+    return c.json({ ok: true, lead: publicLead(fresh) });
+  } catch (e) {
+    if (e instanceof ValidationError) return bad(c, `Invalid ${e.message.replace(/_/g, " ")}`);
+    throw e;
+  }
+});
+adminApi.get("/receivables", async (c) => {
+  const rt = rtOf(c);
+  const scope = scopeFor(c);
+  if (scope === null) return c.json({ rows: [] });
+  const ahead = Math.max(0, Math.min(90, Number(c.req.query("days") || 30)));
+  return c.json({ rows: await receivablesDue(rt, { aheadMs: ahead * 86_400_000, rep: scope, reps: await listReps(rt) }), days: ahead });
+});
+adminApi.post("/receivables/:id/paid", async (c) => {
+  const rt = rtOf(c);
+  const id = c.req.param("id");
+  if (!/^rv[0-9a-z]{19}$/.test(id)) return bad(c, "bad id");
+  const r = await getReceivable(rt, id);
+  if (!r || r.status !== "pending") return bad(c, "This instalment is not pending.", 404);
+  const lead = await visibleLead(c, r.lead_id);
+  if (!lead) return bad(c, "lead not found", 404);
+  const b = await body(c);
+  try {
+    const p = await recordPayment(rt, lead, { amount: r.amount, paid_at: b.paid_at, method: b.method, note: `Instalment ${r.seq}` }, { receivableId: r.id });
+    await audit(rt, userOf(c), ipOf(c), { action: "payment_add", entity: "payment", entity_id: p.id, after: { lead_id: lead.id, amount: p.amount, receivable: r.id } });
+    return c.json({ ok: true, payment: p });
+  } catch (e) {
+    if (e instanceof ValidationError) return bad(c, "Could not record the payment.");
+    throw e;
+  }
+});
+
+// ── Today ────────────────────────────────────────────────────────────────────
+
+adminApi.get("/today", async (c) => c.json({ ...(await todayView(rtOf(c), scopeFor(c))), touch_kinds: TOUCH_KINDS, touch_outcomes: TOUCH_OUTCOMES.filter(Boolean), lost_reasons: LOST_REASONS }));
+adminApi.post("/leads/:id/touches", async (c) => {
+  const lead = await visibleLead(c, c.req.param("id"));
+  if (!lead) return bad(c, "not found", 404);
+  const u = userOf(c);
+  const b = await body(c);
+  // A rep's touch is theirs; an owner or manager logs it for the lead's setter/closer only when they have no rep of their own.
+  const rep = u.rep_id || (typeof b.rep_id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(b.rep_id) ? b.rep_id : null);
+  try {
+    const t = await logTouch(rtOf(c), lead.id, rep, u.id, b);
+    return c.json({ ok: true, touch: t });
+  } catch (e) {
+    if (e instanceof TouchError) return bad(c, e.message, 422);
+    throw e;
+  }
+});
+
+// ── Me, users and the activity log ───────────────────────────────────────────
+
+adminApi.get("/me", (c) => {
+  const u = userOf(c);
+  return c.json({ user: { id: u.id, name: u.name, email: u.email, role: u.role, rep_id: u.rep_id, breakglass: u.breakglass } });
+});
+adminApi.get("/users", async (c) => c.json({ users: await listUsers(rtOf(c)), reps: (await listReps(rtOf(c))).map((r) => ({ id: r.id, name: r.name, role: r.role, active: !!r.active })) }));
+adminApi.post("/users", async (c) => {
+  try {
+    const u = await createUser(rtOf(c), userOf(c), await body(c));
+    await audit(rtOf(c), userOf(c), ipOf(c), { action: "user_create", entity: "user", entity_id: u.id, after: { email: u.email, role: u.role, rep_id: u.rep_id } });
+    return c.json({ user: u });
+  } catch (e) {
+    if (e instanceof UserError) return bad(c, e.message, 422);
+    throw e;
+  }
+});
+adminApi.patch("/users/:id", async (c) => {
+  try {
+    const r = await updateUser(rtOf(c), userOf(c), c.req.param("id"), await body(c));
+    const d = diff(r.before as unknown as Record<string, unknown>, r.after as unknown as Record<string, unknown>, ["email", "name", "role", "rep_id", "active"]);
+    await audit(rtOf(c), userOf(c), ipOf(c), { action: "user_update", entity: "user", entity_id: r.after.id, before: d.before, after: d.after });
+    return c.json({ ok: true, user: r.after });
+  } catch (e) {
+    if (e instanceof UserError) return bad(c, e.message, 422);
+    throw e;
+  }
+});
+adminApi.get("/audit", async (c) => c.json(await auditReport(rtOf(c), { entity: c.req.query("entity"), user: c.req.query("user"), page: Number(c.req.query("page") || 1) })));
+
+// ── Attribution, cohorts and exports ─────────────────────────────────────────
+
+adminApi.get("/attribution", async (c) => c.json(await attributionReport(rtOf(c), filters(c), c.req.query("model"), c.req.query("dim"))));
+adminApi.get("/cohorts", async (c) => c.json(await cohortsReport(rtOf(c), c.req.query("by"))));
+adminApi.get("/exports/:file", async (c) => {
+  const u = userOf(c);
+  if (u.role !== "owner" && u.role !== "manager") return c.json({ error: "Your role does not allow this." }, 403);
+  const m = /^([a-z]+)\.csv$/.exec(c.req.param("file"));
+  const csv = m ? await exportCsv(rtOf(c), m[1], filters(c), (k) => c.req.query(k)) : null;
+  if (csv == null) return bad(c, "Unknown export.", 404);
+  await audit(rtOf(c), u, ipOf(c), { action: "export", entity: "export", entity_id: m![1], after: { range: filters(c).range } });
+  const day = new Date(rtOf(c).now()).toISOString().slice(0, 10);
+  return new Response(csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="${m![1]}-${day}.csv"`, "cache-control": "no-store" } });
+});
+
+// ── API keys and webhooks (owners and managers) ──────────────────────────────
+
+adminApi.get("/api-keys", async (c) => c.json({ keys: await listKeys(rtOf(c)), scopes: API_SCOPES }));
+adminApi.post("/api-keys", async (c) => {
+  try {
+    const r = await createKey(rtOf(c), await body(c), userOf(c).id);
+    await audit(rtOf(c), userOf(c), ipOf(c), { action: "api_key_create", entity: "api_key", entity_id: r.row.id, after: { name: r.row.name, scopes: r.row.scopes } });
+    return c.json(r);
+  } catch (e) {
+    if (e instanceof ApiKeyError) return bad(c, e.message, 422);
+    throw e;
+  }
+});
+adminApi.post("/api-keys/:id/revoke", async (c) => {
+  const id = c.req.param("id");
+  if (!(await revokeKey(rtOf(c), id))) return bad(c, "Key not found or already revoked.", 404);
+  await audit(rtOf(c), userOf(c), ipOf(c), { action: "api_key_revoke", entity: "api_key", entity_id: id });
+  return c.json({ ok: true });
+});
+adminApi.get("/webhooks", async (c) => c.json(await subsPayload(rtOf(c))));
+adminApi.post("/webhooks", async (c) => {
+  try {
+    const s = await createSub(rtOf(c), await body(c));
+    await audit(rtOf(c), userOf(c), ipOf(c), { action: "webhook_create", entity: "webhook", entity_id: s.id, after: { host: new URL(s.url).host, events: s.events } });
+    return c.json({ id: s.id, secret: s.secret });
+  } catch (e) {
+    if (e instanceof WebhookError) return bad(c, e.message, 422);
+    throw e;
+  }
+});
+adminApi.patch("/webhooks/:id", async (c) => {
+  const b = await body(c);
+  if (!(await setSubActive(rtOf(c), c.req.param("id"), b.active === true))) return bad(c, "Webhook not found.", 404);
+  await audit(rtOf(c), userOf(c), ipOf(c), { action: b.active === true ? "webhook_resume" : "webhook_pause", entity: "webhook", entity_id: c.req.param("id") });
+  return c.json({ ok: true });
+});
+adminApi.delete("/webhooks/:id", async (c) => {
+  if (!(await deleteSub(rtOf(c), c.req.param("id")))) return bad(c, "Webhook not found.", 404);
+  await audit(rtOf(c), userOf(c), ipOf(c), { action: "webhook_delete", entity: "webhook", entity_id: c.req.param("id") });
+  return c.json({ ok: true });
+});
+
+// ── Duplicates and data quality ──────────────────────────────────────────────
+
+adminApi.get("/duplicates", async (c) => c.json(await duplicatesReport(rtOf(c))));
+adminApi.get("/data-quality", async (c) => c.json(await dataQuality(rtOf(c))));
+adminApi.post("/leads/:id/merge", async (c) => {
+  const u = userOf(c);
+  if (u.role !== "owner" && u.role !== "manager") return c.json({ error: "Your role does not allow this." }, 403);
+  const b = await body(c);
+  const into = typeof b.into === "string" ? b.into : "";
+  const id = c.req.param("id");
+  if (!/^l[0-9a-z]{19}$/.test(id) || !/^l[0-9a-z]{19}$/.test(into)) return bad(c, "bad id");
+  try {
+    const r = await mergeLeads(rtOf(c), id, into);
+    await audit(rtOf(c), u, ipOf(c), { action: "lead_merge", entity: "lead", entity_id: r.survivor.id, before: { merged: r.loser_ref }, after: { survivor: r.survivor.ref_code, tables: r.tables } });
+    return c.json({ ok: true, survivor: publicLead(r.survivor), merged: r.loser_ref });
+  } catch (e) {
+    if (e instanceof MergeError) return bad(c, e.message, 422);
     throw e;
   }
 });
@@ -200,17 +437,27 @@ adminApi.post("/sales/outcome", async (c) => {
 adminApi.get("/team", async (c) => c.json({ reps: await listReps(rtOf(c)) }));
 adminApi.post("/team", async (c) => {
   try {
-    return c.json({ rep: await createRep(rtOf(c), await body(c)) });
+    const rep = await createRep(rtOf(c), await body(c));
+    await audit(rtOf(c), userOf(c), ipOf(c), { action: "rep_create", entity: "rep", entity_id: rep.id, after: { name: rep.name, role: rep.role, tiers: rep.tiers, weight: rep.weight } });
+    return c.json({ rep });
   } catch (e) {
     return bad(c, errMsg(e));
   }
 });
+const REP_AUDIT = ["name", "email", "role", "tiers", "weight", "calendar_url", "commission_pct", "monthly_target", "slack_user_id", "discord_user_id", "active"];
 adminApi.patch("/team/:id", async (c) => {
-  await updateRep(rtOf(c), c.req.param("id"), await body(c));
+  const rt = rtOf(c);
+  const id = c.req.param("id");
+  const before = (await listReps(rt)).find((r) => r.id === id) || null;
+  await updateRep(rt, id, await body(c));
+  const after = (await listReps(rt)).find((r) => r.id === id) || null;
+  const d = diff(before as unknown as Record<string, unknown>, after as unknown as Record<string, unknown>, REP_AUDIT);
+  if (Object.keys(d.after).length) await audit(rt, userOf(c), ipOf(c), { action: "rep_update", entity: "rep", entity_id: id, before: d.before, after: d.after });
   return c.json({ ok: true });
 });
 adminApi.delete("/team/:id", async (c) => {
   await deleteRep(rtOf(c), c.req.param("id"));
+  await audit(rtOf(c), userOf(c), ipOf(c), { action: "rep_deactivate", entity: "rep", entity_id: c.req.param("id") });
   return c.json({ ok: true });
 });
 adminApi.post("/team/test-ping", async (c) => {
@@ -223,7 +470,11 @@ adminApi.post("/team/test-ping", async (c) => {
 
 const leadQuery = (c: Ctx) => ({ q: c.req.query("q"), status: c.req.query("status"), tier: c.req.query("tier"), sort: c.req.query("sort"), page: Number(c.req.query("page") || 1) });
 
-adminApi.get("/leads", async (c) => c.json(await listLeads(rtOf(c), filters(c), leadQuery(c))));
+adminApi.get("/leads", async (c) => {
+  const scope = repScope(userOf(c));
+  if (scope === null) return c.json({ rows: [], total: 0, page: 1, per_page: 50, pages: 1 });
+  return c.json(await listLeads(rtOf(c), filters(c), { ...leadQuery(c), rep: scope }));
+});
 adminApi.get("/leads.csv", async (c) => {
   const csv = await leadsCsv(rtOf(c), filters(c), leadQuery(c));
   const day = new Date(rtOf(c).now()).toISOString().slice(0, 10);
@@ -287,7 +538,7 @@ const CONV_RE = /^[A-Za-z0-9_-]{6,80}$/;
 
 adminApi.get("/leads/:id", async (c) => {
   const rt = rtOf(c);
-  const lead = await getLead(rt, c.req.param("id"));
+  const lead = await visibleLead(c, c.req.param("id"));
   if (!lead) return bad(c, "not found", 404);
   const vid = lead.visitor_id || "";
   const [events, emails, calls, voice, payments, bookings, sessions, vsl, reps, facts] = await Promise.all([
@@ -310,8 +561,9 @@ adminApi.get("/leads/:id", async (c) => {
     listReps(rt),
     buildProfile(rt, lead).catch(() => []),
   ]);
-  const revops = await one<{ ft_ad_id: string | null; p_win: number | null; noshow_risk: number | null; noshow_reasons: string | null; email_status: string | null }>(rt,
-    "SELECT ft_ad_id, p_win, noshow_risk, noshow_reasons, email_status FROM lead_revops WHERE lead_id = ?", [lead.id]).catch(() => null);
+  const revops = await one<{ ft_ad_id: string | null; p_win: number | null; noshow_risk: number | null; noshow_reasons: string | null; email_status: string | null; pipeline_stage: string | null; score_model: string | null }>(rt,
+    "SELECT ft_ad_id, p_win, noshow_risk, noshow_reasons, email_status, pipeline_stage, score_model FROM lead_revops WHERE lead_id = ?", [lead.id]).catch(() => null);
+  const [touches, receivables] = await Promise.all([listTouches(rt, lead.id), listReceivables(rt, lead.id)]);
 
   const answers = parseAnswers(lead);
   const answerRows = APPLICATION.filter((q) => q.type !== "contact").map((q) => {
@@ -334,13 +586,17 @@ adminApi.get("/leads/:id", async (c) => {
   for (const k of calls) timeline.push({ ts: k.run_at, type: "call", title: `AI call (${k.kind.replace(/_/g, " ")}): ${k.status}`, detail: k.outcome || "" });
   for (const p of payments) timeline.push({ ts: p.paid_at, type: "payment", title: `Payment ${Math.round(p.amount).toLocaleString("en-US")}`, detail: [p.method, p.note].filter(Boolean).join(" · ") });
   for (const v of voice) timeline.push({ ts: v.started_at || v.created_at, type: "voice", title: `${v.direction === "inbound" ? "Inbound" : "Outbound"} call${v.duration_s ? ` · ${Math.round(v.duration_s / 60 * 10) / 10} min` : ""}`, detail: (v.summary || "").slice(0, 200) });
+  for (const t of touches) timeline.push({ ts: Number(t.at), type: "call", title: `Touch: ${String(t.kind)}${t.outcome ? ` · ${String(t.outcome).replace(/_/g, " ")}` : ""}`, detail: [reps.find((r) => r.id === t.rep_id)?.name, t.note ? String(t.note).slice(0, 160) : ""].filter(Boolean).join(" · ") });
   timeline.sort((a, b) => b.ts - a.ts);
 
   const pendingEmails = emails.filter((m) => m.status === "pending").map((m) => ({ id: m.id, sequence: m.sequence, template: m.template, send_at: m.send_at }));
 
   return c.json({
     lead: { ...publicLead(lead), closer: reps.find((r) => r.id === lead.closer_id)?.name || null, setter: reps.find((r) => r.id === lead.setter_id)?.name || null },
-    revops: revops ? { ft_ad_id: revops.ft_ad_id, p_win: revops.p_win, noshow_risk: revops.noshow_risk, noshow_reasons: parse<string[]>(revops.noshow_reasons, []), email_status: revops.email_status } : null,
+    revops: revops ? { ft_ad_id: revops.ft_ad_id, p_win: revops.p_win, noshow_risk: revops.noshow_risk, noshow_reasons: parse<string[]>(revops.noshow_reasons, []), email_status: revops.email_status, pipeline_stage: revops.pipeline_stage, score_model: revops.score_model } : null,
+    touches: touches.map((t) => ({ ...t, rep: reps.find((r) => r.id === t.rep_id)?.name || null })),
+    receivables,
+    touch_kinds: TOUCH_KINDS, touch_outcomes: TOUCH_OUTCOMES.filter(Boolean),
     answers: answerRows,
     score_breakdown: parse(lead.score_breakdown, null),
     booking_answers: parse<Array<{ q: string; a: string }>>(lead.booking_answers, []),
@@ -373,10 +629,14 @@ adminApi.get("/leads/:id", async (c) => {
 
 adminApi.patch("/leads/:id", async (c) => {
   const rt = rtOf(c);
-  const lead = await getLead(rt, c.req.param("id"));
+  const lead = await visibleLead(c, c.req.param("id"));
   if (!lead) return bad(c, "not found", 404);
+  const patch = (await body(c)) as LeadPatch;
+  // Reps cannot hand a lead to someone else (they would lose it from view).
+  if (isRep(userOf(c))) { delete patch.closer_id; delete patch.setter_id; }
   try {
-    const fresh = await applyLeadUpdate(rt, lead, (await body(c)) as LeadPatch, { source: "admin" });
+    const fresh = await applyLeadUpdate(rt, lead, patch, { source: "admin" });
+    await auditLead(c, "lead_update", lead, fresh);
     return c.json({ ok: true, lead: publicLead(fresh) });
   } catch (e) {
     if (e instanceof ValidationError) return bad(c, `Invalid ${e.message.replace(/_/g, " ")}`);
@@ -386,11 +646,12 @@ adminApi.patch("/leads/:id", async (c) => {
 
 adminApi.post("/leads/:id/payments", async (c) => {
   const rt = rtOf(c);
-  const lead = await getLead(rt, c.req.param("id"));
+  const lead = await visibleLead(c, c.req.param("id"));
   if (!lead) return bad(c, "not found", 404);
   const b = await body(c);
   try {
     const p = await recordPayment(rt, lead, { amount: b.amount, paid_at: b.paid_at, method: b.method, note: b.note });
+    await audit(rt, userOf(c), ipOf(c), { action: "payment_add", entity: "payment", entity_id: p.id, after: { lead_id: lead.id, amount: p.amount, paid_at: p.paid_at, method: p.method } });
     return c.json({ payment: p, payments: await listPayments(rt, lead.id) });
   } catch (e) {
     if (e instanceof ValidationError) return bad(c, "Enter an amount (negative for a refund).");
@@ -400,14 +661,19 @@ adminApi.post("/leads/:id/payments", async (c) => {
 
 adminApi.delete("/leads/:id/payments/:pid", async (c) => {
   const rt = rtOf(c);
-  const id = c.req.param("id");
-  await deletePayment(rt, id, c.req.param("pid"));
-  return c.json({ ok: true, payments: await listPayments(rt, id) });
+  const lead = await visibleLead(c, c.req.param("id"));
+  if (!lead) return bad(c, "not found", 404);
+  const pid = c.req.param("pid");
+  const before = (await listPayments(rt, lead.id)).find((p) => p.id === pid);
+  if (!before) return bad(c, "Payment not found.", 404);
+  await deletePayment(rt, lead.id, pid);
+  await audit(rt, userOf(c), ipOf(c), { action: "payment_delete", entity: "payment", entity_id: pid, before: { lead_id: lead.id, amount: before.amount, paid_at: before.paid_at, method: before.method } });
+  return c.json({ ok: true, payments: await listPayments(rt, lead.id) });
 });
 
 adminApi.get("/leads/:id/preview", async (c) => {
   const rt = rtOf(c);
-  const lead = await getLead(rt, c.req.param("id"));
+  const lead = await visibleLead(c, c.req.param("id"));
   if (!lead) return bad(c, "not found", 404);
   const t = c.req.query("template") || "";
   if (!TEMPLATES[t]) return bad(c, "unknown template");
@@ -632,6 +898,7 @@ adminApi.put("/integrations", async (c) => {
   const key = typeof b.key === "string" ? b.key : "";
   const def = settingDef(key);
   if (!def) return bad(c, "Unknown setting.");
+  if (key === "LEARNED_ROUTING" || key === "LEARNED_POINTS") return bad(c, "The owner switches learned routing on Insights → Scoring calibration.", 409);
   if (rt.settings.source(key) === "env") return bad(c, "This value is set as an environment variable (wrangler secret or var). Change it there.", 409);
   const raw = b.value == null ? "" : typeof b.value === "string" || typeof b.value === "number" || typeof b.value === "boolean" ? String(b.value).trim() : null;
   if (raw == null) return bad(c, "Value must be text.");
@@ -645,7 +912,10 @@ adminApi.put("/integrations", async (c) => {
       return bad(c, key.startsWith("SLACK") ? "Use a Slack incoming webhook (https://hooks.slack.com/…)." : key.startsWith("DISCORD") ? "Use a Discord webhook (https://discord.com/api/webhooks/…)." : key === "POSTHOG_HOST" ? "Use your PostHog host, e.g. https://eu.i.posthog.com." : "Use an https:// URL.");
     }
   }
+  const had = rt.settings.source(key) === "db";
   await saveSetting(rt.env, key, raw);
+  // Key names only, never values.
+  await audit(rt, userOf(c), ipOf(c), { action: raw ? "setting_set" : "setting_clear", entity: "setting", entity_id: key, before: { set: had }, after: { set: !!raw } });
   const fresh = await loadSettings(rt.env);
   return c.json({ ok: true, setting: integrationEntry(def, fresh), ...integrationsPayload(fresh) });
 });
@@ -671,7 +941,9 @@ adminApi.post("/integrations/calendly/link-orphans", async (c) => c.json({ ok: t
 adminApi.get("/map", async (c) => c.json(await loadMap(rtOf(c))));
 adminApi.put("/map/layout", async (c) => {
   try {
-    return c.json({ ok: true, layout: await saveLayout(rtOf(c), await c.req.json().catch(() => null)) });
+    const layout = await saveLayout(rtOf(c), await c.req.json().catch(() => null));
+    await audit(rtOf(c), userOf(c), ipOf(c), { action: "map_layout_save", entity: "map", entity_id: "layout" });
+    return c.json({ ok: true, layout });
   } catch (e) {
     if (e instanceof MapError) return bad(c, e.message);
     throw e;
@@ -679,7 +951,9 @@ adminApi.put("/map/layout", async (c) => {
 });
 adminApi.put("/map/custom", async (c) => {
   try {
-    return c.json({ ok: true, custom: await saveCustom(rtOf(c), await c.req.json().catch(() => null)) });
+    const custom = await saveCustom(rtOf(c), await c.req.json().catch(() => null));
+    await audit(rtOf(c), userOf(c), ipOf(c), { action: "map_custom_save", entity: "map", entity_id: "custom", after: { nodes: (custom as { nodes?: unknown[] })?.nodes?.length ?? null } });
+    return c.json({ ok: true, custom });
   } catch (e) {
     if (e instanceof MapError) return bad(c, e.message);
     throw e;
@@ -689,8 +963,13 @@ adminApi.put("/map/custom", async (c) => {
 // ── Session ──────────────────────────────────────────────────────────────────
 
 adminApi.post("/logout", async (c) => {
-  await logoutEverywhere(c);
-  return c.json({ ok: true });
+  const u = userOf(c);
+  // Owners and managers sign everyone out (the round-1 behaviour); everyone else signs out this browser.
+  const everywhere = (u.role === "owner" || u.role === "manager") && c.req.query("scope") !== "me";
+  if (everywhere) await logoutEverywhere(c);
+  else logoutHere(c);
+  await audit(rtOf(c), u, ipOf(c), { action: everywhere ? "logout_everywhere" : "logout", entity: "user", entity_id: u.id });
+  return c.json({ ok: true, everywhere });
 });
 
 // Erasure on request. The caller must echo the lead's ref code as confirmation.
@@ -701,6 +980,8 @@ adminApi.delete("/leads/:id", async (c) => {
   const b = await body(c);
   if (b.confirm !== lead.ref_code) return bad(c, "Type the lead's reference to confirm.");
   const r = await eraseLead(rt, lead.id);
+  // Only the reference survives in the log: the person is gone.
+  await audit(rt, userOf(c), ipOf(c), { action: "lead_erase", entity: "lead", entity_id: lead.id, before: { ref: lead.ref_code, status: lead.status } });
   return c.json(r);
 });
 

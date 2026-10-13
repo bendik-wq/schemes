@@ -13,6 +13,8 @@ import { popcount } from "../tracking/vsl";
 import { auc, brier, fitLogistic, isHoldout, predict, reliability, round4, smoothedRate, type LogisticModel, type ReliabilityBin, type Sample } from "./model";
 import { fitNoShowModel } from "./noshow";
 import { recomputeStageValues } from "./values";
+import { LEARNED_MIN_N, parseLearnedPoints, type LearnedPoints } from "../funnel/scoring";
+import { saveSetting } from "../settings";
 
 const DAY = 86_400_000;
 export const MIN_TRAIN = 30;
@@ -204,6 +206,37 @@ export async function activateModel(rt: Runtime, id: string): Promise<boolean> {
   return true;
 }
 
+// ── Learned points for routing (opt-in) ─────────────────────────────────────
+
+/** Pure: the learned table from a model report — suggested points for options with n ≥ 20 only. */
+export function learnedFromReport(report: Pick<WinModelReport, "options">, modelId: string): LearnedPoints | null {
+  const points: Record<string, number> = {}, n: Record<string, number> = {};
+  for (const o of report.options || []) {
+    if (o.n < LEARNED_MIN_N) continue;
+    points[`${o.question}=${o.value}`] = o.suggested;
+    n[`${o.question}=${o.value}`] = o.n;
+  }
+  return Object.keys(points).length ? { version: `learned:${modelId}`, points, n } : null;
+}
+
+/** Owner switch. On: pins the active model's table (it does not follow later models until switched again). */
+export async function setLearnedRouting(rt: Runtime, on: boolean): Promise<{ ok: boolean; error?: string; version?: string; options?: number }> {
+  if (rt.settings.source("LEARNED_ROUTING") === "env" || rt.settings.source("LEARNED_POINTS") === "env") return { ok: false, error: "Learned routing is set as an environment variable." };
+  if (!on) {
+    await saveSetting(rt.env, "LEARNED_ROUTING", "false");
+    return { ok: true };
+  }
+  const r = await rt.env.DB.prepare("SELECT id, weights FROM scoring_models WHERE kind = 'win' AND active = 1 ORDER BY created_at DESC LIMIT 1").first<{ id: string; weights: string }>();
+  if (!r) return { ok: false, error: "Train a scoring model first (Recompute now)." };
+  let report: WinModelReport;
+  try { report = JSON.parse(r.weights) as WinModelReport; } catch { return { ok: false, error: "The active model could not be read." }; }
+  const table = learnedFromReport(report, r.id);
+  if (!table) return { ok: false, error: `No answer option has ${LEARNED_MIN_N} or more outcomes yet.` };
+  await saveSetting(rt.env, "LEARNED_POINTS", JSON.stringify(table));
+  await saveSetting(rt.env, "LEARNED_ROUTING", "true");
+  return { ok: true, version: table.version, options: Object.keys(table.points).length };
+}
+
 /** Report for the Insights → Scoring view. */
 export async function calibrationReport(rt: Runtime) {
   const models = ((await rt.env.DB.prepare("SELECT id, created_at, kind, n_train, auc, brier, active, weights FROM scoring_models ORDER BY created_at DESC LIMIT 20").all<Record<string, unknown>>()).results) || [];
@@ -225,6 +258,15 @@ export async function calibrationReport(rt: Runtime) {
     report: report ? { base_rate: report.base_rate, auc_kind: report.auc_kind, n_test: report.n_test, reliability: report.reliability, options: report.options, tiers: report.tiers } : null,
     top_weights: report ? report.features.map((f, i) => ({ feature: f, weight: report!.weights[i] })).sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight)).slice(0, 12) : [],
     p_win: { n: Number(pw?.n) || 0, avg: pw?.avg == null ? null : round4(Number(pw.avg)) },
+    learned: (() => {
+      const table = parseLearnedPoints(rt.settings.get("LEARNED_POINTS"));
+      const available = report ? (report.options || []).filter((o) => o.n >= LEARNED_MIN_N).length : 0;
+      return {
+        on: rt.settings.bool("LEARNED_ROUTING") && !!table, version: table?.version || null, options: table ? Object.keys(table.points).length : 0,
+        points: table ? Object.entries(table.points).map(([k, v]) => ({ key: k, points: v, n: Number(table.n?.[k]) || null })) : [],
+        available, min_n: LEARNED_MIN_N, locked: rt.settings.source("LEARNED_ROUTING") === "env",
+      };
+    })(),
     history: models.map((m) => ({ id: String(m.id), created_at: Number(m.created_at), kind: String(m.kind), n_train: Number(m.n_train), auc: m.auc == null ? null : Number(m.auc), brier: m.brier == null ? null : Number(m.brier), active: !!Number(m.active) })),
   };
 }

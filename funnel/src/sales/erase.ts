@@ -4,6 +4,7 @@
 import type { Runtime } from "../app";
 import { getLead } from "../funnel/leads";
 import { suppress } from "../lib/suppress";
+import { signedHeaders } from "../integrations/webhooks";
 
 export async function eraseLead(rt: Runtime, leadId: string): Promise<{ ok: boolean; ref?: string }> {
   const lead = await getLead(rt, leadId);
@@ -25,6 +26,8 @@ export async function eraseLead(rt: Runtime, leadId: string): Promise<{ ok: bool
     db.prepare("DELETE FROM sessions WHERE lead_id = ?").bind(lead.id),
     db.prepare("UPDATE payments SET lead_id = 'erased', note = NULL, method = NULL WHERE lead_id = ?").bind(lead.id),
     db.prepare("DELETE FROM lead_revops WHERE lead_id = ?").bind(lead.id),
+    db.prepare("DELETE FROM touches WHERE lead_id = ?").bind(lead.id),
+    db.prepare("DELETE FROM receivables WHERE lead_id = ?").bind(lead.id),
     db.prepare("DELETE FROM leads WHERE id = ?").bind(lead.id),
   ];
   for (const v of visitors) {
@@ -37,7 +40,9 @@ export async function eraseLead(rt: Runtime, leadId: string): Promise<{ ok: bool
   // Tell the CRM so it can erase its copy too (id and ref only).
   const url = rt.settings.get("LEAD_WEBHOOK_URL");
   if (url && url.startsWith("https://")) {
-    rt.waitUntil(fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "lead_erased", lead: { id: lead.id, ref: lead.ref_code } }) }).catch(() => undefined));
+    const body = JSON.stringify({ event: "lead_erased", event_id: `erased_${lead.id}`, lead: { id: lead.id, ref: lead.ref_code } });
+    const headers = { "content-type": "application/json", ...(await signedHeaders(rt.settings.get("LEAD_WEBHOOK_SECRET"), body, `erased_${lead.id}`, rt.now())) };
+    rt.waitUntil(fetch(url, { method: "POST", headers, body }).catch(() => undefined));
   }
   console.log("lead erased", lead.ref_code);
   return { ok: true, ref: lead.ref_code };

@@ -118,7 +118,8 @@ export const LEAD_SORTS: Record<string, string> = {
 };
 export const PER_PAGE = 50;
 
-export interface LeadQuery { q?: string; status?: string; tier?: string; sort?: string; page?: number }
+/** rep: only leads where this rep is the closer or the setter (closer and setter users). */
+export interface LeadQuery { q?: string; status?: string; tier?: string; sort?: string; page?: number; rep?: string }
 
 function leadWhere(f: Filters, lq: LeadQuery): { sql: string; binds: unknown[] } {
   const parts: string[] = ["1=1"];
@@ -136,6 +137,7 @@ function leadWhere(f: Filters, lq: LeadQuery): { sql: string; binds: unknown[] }
   if (lq.status && (STATUSES as readonly string[]).includes(lq.status)) { parts.push("l.status = ?"); binds.push(lq.status); }
   if (lq.tier && ["A", "B", "C"].includes(lq.tier)) { parts.push("COALESCE(l.tier_override, l.tier) = ?"); binds.push(lq.tier); }
   if (lq.tier === "none") parts.push("COALESCE(l.tier_override, l.tier) IS NULL");
+  if (lq.rep) { parts.push("(l.closer_id = ? OR l.setter_id = ?)"); binds.push(lq.rep, lq.rep); }
   const ld = leadDims(f, "l");
   return { sql: parts.join(" AND ") + ld.sql, binds: [...binds, ...ld.binds] };
 }

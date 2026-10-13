@@ -11,8 +11,10 @@ import { isHttps, validOutbound } from "../lib/outbound";
 import type { Who } from "./track";
 import { popcount } from "./vsl";
 import { settingsStageValue } from "../sales/values";
+import { allowedHosts, getSub, signedHeaders, subsFor, validWebhookUrl } from "../integrations/webhooks";
 
-export type Destination = "meta" | "ga4" | "posthog" | "crm";
+/** "wh…" is a webhook subscription id (signed delivery to that subscription). */
+export type Destination = "meta" | "ga4" | "posthog" | "crm" | `wh${string}`;
 
 export interface ForwardEvent {
   id: string;
@@ -62,6 +64,9 @@ interface Prepared {
   body: unknown;
   headers?: Record<string, string>;
   matchKeys: string[];
+  /** Webhook signing (CRM and subscriptions): never stored in forward_log; re-derived on retry. */
+  secret?: string;
+  eventId?: string;
 }
 
 const norm = {
@@ -185,7 +190,18 @@ async function prepare(rt: Runtime, ev: ForwardEvent): Promise<Prepared[]> {
       url: s.get("LEAD_WEBHOOK_URL"),
       body: { event: ev.name, event_id: ev.id, ts: new Date(ev.ts).toISOString(), props: ev.props, lead: leadSnapshot(lead) },
       matchKeys: ["lead"],
+      secret: s.get("LEAD_WEBHOOK_SECRET") || undefined,
+      eventId: ev.id,
     });
+  }
+  // Webhook subscriptions: the same payload, signed with each subscription's secret.
+  if (lead && CRM_EVENTS.has(ev.name)) {
+    for (const sub of await subsFor(rt, ev.name)) {
+      out.push({
+        dest: sub.id as Destination, url: sub.url, matchKeys: ["lead"], secret: sub.secret, eventId: ev.id,
+        body: { event: ev.name, event_id: ev.id, ts: new Date(ev.ts).toISOString(), props: ev.props, lead: leadSnapshot(lead) },
+      });
+    }
   }
   return out;
 }
@@ -211,10 +227,13 @@ export function leadSnapshot(lead: Lead) {
 
 async function send(p: Prepared): Promise<{ ok: boolean; status: number; error?: string }> {
   try {
+    const body = JSON.stringify(p.body);
+    // Signed at send time, so a retry carries a fresh timestamp over the same body and event id.
+    const signed = p.dest === "crm" || p.dest.startsWith("wh") ? await signedHeaders(p.secret, body, p.eventId, Date.now()) : {};
     const r = await fetch(p.url, {
       method: "POST",
-      headers: { "content-type": "application/json", ...(p.headers || {}) },
-      body: JSON.stringify(p.body),
+      headers: { "content-type": "application/json", ...(p.headers || {}), ...signed },
+      body,
     });
     if (r.ok) return { ok: true, status: r.status };
     const t = (await r.text().catch(() => "")).slice(0, 300);
@@ -249,6 +268,7 @@ function stripSecrets(p: Prepared): string {
   // GA4 api_secret lives in the query; re-derived at retry time.
   if (p.dest === "ga4") return "ga4";
   if (p.dest === "crm") return "crm";
+  if (p.dest.startsWith("wh")) return "webhook";
   return p.url;
 }
 
@@ -280,20 +300,25 @@ function rebuildUrl(rt: Runtime, dest: string, stored: string): string | null {
 export async function retryForwards(rt: Runtime): Promise<number> {
   const now = rt.now();
   const rows = await rt.env.DB.prepare(
-    "SELECT id, destination, attempts, payload FROM forward_log WHERE status='retry' AND next_at <= ? ORDER BY next_at LIMIT 50",
-  ).bind(now).all<{ id: string; destination: Destination; attempts: number; payload: string }>();
+    "SELECT id, event_id, destination, attempts, payload FROM forward_log WHERE status='retry' AND next_at <= ? ORDER BY next_at LIMIT 50",
+  ).bind(now).all<{ id: string; event_id: string; destination: Destination; attempts: number; payload: string }>();
   let n = 0;
   for (const row of rows.results || []) {
     const claim = await rt.env.DB.prepare("UPDATE forward_log SET status='sending', updated_at=? WHERE id=? AND status='retry'").bind(now, row.id).run();
     if (!claim.meta?.changes) continue;
     let stored: { url: string; body: unknown };
     try { stored = JSON.parse(row.payload); } catch { continue; }
-    const url = rebuildUrl(rt, row.destination, stored.url);
+    // Webhook subscriptions: the URL and secret come from the subscription as it is now (paused or deleted: stop).
+    const sub = row.destination.startsWith("wh") ? await getSub(rt, row.destination) : null;
+    const url = row.destination.startsWith("wh")
+      ? (sub && sub.active && validWebhookUrl(sub.url, allowedHosts(rt)) ? sub.url : null)
+      : rebuildUrl(rt, row.destination, stored.url);
     if (!url) {
       await rt.env.DB.prepare("UPDATE forward_log SET status='failed', error='destination not configured', updated_at=? WHERE id=?").bind(now, row.id).run();
       continue;
     }
-    const p = metaAuth(rt, { dest: row.destination, url, body: stored.body, matchKeys: [] });
+    const secret = row.destination === "crm" ? rt.settings.get("LEAD_WEBHOOK_SECRET") || undefined : sub?.secret;
+    const p = metaAuth(rt, { dest: row.destination, url, body: stored.body, matchKeys: [], secret, eventId: row.event_id });
     const r = await send(p);
     await finish(rt, row.id, row.attempts + 1, r);
     n++;
