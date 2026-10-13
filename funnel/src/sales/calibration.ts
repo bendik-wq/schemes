@@ -135,7 +135,7 @@ async function loadRows(rt: Runtime, statuses: string[], since: number, limit: n
   const res = await rt.env.DB.prepare(
     `SELECT l.id, l.answers, l.qual_flags, COALESCE(l.tier_override, l.tier) AS tier, l.status, l.revenue, l.booked_at, l.showed_at,
        (SELECT v.buckets FROM vsl_views v WHERE v.video = 'main' AND (v.lead_id = l.id OR v.visitor_id = l.visitor_id) ORDER BY v.last_at DESC LIMIT 1) AS buckets
-     FROM leads l WHERE l.booking_source = 'funnel' AND l.app_completed_at IS NOT NULL AND l.status IN (${statuses.map(() => "?").join(",")}) AND l.updated_at >= ?
+     FROM leads l WHERE l.booking_source = 'funnel' AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND l.app_completed_at IS NOT NULL AND l.status IN (${statuses.map(() => "?").join(",")}) AND l.updated_at >= ?
      ORDER BY l.updated_at DESC LIMIT ${limit}`,
   ).bind(...statuses, since).all<Record<string, unknown>>();
   return (res.results || []).map((r) => ({
@@ -247,7 +247,7 @@ export async function calibrationReport(rt: Runtime) {
   let report: WinModelReport | null = null;
   try { report = show ? (JSON.parse(String(show.weights)) as WinModelReport) : null; } catch { report = null; }
   const terminal = await rt.env.DB.prepare(
-    `SELECT COUNT(*) AS n, SUM(status = 'won') AS won FROM leads WHERE booking_source = 'funnel' AND app_completed_at IS NOT NULL AND status IN ('won','lost','no_show','disqualified') AND updated_at >= ?`,
+    `SELECT COUNT(*) AS n, SUM(status = 'won') AS won FROM leads WHERE booking_source = 'funnel' AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND app_completed_at IS NOT NULL AND status IN ('won','lost','no_show','disqualified') AND updated_at >= ?`,
   ).bind(rt.now() - 365 * DAY).first<{ n: number; won: number }>();
   const pw = await rt.env.DB.prepare("SELECT COUNT(*) AS n, AVG(p_win) AS avg FROM lead_revops WHERE p_win IS NOT NULL").first<{ n: number; avg: number | null }>();
   return {

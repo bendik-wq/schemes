@@ -48,7 +48,7 @@ const COLS = "l.id, l.ref_code, l.first_name, l.last_name, l.email, COALESCE(l.t
 /** Follow-ups due by the end of today (local) and anything overdue, oldest first. */
 export async function followUpsDue(rt: Runtime, reps?: Rep[], rep?: string | null): Promise<DueRow[]> {
   const now = rt.now();
-  const scope = rep ? " AND (l.closer_id = ? OR l.setter_id = ?)" : "";
+  const scope = " AND l.id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)" + (rep ? " AND (l.closer_id = ? OR l.setter_id = ?)" : "");
   const rows = ((await rt.env.DB.prepare(
     `SELECT ${COLS} FROM leads l WHERE l.follow_up_at IS NOT NULL AND l.follow_up_at < ? AND l.status NOT IN (${CLOSED.map(() => "?").join(",")})${scope}
      ORDER BY l.follow_up_at LIMIT 200`,

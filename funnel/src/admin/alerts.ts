@@ -107,7 +107,7 @@ function renumberPlain(sql: string, n: number): string {
 
 async function eventWindows(rt: Runtime, name: string, from: number, to: number, weeks = 4): Promise<{ current: number; history: number[] }> {
   const wins: Array<[number, number]> = [[from, to], ...weekBackWindows(from, to, weeks)];
-  const counts = await countIn(rt, "events", "ts", "name = ? AND is_bot = 0", [name], wins);
+  const counts = await countIn(rt, "events", "ts", "name = ? AND is_bot = 0 AND (lead_id IS NULL OR lead_id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)) AND (visitor_id IS NULL OR visitor_id NOT IN (SELECT visitor_id FROM test_visitors))", [name], wins);
   return { current: counts[0], history: counts.slice(1) };
 }
 
@@ -193,7 +193,7 @@ export async function runChecks(rt: Runtime): Promise<CheckResult[]> {
     const sp = await one<{ y: number; base: number }>(rt, "SELECT SUM(CASE WHEN date = ?1 THEN spend ELSE 0 END) AS y, SUM(CASE WHEN date < ?1 THEN spend ELSE 0 END) AS base FROM ad_spend WHERE date >= ?2 AND date <= ?1", [y, from]);
     const leads = await one<{ y: number; base: number }>(rt,
       `SELECT SUM(l.created_at >= ?1) AS y, SUM(l.created_at < ?1) AS base FROM leads l JOIN lead_revops r ON r.lead_id = l.id
-       WHERE r.ft_ad_id IN (SELECT DISTINCT ad_id FROM ad_spend WHERE date >= ?3) AND l.created_at >= ?2 AND l.created_at < ?4`,
+       WHERE r.ft_ad_id IN (SELECT DISTINCT ad_id FROM ad_spend WHERE date >= ?3) AND COALESCE(r.is_test, 0) != 1 AND l.created_at >= ?2 AND l.created_at < ?4`,
       [now - 2 * DAY, now - 30 * DAY, from, now - DAY]);
     const ySpend = num(sp?.y), bSpend = num(sp?.base), yLeads = num(leads?.y), bLeads = num(leads?.base);
     if (ySpend < 50 || bLeads < 10) return { rule: "cpl_spike", firing: false, value: null, baseline: null, detail: "Not enough paid volume", skip: true };

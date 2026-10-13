@@ -486,15 +486,36 @@ const NO_SHOW: Record<string, Template> = {
 
 // ── Post-call ─────────────────────────────────────────────────────────────────
 
+/** The signed email link for /plan/for/<lead> exists (buildCtx signs it); otherwise ctx.link falls back to "/". */
+function planLinkWorks(c: EmailCtx): boolean {
+  try {
+    const u = c.link(`/plan/for/${c.lead.id}`);
+    return /[?&]u=%2Fplan%2Ffor%2F/.test(u) || u.includes("/plan/for/");
+  } catch {
+    return false;
+  }
+}
+
 const POST_CALL: Record<string, Template> = {
+  // Automated, so it never claims a feeling ("I enjoyed…"). With a written plan saved on the call (the plan
+  // mirrors its first build onto target_business), it goes ~2 h after the call with the plan link; without
+  // one, a neutral note goes after 24 h. Timing: src/sales/plan.ts scheduleRecap(). The plan link opens
+  // /plan/for/<lead> through the signed email click, which redirects to the lead's own plan page.
   fu_recap: (c) =>
-    mk("Thanks for the call today", [
-      hi(c),
-      "Thank you for the time today. I enjoyed the conversation.",
-      "We covered what you rent today, what you would want to own, and how the eight weeks would work with your team.",
-      "The next step is your decision. If you have questions first, reply to this email and I will answer them directly.",
-      "When you are ready to go ahead, reply to this email and I will send over the agreement and the kickoff dates.",
-    ]),
+    c.lead?.id && c.lead.target_business && (c.lead.showed_at || c.lead.status === "showed") && planLinkWorks(c)
+      ? mk("Your written plan from the call", [
+          hi(c),
+          "As promised on the call, here is your written plan: what we would build first, why it pays back, what you keep, and the next step.",
+          `It is yours whether or not we work together. ${c.a(`/plan/for/${c.lead.id}`, "Open your plan")}.`,
+          "If anything in it is not right, reply to this email and it gets corrected.",
+        ], { cta: { label: "Open your plan", path: `/plan/for/${c.lead.id}` } })
+      : mk("Thanks for the call today", [
+          hi(c),
+          "Thank you for the time on the call.",
+          "We covered what you rent today, what you would want to own, and how the eight weeks would work with your team.",
+          "The next step is your decision. If you have questions first, reply to this email and you will get a direct answer.",
+          "When you are ready to go ahead, reply to this email and the agreement and kickoff dates will follow.",
+        ]),
   fu_objection: (c) => {
     const o = c.d.objection ? OBJECTION_COPY[c.d.objection] : undefined;
     return mk(o?.subject || "What might still be on your mind after our call", [hi(c), ...(o?.body || OBJECTION_FALLBACK)]);

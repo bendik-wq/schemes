@@ -76,7 +76,7 @@ export async function outcomeFacts(rt: Runtime): Promise<OutcomeFact[]> {
   const rows = ((await rt.env.DB.prepare(
     `SELECT COALESCE(tier_override, tier) AS tier, app_completed_at IS NOT NULL AS qualified, booked_at IS NOT NULL AS booked,
        (showed_at IS NOT NULL OR status = 'won') AS showed, status = 'won' AS won, revenue
-     FROM leads WHERE booking_source = 'funnel' AND status IN ('won','lost','no_show','disqualified') AND updated_at >= ? LIMIT 50000`,
+     FROM leads WHERE booking_source = 'funnel' AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND status IN ('won','lost','no_show','disqualified') AND updated_at >= ? LIMIT 50000`,
   ).bind(rt.now() - 365 * DAY).all<Record<string, unknown>>()).results || []);
   return rows.map((r) => ({ tier: (r.tier as string) || null, qualified: !!num(r.qualified), booked: !!num(r.booked), showed: !!num(r.showed), won: !!num(r.won), revenue: num(r.revenue) }));
 }

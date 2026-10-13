@@ -4,6 +4,7 @@ import type { Runtime } from "../app";
 import { STATUSES } from "../config";
 import { listReps, type Rep } from "../sales/reps";
 import { all, leadDims, num, one, pct, type Filters } from "./stats";
+import { closerStats, objectionsByWeek, type CloserKpis } from "../sales/calls";
 
 const DAY = 86_400_000;
 
@@ -11,12 +12,14 @@ export interface RepRow {
   id: string; name: string; role: string; active: boolean;
   calls: number; showed: number; no_show: number; show_rate: number | null; won: number; lost: number; close_rate: number | null;
   revenue: number; cash: number; commission: number; target: number; target_pct: number | null; booked_set: number; upcoming: number;
+  kpi: CloserKpis | null;
 }
 
 export async function salesTeam(rt: Runtime, f: Filters) {
   const now = rt.now();
   const ld = leadDims(f, "l");
   const reps = await listReps(rt);
+  const [closer, objections] = await Promise.all([closerStats(rt, f), objectionsByWeek(rt, f)]);
   const [calls, cash, sets, upcoming] = await Promise.all([
     all<{ rep: string | null; calls: number; showed: number; no_show: number; won: number; lost: number; revenue: number }>(rt,
       `SELECT l.closer_id AS rep, COUNT(*) AS calls,
@@ -51,6 +54,7 @@ export async function salesTeam(rt: Runtime, f: Filters) {
       commission: Math.round(cashN * num(rep?.commission_pct)) / 100,
       target, target_pct: target ? pct(cashN, target) : null,
       booked_set: num(sets.find((x) => (x.rep || "") === id)?.n), upcoming: num(upcoming.find((x) => (x.rep || "") === id)?.n),
+      kpi: closer.get(id) || null,
     };
   }).filter((r) => r.calls || r.cash || r.upcoming || r.booked_set || (r.id && repById.get(r.id)?.active));
   rows.sort((a, b) => b.cash - a.cash || b.won - a.won || b.calls - a.calls);
@@ -58,6 +62,8 @@ export async function salesTeam(rt: Runtime, f: Filters) {
   return {
     kpis: { ...tot, show_rate: pct(tot.showed, tot.showed + tot.no_show), close_rate: pct(tot.won, tot.showed), avg_deal: tot.won ? Math.round(tot.revenue / tot.won) : null },
     reps: rows,
+    team_kpi: teamKpi([...closer.values()]),
+    objections,
     call_log: await callLog(rt, f),
     needs_outcome: await needsOutcome(rt),
   };
@@ -138,14 +144,16 @@ function leadWhere(f: Filters, lq: LeadQuery): { sql: string; binds: unknown[] }
   if (lq.tier && ["A", "B", "C"].includes(lq.tier)) { parts.push("COALESCE(l.tier_override, l.tier) = ?"); binds.push(lq.tier); }
   if (lq.tier === "none") parts.push("COALESCE(l.tier_override, l.tier) IS NULL");
   if (lq.rep) { parts.push("(l.closer_id = ? OR l.setter_id = ?)"); binds.push(lq.rep, lq.rep); }
-  const ld = leadDims(f, "l");
+  // Searching for a person finds test leads too (to mark them "not test").
+  const ld = leadDims(q ? { ...f, includeTest: true } : f, "l");
   return { sql: parts.join(" AND ") + ld.sql, binds: [...binds, ...ld.binds] };
 }
 
 const LIST_COLS = `l.id, l.ref_code, l.created_at, l.updated_at, l.first_name, l.last_name, l.email, l.status, l.score,
   COALESCE(l.tier_override, l.tier) AS tier, l.tier_override, l.closer_id, l.call_at, l.booked_at, l.revenue, l.cash_collected,
   COALESCE(l.ft_channel, l.channel) AS channel, COALESCE(l.ft_campaign, l.utm_campaign) AS campaign, l.country, l.device,
-  l.industry, l.booking_source, l.step_reached, l.app_completed_at, l.lander, l.variant`;
+  l.industry, l.booking_source, l.step_reached, l.app_completed_at, l.lander, l.variant,
+  (SELECT r.is_test FROM lead_revops r WHERE r.lead_id = l.id) AS is_test`;
 
 export async function listLeads(rt: Runtime, f: Filters, lq: LeadQuery) {
   const w = leadWhere(f, lq);
@@ -201,4 +209,14 @@ export async function leadsCsv(rt: Runtime, f: Filters, lq: LeadQuery): Promise<
     r.ft_landing || r.landing_path, r.ft_lander || r.lander, r.variant, r.country, r.industry, r.revenue_band, r.budget_band,
     r.offer, r.payment_plan, r.lost_reason, r.booking_source,
   ]));
+}
+
+/** Team totals of the closer KPIs (sums, then rates). */
+function teamKpi(list: CloserKpis[]) {
+  const sum = (k: keyof CloserKpis) => list.reduce((t, x) => t + (Number(x[k]) || 0), 0);
+  const held = sum("held"), reviewed = sum("reviewed"), offers = sum("offers"), wonOffers = sum("won_of_offers"), heldCash = sum("held_cash");
+  return {
+    held, reviewed, offers, offer_rate: pct(offers, reviewed), won_of_offers: wonOffers, close_of_offers: pct(wonOffers, offers),
+    cash_on_call: sum("cash_on_call"), held_cash: heldCash, per_call_held: held ? Math.round(heldCash / held) : null,
+  };
 }

@@ -116,7 +116,7 @@ function keyOf(dim: AttrDim, s: { channel: string | null; utm_campaign: string |
 async function loadAttrLeads(rt: Runtime, f: Filters, dim: AttrDim): Promise<AttrLead[]> {
   const leads = await all<{ id: string; visitor_id: string | null; created_at: number; booked_at: number | null; closed_at: number | null; status: string; revenue: number; cash_collected: number }>(rt,
     `SELECT id, visitor_id, created_at, booked_at, closed_at, status, revenue, cash_collected FROM leads
-     WHERE booking_source = 'funnel' AND created_at >= ? AND created_at < ? ORDER BY created_at DESC LIMIT 5000`, [f.since, f.until]);
+     WHERE booking_source = 'funnel' AND (? = 1 OR id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1)) AND created_at >= ? AND created_at < ? ORDER BY created_at DESC LIMIT 5000`, [f.includeTest ? 1 : 0, f.since, f.until]);
   if (!leads.length) return [];
   type S = { id: string; lead_id: string | null; visitor_id: string; started_at: number; channel: string | null; utm_campaign: string | null; ad_id: string | null };
   const sessions = new Map<string, S>();
@@ -236,7 +236,7 @@ export async function cohortsReport(rt: Runtime, byRaw: string | undefined) {
     const since = rt.now() - (by === "week" ? 26 * 7 : 400) * DAY;
     const [leads, pays, recv] = await Promise.all([
       all<{ id: string; created_at: number; booked_at: number | null; status: string; closed_at: number | null; refunded_at: number | null }>(rt,
-        `SELECT id, created_at, booked_at, status, closed_at, refunded_at FROM leads WHERE booking_source = 'funnel' AND app_completed_at IS NOT NULL AND created_at >= ? LIMIT 20000`, [since]),
+        `SELECT id, created_at, booked_at, status, closed_at, refunded_at FROM leads WHERE booking_source = 'funnel' AND id NOT IN (SELECT lead_id FROM lead_revops WHERE is_test = 1) AND app_completed_at IS NOT NULL AND created_at >= ? LIMIT 20000`, [since]),
       all<CohortPay>(rt, `SELECT p.lead_id, p.amount, p.paid_at FROM payments p JOIN leads l ON l.id = p.lead_id WHERE l.created_at >= ? AND l.app_completed_at IS NOT NULL LIMIT 50000`, [since]),
       all<CohortRecv>(rt, `SELECT r.lead_id, r.status, r.amount, r.due_at FROM receivables r JOIN leads l ON l.id = r.lead_id WHERE l.created_at >= ? LIMIT 50000`, [since]).catch(() => []),
     ]);

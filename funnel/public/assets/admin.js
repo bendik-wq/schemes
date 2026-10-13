@@ -127,6 +127,8 @@
     landerIndustry: "",
     data: null,
     drawer: null,
+    metrics: null,
+    includeTest: store.get("hq-include-test", false) === true,
   };
   if (!["today", "7d", "30d", "90d", "all"].includes(S.filters.range)) S.filters.range = "30d";
 
@@ -134,6 +136,7 @@
     const p = new URLSearchParams();
     const f = S.filters;
     p.set("range", f.range);
+    if (S.includeTest) p.set("test", "1");
     for (const k of ["channel", "campaign", "variant", "device"]) if (f[k]) p.set(k, f[k]);
     if (extra) for (const [k, v] of Object.entries(extra)) if (v != null && v !== "") p.set(k, String(v));
     return p.toString();
@@ -184,10 +187,42 @@
     return '<span class="delta ' + (d > 0 ? "up" : "down") + '">' + (d > 0 ? "+" : "−") + esc(Math.abs(d)) + "%</span>";
   }
 
-  function kpi(label, value, sub) {
-    return '<div class="kpi"><div class="kpi-label">' + esc(label) + '</div><div class="kpi-value tnum">' + value + "</div>" +
+  // ── Metric dictionary (src/admin/metrics.ts): one definition per number, behind a "?" ──────────────
+  let tipSeq = 0;
+  /** An accessible "?" with the metric's definition: a real button described by a role=tooltip element. */
+  function help(id, label) {
+    const m = S.metrics && S.metrics[id];
+    if (!m) return "";
+    const tid = "tip-" + (++tipSeq);
+    return '<span class="mhelp"><button class="mhelp-btn" type="button" aria-label="' + esc("What is " + (label || m.label) + "?") + '" aria-describedby="' + tid + '">?</button>' +
+      '<span class="mhelp-tip" role="tooltip" id="' + tid + '">' + esc(m.definition) + "</span></span>";
+  }
+  function kpi(label, value, sub, metricId) {
+    return '<div class="kpi"><div class="kpi-label">' + esc(label) + (metricId ? help(metricId, label) : "") + '</div><div class="kpi-value tnum">' + value + "</div>" +
       (sub ? '<div class="kpi-sub">' + sub + "</div>" : "") + "</div>";
   }
+
+  // ── Small samples: Wilson 90% interval; rates on fewer than SMALL_N are muted with n ────────────────
+  const SMALL_N = () => (S.smallN || 20);
+  function wilson(k, nn) {
+    if (!(nn > 0) || k < 0 || k > nn) return null;
+    const z = 1.645, p = k / nn, z2 = z * z, den = 1 + z2 / nn;
+    const mid = (p + z2 / (2 * nn)) / den, half = (z * Math.sqrt((p * (1 - p)) / nn + z2 / (4 * nn * nn))) / den;
+    return [Math.max(0, mid - half), Math.min(1, mid + half)];
+  }
+  /** A rate from its counts. Small denominators: muted, "n=7", and the interval on hover (title) and for screen readers. */
+  function rate(k, nn, o) {
+    o = o || {};
+    if (!isNum(nn) || nn <= 0 || !isNum(k)) return '<span class="faint">—</span>';
+    const v = (k / nn) * 100;
+    const txt = NF1.format(v) + "%";
+    if (nn >= SMALL_N()) return esc(txt);
+    const ci = wilson(Math.min(k, nn), nn);
+    const range = ci ? Math.round(ci[0] * 100) + "–" + Math.round(ci[1] * 100) + "%" : "";
+    return '<span class="small-n" title="' + esc("Only " + nn + " in the sample. 90% interval: " + range) + '">' + esc(txt) + '<span class="n-tag">n=' + esc(nn) + '</span><span class="sr-only"> (90% interval ' + esc(range) + ")</span></span>";
+  }
+  /** A KPI value for a rate: big number, muted when the sample is small. */
+  const rateValue = (k, nn) => (!isNum(nn) || nn <= 0 ? esc("—") : rate(k, nn));
   function kpis(items, cls) { return '<div class="kpis' + (cls ? " " + cls : "") + '">' + items.join("") + "</div>"; }
 
   /** width percentage set later via CSSOM (CSP forbids style attributes). */
@@ -338,6 +373,51 @@
     });
   }
 
+  /** Stacked columns: c.series = [{label, values[]}], colours follow the swatch order (s1…s6). */
+  function drawStacked(el, c) {
+    const W = Math.max(240, el.clientWidth), H = c.height || 200;
+    const pad = { l: 32, r: 8, t: 10, b: 24 };
+    const N = c.labels.length;
+    const totals = c.labels.map((_, i) => c.series.reduce((t, s) => t + (s.values[i] || 0), 0));
+    const max = niceMax(Math.max(...totals, 0));
+    const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+    const bw = iw / Math.max(1, N), gap = Math.min(10, bw * 0.3);
+    let s = "<svg " + svgNS + ' width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + esc(c.label || "Chart") + '">';
+    for (let g = 0; g <= 4; g++) {
+      const gv = (max / 4) * g, gy = pad.t + ih - (gv / max) * ih;
+      s += '<line class="' + (g ? "gridline" : "baseline") + '" x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + gy + '" y2="' + gy + '"/>';
+      if (g % 2 === 0) s += '<text class="tick" x="' + (pad.l - 6) + '" y="' + (gy + 4) + '" text-anchor="end">' + esc(n(gv)) + "</text>";
+    }
+    c.labels.forEach((lab, i) => {
+      let y0 = pad.t + ih;
+      const bx = pad.l + i * bw + gap / 2;
+      c.series.forEach((ser, j) => {
+        const v = ser.values[i] || 0;
+        if (!v) return;
+        const h = (v / max) * ih;
+        s += '<rect class="seg-col k' + ((j % 6) + 1) + '" x="' + bx + '" y="' + (y0 - h) + '" width="' + Math.max(1, bw - gap) + '" height="' + Math.max(0, h - 1) + '"/>';
+        y0 -= h;
+      });
+      if (N <= 10 || i % Math.ceil(N / 8) === 0) s += '<text class="tick" x="' + (bx + (bw - gap) / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + esc(String(lab).replace(/^w\/c /, "")) + "</text>";
+      s += '<rect class="hit" data-i="' + i + '" x="' + (pad.l + i * bw) + '" y="' + pad.t + '" width="' + bw + '" height="' + ih + '"/>';
+    });
+    s += '</svg><div class="tooltip" hidden></div>';
+    el.innerHTML = s;
+    const tip = el.querySelector(".tooltip");
+    el.querySelectorAll(".hit").forEach((r) => {
+      r.addEventListener("pointerenter", () => {
+        const i = Number(r.getAttribute("data-i"));
+        tip.innerHTML = '<div class="tt-title">' + esc(c.labels[i]) + "</div>" + c.series.filter((x) => x.values[i]).map((x) => '<div class="tt-value">' + esc(x.label) + " · " + esc(n(x.values[i])) + "</div>").join("") + (totals[i] ? "" : '<div class="tt-value faint">None</div>');
+        tip.hidden = false;
+        tip.style.left = clamp(pad.l + i * bw + bw / 2, 70, W - 70) + "px";
+        tip.style.top = (pad.t + ih - (totals[i] / max) * ih) + "px";
+      });
+      r.addEventListener("pointerleave", () => { tip.hidden = true; });
+    });
+  }
+  const DRAW = { columns: drawColumns, stacked: drawStacked };
+  const drawChart = (el, cfg) => (DRAW[cfg.type] || drawArea)(el, cfg);
+
   const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver((entries) => {
     for (const e of entries) {
       const el = e.target, cfg = charts.get(el.getAttribute("data-chart"));
@@ -345,7 +425,7 @@
       const wNow = Math.round(e.contentRect.width);
       if (el._w === wNow) continue;
       el._w = wNow;
-      (cfg.type === "columns" ? drawColumns : drawArea)(el, cfg);
+      drawChart(el, cfg);
     }
   }) : null;
 
@@ -355,7 +435,7 @@
     $$("[data-chart]", root).forEach((el) => {
       const cfg = charts.get(el.getAttribute("data-chart"));
       if (!cfg) return;
-      (cfg.type === "columns" ? drawColumns : drawArea)(el, cfg);
+      drawChart(el, cfg);
       el._w = Math.round(el.clientWidth);
       if (ro) ro.observe(el);
     });
@@ -419,12 +499,13 @@
   // Tabs by role (the server enforces the same rules; this only keeps the menu honest).
   const REP_TABS = ["today", "pipeline", "leads", "sales"];
   const VIEWER_HIDDEN = ["integrations", "activity", "api"];
-  function tabAllowed(id) {
+  function roleAllows(id) {
     const r = S.me ? S.me.role : "viewer";
     if (r === "owner" || r === "manager") return true;
     if (r === "closer" || r === "setter") return REP_TABS.includes(id);
     return !VIEWER_HIDDEN.includes(id);
   }
+  const tabAllowed = (id) => roleAllows(id) && simpleAllows(id);
   const canWrite = () => !!S.me && S.me.role !== "viewer";
   const isManager = () => !!S.me && (S.me.role === "owner" || S.me.role === "manager");
   const TAB = Object.fromEntries(TABS.map((t) => [t.id, t]));
@@ -434,24 +515,29 @@
     { id: "visitors", label: "Visitors" }, { id: "optins", label: "Opt-ins" }, { id: "applications", label: "Applications" },
     { id: "booked", label: "Booked" }, { id: "won", label: "Won" },
   ];
-  TAB.overview.load = () => api("/overview", { query: qs() });
+  TAB.overview.load = () => Promise.all([
+    api("/overview", { query: qs() }),
+    isManager() ? api("/readiness").catch(() => null) : Promise.resolve(null),
+    isManager() ? api("/test-data").catch(() => null) : Promise.resolve(null),
+  ]).then((r) => Object.assign(r[0], { _ready: r[1], _test: r[2] }));
   TAB.overview.render = (d) => {
     const k = d.kpis, p = d.prev || {};
-    const c = d.counts;
+    const c = d.counts, pc0 = d.prev_counts || {};
     const quiet = !c.visitors && !c.optins && !c.booked;
+    const rateDelta = (cur, prev, a, b) => (isNum(cur) && isNum(prev) && a >= SMALL_N() && b >= SMALL_N() ? delta(cur, prev, "rate") : "");
     const tiles = kpis([
-      kpi("Visitors", esc(n(k.visitors)), delta(k.visitors, p.visitors) || "Unique people, bots excluded"),
-      kpi("Play rate", esc(pc(k.play_rate)), delta(k.play_rate, p.play_rate, "rate") || "Visitors who pressed play"),
-      kpi("Applications", esc(n(k.applications)), delta(k.applications, p.applications) || "Completed applications"),
-      kpi("Booked calls", esc(n(k.booked)), delta(k.booked, p.booked) || "New bookings in the period"),
-      kpi("Opt-in rate", esc(pc(k.optin_rate)), delta(k.optin_rate, p.optin_rate, "rate") || "Left contact details ÷ visitors"),
-      kpi("Pitch reached", esc(pc(k.pitch_rate)), delta(k.pitch_rate, p.pitch_rate, "rate") || "Of plays, reached the offer"),
-      kpi("Revenue", esc(moneyShort(k.revenue)), (delta(k.revenue, p.revenue) ? delta(k.revenue, p.revenue) + " · " : "") + esc(moneyShort(k.cash)) + " cash collected"),
-      kpi("WhatsApp clicks", esc(n(k.whatsapp)), delta(k.whatsapp, p.whatsapp) || "Taps on the WhatsApp button"),
-      kpi("Ad spend", esc(moneyShort(k.spend)), delta(k.spend, p.spend) || "All platforms, in the period"),
-      kpi("CAC", esc(moneyShort(k.cac)), delta(k.cac, p.cac, "cost") || "Spend ÷ deals won"),
-      kpi("Cash ROAS", esc(roas(k.cash_roas)), delta(k.cash_roas, p.cash_roas) || "Cash collected ÷ spend"),
-      kpi("Cost per booked call", esc(moneyShort(k.cost_per_booked)), delta(k.cost_per_booked, p.cost_per_booked, "cost") || "Spend ÷ new bookings"),
+      kpi("Visitors", esc(n(k.visitors)), delta(k.visitors, p.visitors) || "Unique people, bots and test traffic excluded", "visitors"),
+      kpi("Play rate", rateValue(c.plays, c.visitors), rateDelta(k.play_rate, p.play_rate, c.visitors, pc0.visitors) || esc(n(c.plays)) + " of " + esc(n(c.visitors)) + " pressed play", "play_rate"),
+      kpi("Applications", esc(n(k.applications)), delta(k.applications, p.applications) || esc(n(c.qualified)) + " qualified (A/B)", "applied"),
+      kpi("Booked calls", esc(n(k.booked)), delta(k.booked, p.booked) || "New bookings in the period", "booked"),
+      kpi("Opt-in rate", rateValue(c.optins, c.visitors), rateDelta(k.optin_rate, p.optin_rate, c.visitors, pc0.visitors) || esc(n(c.optins)) + " left contact details", "optin_rate"),
+      kpi("Pitch reached", rateValue(c.pitch, c.plays), rateDelta(k.pitch_rate, p.pitch_rate, c.plays, pc0.plays) || "Of plays, reached the offer", "pitch_rate"),
+      kpi("Revenue", esc(moneyShort(k.revenue)), (delta(k.revenue, p.revenue) ? delta(k.revenue, p.revenue) + " · " : "") + esc(moneyShort(k.cash)) + " cash collected", "revenue"),
+      kpi("WhatsApp clicks", esc(n(k.whatsapp)), delta(k.whatsapp, p.whatsapp) || "Taps on the WhatsApp button", "whatsapp"),
+      kpi("Ad spend", esc(moneyShort(k.spend)), delta(k.spend, p.spend) || "All platforms, in the period", "spend"),
+      kpi("CAC", esc(moneyShort(k.cac)), c.won && c.won < 5 ? '<span class="faint">Only ' + esc(n(c.won)) + " deal" + (c.won === 1 ? "" : "s") + "</span>" : delta(k.cac, p.cac, "cost") || "Spend ÷ deals won", "cac"),
+      kpi("Cash ROAS", esc(roas(k.cash_roas)), delta(k.cash_roas, p.cash_roas) || "Cash collected ÷ spend", "cash_roas"),
+      kpi("Cost per booked call", esc(moneyShort(k.cost_per_booked)), c.booked && c.booked < 5 ? '<span class="faint">Only ' + esc(n(c.booked)) + " booked</span>" : delta(k.cost_per_booked, p.cost_per_booked, "cost") || "Spend ÷ new bookings", "cost_per_booked"),
     ]);
     const series = d.trend.series[S.trend] || [];
     const total = series.reduce((a, b) => a + b, 0);
@@ -464,9 +550,10 @@
     const maxN = Math.max(1, ...d.funnel.map((r) => r.n));
     const funnel = card({
       title: "Funnel",
-      sub: "Each step's count in the period, and its conversion from the step before. Rates over 100% are hidden because steps are dated by when they happened.",
+      sub: "People active in the period and how far each has got so far. Each step counts everyone who reached it or a later step, so a step is never larger than the one above.",
       body: '<div class="funnel"><div class="funnel-row funnel-head"><span>Step</span><span></span><span class="f-n">People</span><span class="f-rate">From prev.</span></div>' +
-        d.funnel.map((r, i) => '<div class="funnel-row"><span class="f-label">' + esc(r.label) + '</span><div class="f-bar"><div class="f-fill"' + w((r.n / maxN) * 100) + '></div></div><span class="f-n">' + esc(n(r.n)) + '</span><span class="f-rate">' + (i ? esc(pc(r.step)) : '<span class="faint">—</span>') + "</span></div>").join("") + "</div>",
+        d.funnel.map((r, i) => '<div class="funnel-row"><span class="f-label">' + esc(r.label) + help(r.key, r.label) + '</span><div class="f-bar"><div class="f-fill"' + w((r.n / maxN) * 100) + '></div></div><span class="f-n">' + esc(n(r.n)) + '</span><span class="f-rate">' + (i ? rate(r.n, r.prev) : '<span class="faint">—</span>') + "</span></div>").join("") + "</div>",
+      foot: "Tiles above count events dated in the period (an application submitted today from last week's visitor counts today); the funnel follows people.",
     });
     const tiers = c.tier_a + c.tier_b + c.tier_c;
     const money2 = card({
@@ -475,12 +562,41 @@
       body: '<div class="stack gap16">' +
         (tiers ? '<div class="stack-bar" role="img" aria-label="Tier split"><span class="s1"' + w((c.tier_a / tiers) * 100) + '></span><span class="s2"' + w((c.tier_b / tiers) * 100) + '></span><span class="s3"' + w((c.tier_c / tiers) * 100) + "></span></div>" +
           '<div class="legend"><span><span class="swatch"></span>A ' + esc(n(c.tier_a)) + '</span><span><span class="swatch sw2"></span>B ' + esc(n(c.tier_b)) + '</span><span><span class="swatch sw3"></span>C ' + esc(n(c.tier_c)) + "</span></div>" : '<p class="faint small">No scored applications in this period.</p>') +
-        '<dl class="kv"><dt>Showed</dt><dd class="tnum">' + esc(n(c.showed)) + " of " + esc(n(c.showed + c.no_show)) + ' held or missed</dd><dt>Won</dt><dd class="tnum">' + esc(n(c.won)) + " · " + esc(money(c.revenue)) + '</dd><dt>Lost</dt><dd class="tnum">' + esc(n(c.lost)) + '</dd><dt>Cash collected</dt><dd class="tnum">' + esc(money(c.cash)) + "</dd></dl></div>",
+        '<dl class="kv"><dt>Show rate</dt><dd class="tnum">' + rate(c.showed, c.showed + c.no_show) + ' <span class="faint">' + esc(n(c.showed)) + " of " + esc(n(c.showed + c.no_show)) + '</span></dd><dt>Won</dt><dd class="tnum">' + esc(n(c.won)) + " · " + esc(money(c.revenue)) + '</dd><dt>Close rate</dt><dd class="tnum">' + rate(c.won, c.showed) + '</dd><dt>Lost</dt><dd class="tnum">' + esc(n(c.lost)) + '</dd><dt>Cash collected</dt><dd class="tnum">' + esc(money(c.cash)) + "</dd></dl></div>",
     });
-    return (quiet ? '<div class="callout info"><span class="callout-dot"></span><div><strong>No activity in this period yet.</strong> Numbers fill in as soon as people visit the site. Try a longer range, or check Tracking if you expected traffic.</div></div>' : "") +
-      tiles + trend + '<div class="grid g-2-1">' + funnel + money2 + "</div>";
+    return readinessCard(d._ready) + (quiet ? '<div class="callout info"><span class="callout-dot"></span><div><strong>No activity in this period yet.</strong> Numbers fill in as soon as people visit the site. Try a longer range, or check Tracking if you expected traffic.</div></div>' : "") +
+      tiles + trend + '<div class="grid g-2-1">' + funnel + money2 + "</div>" + testDataCard(d._test);
   };
 
+  // ── Launch readiness (owners and managers) ─────────────────────────────────
+  function readinessCard(r) {
+    if (!r) return "";
+    const failing = r.checks.filter((c) => c.required && !c.ok);
+    const bar = r.red ? '<div class="callout bad" role="alert"><span class="callout-dot"></span><div><strong>Ads are spending (' + esc(moneyShort(r.spend_7d)) + " in 7 days) while " + esc(n(failing.length)) + " launch check" + (failing.length === 1 ? " fails" : "s fail") + ":</strong> " + esc(failing.map((c) => c.label).join(" · ")) + ".</div></div>" : "";
+    const open = !(failing.length === 0 && S.readyCollapsed !== false);
+    const row = (c) => '<li class="ready-row' + (c.ok ? " ok" : c.required ? " bad" : " opt") + '"><span class="ready-dot" aria-hidden="true"></span><div class="ready-main"><div class="t-name">' + esc(c.label) + (c.required ? "" : ' <span class="faint small">optional</span>') + '<span class="sr-only">' + (c.ok ? " — passing" : " — not done") + '</span></div><div class="small faint">' + esc(c.detail) + "</div></div>" +
+      '<div class="ready-act">' + (c.confirm && S.me && S.me.role === "owner" ? '<label class="switch"><input type="checkbox" data-change="ready-confirm" data-key="' + esc(c.confirm) + '"' + (c.ok ? " checked" : "") + '><span class="switch-track"></span><span class="small">Confirmed</span></label>'
+        : c.fix === "dns" ? '<button class="btn btn-sm" type="button" data-action="ready-dns">Check DNS</button>'
+        : c.fix === "purge" && !c.ok ? '<a class="btn btn-sm" href="#overview" data-action="scroll-test">Review test data</a>'
+        : c.fix && !c.ok ? '<a class="btn btn-sm btn-ghost" href="' + esc(c.fix) + '">Fix</a>' : "") + "</div></li>";
+    const live = r.go_live ? '<span class="faint small">Went live ' + esc(dt(r.go_live.at)) + " · skipped " + esc(n(r.go_live.skipped)) + " stale emails</span>" : "";
+    const goBtn = S.me && S.me.role === "owner" ? '<button class="btn btn-sm' + (failing.length ? "" : " btn-primary") + '" type="button" data-action="go-live">' + (r.go_live ? "Go live again" : "Go live") + "</button>" : "";
+    return bar + '<section class="card ready-card' + (failing.length ? "" : " all-ok") + '"><details' + (open ? " open" : "") + '><summary class="card-head ready-head"><div><h2 class="card-title">Launch readiness</h2><p class="card-sub">' +
+      esc(n(r.passed)) + " of " + esc(n(r.total)) + " checks pass" + (failing.length ? " · " + esc(n(failing.length)) + " required still open" : " · ready for paid traffic") + '</p></div><div class="ready-meter" role="img" aria-label="' + esc(r.passed + " of " + r.total) + '"><span' + w((r.passed / r.total) * 100) + "></span></div></summary>" +
+      '<div class="card-body flush"><ul class="ready-list">' + r.checks.slice().sort((a, b) => (a.ok - b.ok) || (b.required - a.required)).map(row).join("") + "</ul></div>" +
+      '<div class="card-foot row between wrap"><span class="small faint">Go live skips emails that queued up during testing (due more than an hour ago), so the first real lead does not set off a burst.</span><span class="row">' + live + goBtn + "</span></div></details></section>";
+  }
+
+  function testDataCard(t) {
+    if (!t) return "";
+    const reasons = { email: "test email address", query: "?test=1 link", admin_browser: "an admin's browser", internal_ip: "internal network", manual: "marked by hand" };
+    return '<section class="card" id="test-data-card"><div class="card-head"><div><h2 class="card-title">Test data</h2><p class="card-sub">Leave out of every report, Today, the pipeline, calibration, no-show risk and alerts. Test leads get no emails or calls. Turn on "Include test data" in the filter bar to see them.</p></div>' +
+      '<div class="card-actions">' + (isManager() ? '<button class="btn btn-sm" type="button" data-action="test-sweep">Re-scan</button>' : "") + (S.me && S.me.role === "owner" && t.test_leads ? '<button class="btn btn-sm btn-danger" type="button" data-action="test-purge">Purge ' + esc(n(t.test_leads)) + " test lead" + (t.test_leads === 1 ? "" : "s") + "</button>" : "") + "</div></div>" +
+      '<div class="card-body"><dl class="kv"><dt>Test leads</dt><dd class="tnum">' + esc(n(t.test_leads)) + (t.by_reason.length ? ' <span class="faint">· ' + esc(t.by_reason.map((r) => n(r.n) + " " + (reasons[r.reason] || human(r.reason))).join(", ")) + "</span>" : "") + "</dd>" +
+      '<dt>Our browsers</dt><dd class="tnum">' + esc(n(t.test_visitors)) + ' <span class="faint">admins, ?test=1, internal IPs</span></dd>' +
+      "<dt>This network</dt><dd>" + (t.my_ip_internal ? badge("Internal", "b-green") : isManager() && t.my_ip_hash ? '<button class="btn btn-sm" type="button" data-action="test-add-ip">Mark this network as internal</button>' : '<span class="faint">Not marked</span>') + (t.my_ip_hash ? ' <code class="mono faint small">' + esc(t.my_ip_hash.slice(0, 12)) + "…</code>" : "") + "</dd></dl>" +
+      '<p class="small faint mt8">Automatic: emails at example.com/.org/.net or with +test@, a first visit with ?test=1, a browser that has opened Funnel HQ, and visits from internal networks. Mark a single lead from its drawer.</p></div></section>';
+  }
   // ── Funnel map ─────────────────────────────────────────────────────────────
   TAB.map.load = async () => null;
   TAB.map.render = () => '<div id="fm-host"></div>';
@@ -573,22 +689,23 @@
     const maxV = Math.max(1, ...d.rows.map((r) => r.visitors));
     const t = d.totals || {};
     const dimLabel = (d.dims.find((x) => x.id === d.dim) || {}).label || d.dim;
-    const top = d.rows.slice().sort((a, b) => b.applied - a.applied).filter((r) => r.applied)[0];
+    const best = d.best;
     const summary = kpis([
-      kpi("Visitors", esc(n(t.visitors)), esc(n(t.sessions)) + " sessions"),
-      kpi("Played the film", esc(n(t.plays)), esc(pc(t.visitors ? (t.plays / t.visitors) * 100 : null)) + " of visitors"),
-      kpi("Applications", esc(n(t.applied)), esc(n(t.qualified)) + " qualified"),
-      kpi("Best " + dimLabel.toLowerCase(), top ? esc(top.key) : "—", top ? esc(n(top.applied)) + " applications" : "Needs applications"),
+      kpi("Visitors", esc(n(t.visitors)), esc(n(t.sessions)) + " sessions", "visitors"),
+      kpi("Played the film", esc(n(t.plays)), rate(t.plays, t.visitors) + " of visitors", "plays"),
+      kpi("Applications", esc(n(t.applied)), esc(n(t.qualified)) + " qualified · same count as Overview", "applied"),
+      kpi("Best " + dimLabel.toLowerCase(), best ? esc(best.key) : '<span class="faint">Too early to call</span>',
+        best ? esc(n(best.booked)) + " booked calls · " + esc(moneyShort(best.cash)) + " cash" : "Needs 5+ booked calls from one " + esc(dimLabel.toLowerCase()), "best_source"),
     ]);
     const tbl = table([
       { label: dimLabel, get: (r) => '<div class="cell-bar"><span class="ellipsis" title="' + esc(r.key) + '">' + esc(r.key) + '</span></div><div class="bar-track"><div class="bar-fill"' + w((r.visitors / maxV) * 100) + "></div></div>" },
       { label: "Visitors", num: true, get: (r) => esc(n(r.visitors)) },
       { label: "Engaged", num: true, get: (r) => esc(r.engaged_s ? r.engaged_s + "s" : "—") },
-      { label: "Bounce", num: true, get: (r) => esc(pc(r.bounce_rate)) },
-      { label: "Play rate", num: true, get: (r) => esc(pc(r.play_rate)) },
+      { label: "Bounce", num: true, get: (r) => rate(r.bounced, r.sessions) },
+      { label: "Play rate", num: true, get: (r) => rate(r.plays, r.visitors) },
       { label: "Leads", num: true, get: (r) => esc(n(r.leads)) },
       { label: "Applied", num: true, get: (r) => esc(n(r.applied)) },
-      { label: "Apply rate", num: true, get: (r) => esc(pc(r.apply_rate)) },
+      { label: "Apply rate", num: true, get: (r) => rate(r.applied, r.visitors) },
       { label: "Qualified", num: true, get: (r) => esc(n(r.qualified)) },
       { label: "Booked", num: true, get: (r) => esc(n(r.booked)) },
       { label: "Won", num: true, get: (r) => esc(n(r.won)) },
@@ -601,7 +718,7 @@
     });
     return summary + card({
       title: "By " + dimLabel.toLowerCase(),
-      sub: "Leads and money are credited to every value a visitor arrived with in the period.",
+      sub: "Visitors and plays: sessions in the period with that value. Leads, applications, bookings, wins and cash: dated in the period and credited to the lead's first touch, so the totals match Overview.",
       actions: sel("dim", d.dims.map((x) => ({ value: x.id, label: x.label })), d.dim, { change: "traffic-dim", sm: true, label: "Break down by" }),
       body: tbl, flush: true,
     });
@@ -726,11 +843,11 @@
     const k = d.kpis;
     const head = '<div class="row between wrap"><div class="seg" role="group" aria-label="Video">' + d.videos.map((v) => '<button type="button" data-action="video" data-video="' + esc(v.id) + '" aria-pressed="' + (v.id === d.video) + '">' + esc(v.title) + "</button>").join("") + '</div><span class="faint small">' + esc(clock(d.duration)) + " long" + (d.cta_reveal_at ? " · pitch at " + esc(clock(d.cta_reveal_at)) : "") + "</span></div>";
     const tiles = kpis([
-      kpi("Plays", esc(n(k.plays)), esc(n(k.viewers)) + " unmuted · " + esc(pc(k.unmute_rate))),
-      kpi("Average watched", esc(pc(k.avg_watched_pct)), "Of the film, per viewer"),
-      kpi("Reached the pitch", esc(pc(k.pitch_rate)), esc(n(k.pitch)) + " people"),
-      kpi("Finished", esc(pc(k.completion_rate)), esc(n(k.completed)) + " people"),
-      kpi("Clicked apply", esc(pc(k.cta_click_rate)), esc(n(k.cta_clicks)) + " of those who saw the button"),
+      kpi("Plays", esc(n(k.plays)), esc(n(k.viewers)) + " unmuted · " + rate(k.viewers, k.plays)),
+      kpi("Average watched", k.viewers && k.viewers < SMALL_N() ? '<span class="small-n">' + esc(pc(k.avg_watched_pct)) + '<span class="n-tag">n=' + esc(k.viewers) + "</span></span>" : esc(pc(k.avg_watched_pct)), "Of the film, per viewer"),
+      kpi("Reached the pitch", rateValue(k.pitch, k.plays), esc(n(k.pitch)) + " people", "pitch_rate"),
+      kpi("Finished", rateValue(k.completed, k.viewers), esc(n(k.completed)) + " people"),
+      kpi("Clicked apply", rateValue(k.cta_clicks, k.pitch), esc(n(k.cta_clicks)) + " of those who saw the button"),
       kpi("Became leads", esc(n(k.became_leads)), "Viewers who left details"),
     ], "k6");
     const N = d.retention.length;
@@ -814,12 +931,14 @@
   TAB.application.load = () => api("/application", { query: qs() });
   TAB.application.render = (d) => {
     const k = d.kpis;
+    const secs = k.median_seconds;
+    const medTime = secs == null ? esc("—") : secs < 1 ? esc("<1") + '<span class="unit">s</span>' : secs < 60 ? esc(n(secs)) + '<span class="unit">s</span>' : esc(n1(secs / 60)) + '<span class="unit">min</span>';
     const tiles = kpis([
-      kpi("Opened the form", esc(n(k.apply_starts)), "Visited /apply"),
-      kpi("Left contact details", esc(n(k.contacts)), esc(pc(k.apply_starts ? (k.contacts / k.apply_starts) * 100 : null)) + " of form visitors"),
-      kpi("Completed", esc(n(k.completed)), esc(pc(k.completion_rate)) + " of contacts"),
-      kpi("Median time", esc(k.median_minutes == null ? "—" : n1(k.median_minutes)) + (k.median_minutes == null ? "" : '<span class="unit">min</span>'), "Contact to submit"),
-      kpi("Average score", esc(n(k.avg_score)), "Out of 100"),
+      kpi("Saw the form", esc(n(k.saw_form != null ? k.saw_form : k.apply_starts)), "Form in view or /apply", "saw_form"),
+      kpi("Left contact details", esc(n(k.contacts)), rate(k.contacts, k.saw_form != null ? k.saw_form : k.apply_starts) + " of people who saw the form", "contact_rate"),
+      kpi("Completed", esc(n(k.completed)), rate(k.completed, k.contacts) + " of contacts", "completion_rate"),
+      kpi("Median time", medTime, "First step to submit", "median_time"),
+      kpi("Average score", esc(n(k.avg_score)), "Out of 100", "avg_score"),
       kpi("Qualified", esc(n(d.tiers.A + d.tiers.B)), "A " + esc(n(d.tiers.A)) + " · B " + esc(n(d.tiers.B)) + " · C " + esc(n(d.tiers.C))),
     ], "k6");
     const maxR = Math.max(1, ...d.steps.map((s) => s.reached));
@@ -829,18 +948,26 @@
         '<div class="funnel-row"><span class="f-label ellipsis" title="' + esc(s.title) + '">' + esc(s.step + ". " + label(s.id)) + '</span><div class="f-bar"><div class="f-fill"' + w((s.reached / maxR) * 100) + '></div></div><span class="f-n">' + esc(n(s.reached)) + '</span><span class="f-rate">' + (i ? esc(pc(s.kept)) : '<span class="faint">—</span>') + "</span></div>").join("") + "</div>",
       foot: d.steps.some((s) => s.backs) ? "Went back to change an answer: " + d.steps.filter((s) => s.backs).map((s) => esc(human(s.id)) + " " + esc(n(s.backs))).join(" · ") : "",
     });
+    const opt = (d.optional || []).length ? card({
+      title: "After submitting (optional)", sub: "Questions asked once the application is in. Not part of the drop-off: skipping them loses nothing.", flush: true,
+      body: table([
+        { label: "Question", cls: "wrap", get: (r) => '<span class="t-name">' + esc(label(r.id)) + '</span><span class="sub">' + esc(r.title) + "</span>" },
+        { label: "Answered", num: true, get: (r) => esc(n(r.answered)) + ' <span class="faint">of ' + esc(n(r.finished)) + "</span>" },
+        { label: "Rate", num: true, get: (r) => rate(r.answered, r.finished) },
+      ], d.optional),
+    }) : "";
     const hist = card({
       title: "Scores", sub: "Completed applications by score. A from 70, B from 40.",
       body: k.completed ? chart({ type: "columns", labels: d.score_histogram.map((b) => String(b.from)), values: d.score_histogram.map((b) => b.n), tipLabel: (i) => "Score " + d.score_histogram[i].from + "–" + d.score_histogram[i].to, unit: "applications", height: 200 }) : empty("No completed applications", "Scores appear once applications are submitted.", true),
     });
-    const flags = card({ title: "Flags", sub: "Signals that capped a tier or need a closer's eye", body: bars(d.flags.map((f) => ({ label: label(f.flag), value: f.n })), { color: "c4", emptyBody: "Flags like under $1M, not the owner or personal email show here." }) });
+    const flags = card({ title: "Flags", sub: "Signals that capped a tier or need a closer's eye", body: bars(d.flags.map((f) => ({ label: f.label || label(f.flag), value: f.n, extra: pc(k.completed ? (f.n / k.completed) * 100 : null) })), { color: "c4", emptyBody: "Flags like under $1M, not the owner or personal email show here." }) });
     const qs2 = d.questions.map((q) => card({ title: q.title, sub: n(q.answered) + " answered" + (q.type === "multi" ? " · pick any" : ""), body: bars(q.options.map((o) => ({ label: o.label, value: o.n, extra: pc(o.pct) })), { emptyBody: "Answers appear with the first completed application." }) }));
     const text = d.text.length ? card({ title: "Written answers", flush: true, body: table([
       { label: "Question", cls: "wrap", get: (r) => esc(r.title) },
       { label: "Answered", num: true, get: (r) => esc(n(r.answered)) },
       { label: "Avg length", num: true, get: (r) => esc(n(r.avg_length)) + " chars" },
     ], d.text) }) : "";
-    return tiles + '<div class="grid g-2-1">' + steps + '<div class="stack gap16">' + hist + flags + "</div></div>" + '<h2 class="section-title">Answers</h2><div class="grid g3">' + qs2.join("") + "</div>" + text;
+    return tiles + '<div class="grid g-2-1">' + '<div class="stack gap16">' + steps + opt + "</div>" + '<div class="stack gap16">' + hist + flags + "</div></div>" + '<h2 class="section-title">Answers</h2><div class="grid g3">' + qs2.join("") + "</div>" + text;
   };
 
   // ── Sales team ─────────────────────────────────────────────────────────────
@@ -855,35 +982,47 @@
   ];
   TAB.sales.render = (d) => {
     if (d.linked === false) return unlinkedCallout();
-    const k = d.kpis;
+    const k = d.kpis, tk = d.team_kpi || {};
     const tiles = kpis([
-      kpi("Calls due", esc(n(k.calls)), "Call times already passed"),
-      kpi("Show rate", esc(pc(k.show_rate)), esc(n(k.showed)) + " showed · " + esc(n(k.no_show)) + " no-show"),
-      kpi("Close rate", esc(pc(k.close_rate)), "Won ÷ calls held"),
-      kpi("Won", esc(n(k.won)), "Average deal " + esc(moneyShort(k.avg_deal))),
-      kpi("Revenue", esc(moneyShort(k.revenue)), "Deal value of wins"),
-      kpi("Cash collected", esc(moneyShort(k.cash)), "Payments in the period"),
+      kpi("Show rate", rateValue(k.showed, k.showed + k.no_show), esc(n(k.showed)) + " held · " + esc(n(k.no_show)) + " no-show", "show_rate"),
+      kpi("Offer %", rateValue(tk.offers, tk.reviewed), esc(n(tk.offers)) + " offers on " + esc(n(tk.reviewed)) + " reviewed calls", "offer_rate"),
+      kpi("Close % of offers", rateValue(tk.won_of_offers, tk.offers), esc(n(tk.won_of_offers)) + " won", "close_of_offers"),
+      kpi("Close rate", rateValue(k.won, k.showed), "Won ÷ calls held · avg deal " + esc(moneyShort(k.avg_deal)), "close_rate"),
+      kpi("Cash on call", esc(moneyShort(tk.cash_on_call)), "Paid within 24 h of the call", "cash_on_call"),
+      kpi("$ per call held", esc(moneyShort(tk.per_call_held)), esc(moneyShort(k.cash)) + " collected in the period", "per_call_held"),
     ], "k6");
     const needs = card({
       title: "Needs an outcome", sub: "Calls in the last 30 days that still say booked. Logging the outcome starts the right follow-up.", flush: true,
-      body: table(callCols().slice(0, 4).concat([{ label: "", get: (r) => '<div class="row"><button class="btn btn-sm" type="button" data-action="quick-outcome" data-id="' + esc(r.id) + '" data-status="showed">Showed</button><button class="btn btn-sm" type="button" data-action="quick-outcome" data-id="' + esc(r.id) + '" data-status="no_show">No-show</button><a class="btn btn-sm btn-ghost" href="#lead=' + encodeURIComponent(r.id) + '">Won or lost…</a></div>' }]), d.needs_outcome, {
+      body: table(callCols().slice(0, 4).concat([{ label: "", get: (r) => (canWrite() ? '<div class="row"><button class="btn btn-sm" type="button" data-action="held-open" data-id="' + esc(r.id) + '" data-name="' + esc(r.name) + '">Showed…</button><button class="btn btn-sm" type="button" data-action="quick-outcome" data-id="' + esc(r.id) + '" data-status="no_show">No-show</button><a class="btn btn-sm btn-ghost" href="#lead=' + encodeURIComponent(r.id) + '">Won or lost…</a></div>' : "") }]), d.needs_outcome, {
         empty: empty("All caught up", "Every call that has happened has an outcome. Calls show up here 30 minutes after their start time."),
       }),
     });
+    const K = (r) => r.kpi || {};
     const reps = card({
-      title: "Scoreboard", sub: "By closer. Cash counts payments recorded in the period.", flush: true,
+      title: "Scoreboard", sub: "By closer, for calls dated in the period. Offer and QA come from the review in the Showed form. Cash counts payments recorded in the period.", flush: true,
       body: table([
-        { label: "Rep", get: (r) => '<span class="t-name">' + esc(r.name) + '</span><span class="sub">' + esc(label(r.role)) + (r.upcoming ? " · " + esc(n(r.upcoming)) + " upcoming" : "") + "</span>" },
+        { label: "Rep", cls: "nowrap", get: (r) => '<span class="t-name">' + esc(r.name) + '</span><span class="sub">' + esc(label(r.role)) + (r.upcoming ? " · " + esc(n(r.upcoming)) + " upcoming" : "") + "</span>" },
         { label: "Calls", num: true, get: (r) => esc(n(r.calls)) },
-        { label: "Showed", num: true, get: (r) => esc(n(r.showed)) },
-        { label: "Show rate", num: true, get: (r) => esc(pc(r.show_rate)) },
+        { label: "Held", num: true, get: (r) => esc(n(K(r).held != null ? K(r).held : r.showed)) },
+        { label: "Show rate", num: true, get: (r) => rate(r.showed, r.showed + r.no_show) },
+        { label: "Offer %", num: true, get: (r) => rate(K(r).offers, K(r).reviewed) },
+        { label: "Close % of offers", num: true, get: (r) => rate(K(r).won_of_offers, K(r).offers) },
         { label: "Won", num: true, get: (r) => esc(n(r.won)) },
-        { label: "Close rate", num: true, get: (r) => esc(pc(r.close_rate)) },
-        { label: "Revenue", num: true, get: (r) => esc(moneyShort(r.revenue)) },
+        { label: "Cash on call", num: true, get: (r) => esc(moneyShort(K(r).cash_on_call || 0)) },
+        { label: "Cycle", num: true, get: (r) => (isNum(K(r).cycle_days) ? esc(n1(K(r).cycle_days)) + " d" + (K(r).cycle_n < 5 ? '<span class="sub">n=' + esc(K(r).cycle_n) + "</span>" : "") : '<span class="faint">—</span>') },
+        { label: "$ per call held", num: true, get: (r) => esc(moneyShort(K(r).per_call_held)) },
+        { label: "QA", num: true, get: (r) => (isNum(K(r).qa_avg) ? esc(n1(K(r).qa_avg)) + '<span class="faint">/5</span>' : '<span class="faint">—</span>') },
         { label: "Cash", num: true, get: (r) => esc(moneyShort(r.cash)) },
         { label: "Commission", num: true, get: (r) => esc(r.commission ? money(r.commission) : "—") },
         { label: "Target", get: (r) => (r.target ? '<div class="cell-bar"><div class="bar-track"><div class="bar-fill c3"' + w(r.target_pct || 0) + '></div></div><span class="faint small tnum">' + esc(pc(r.target_pct)) + "</span></div>" : '<span class="faint">—</span>') },
       ], d.reps, { empty: empty("No reps yet", "Add closers and setters on the Team tab. Until then, calls go to the founder.") }),
+    });
+    const ob = d.objections || { weeks: [], series: [] };
+    const objections = card({
+      title: "Objections by week", sub: "Objections logged on held deals that are still open (by call week) and on lost deals (by close week, with the lost reason when no objection was logged). Last 8 weeks.",
+      body: ob.total ? chart({ type: "stacked", labels: ob.weeks.map((x) => "w/c " + dayKeyLabel(x)), series: ob.series.map((s) => ({ label: s.objection, values: s.counts })), height: 220, label: "Objections by week" }) +
+        '<div class="legend mt8">' + ob.series.map((s, i) => '<span><span class="swatch sw' + (i + 1) + '"></span>' + esc(s.objection) + ' <span class="faint">' + esc(n(s.total)) + "</span></span>").join("") + (ob.other ? '<span class="faint">+' + esc(n(ob.other)) + " other</span>" : "") + "</div>"
+        : empty("No objections logged yet", "Pick an objection in the Showed form or on the lead's Pipeline tab; lost reasons count too.", true),
     });
     const log = card({ title: "Call log", sub: "Calls in the period and the next 14 days", flush: true, body: table(callCols(), d.call_log, { tall: true, rowAction: (r) => ({ action: "open-lead", id: r.id }), empty: empty("No calls in this period", "Booked calls appear here with their outcome.") }) });
     const ur = d.upcoming_risk || { rows: [], labels: {}, model: {} };
@@ -916,7 +1055,7 @@
       title: "Payments due / overdue", sub: "Instalments due within 7 days or overdue. Closers get theirs in the morning ping.", flush: true,
       body: dueTable(d.payments_due || []),
     });
-    return (d.scoped ? "" : tiles) + needs + risk + '<div class="grid g2">' + fu + pay + "</div>" + activityCard(d.activity) + reps + log;
+    return (d.scoped ? "" : tiles) + needs + risk + '<div class="grid g2">' + fu + pay + "</div>" + activityCard(d.activity) + reps + objections + log;
   };
   TAB.sales.actions = () => '<button class="btn" type="button" data-action="digest-send">Send digest now</button>';
 
@@ -1103,7 +1242,7 @@
       sel("sort", [{ value: "created", label: "Newest" }, { value: "updated", label: "Recently updated" }, { value: "score", label: "Highest score" }, { value: "call", label: "Call date" }, { value: "value", label: "Deal value" }, { value: "name", label: "Name" }], L.sort, { change: "lead-filter", label: "Sort" }) +
       '<span class="faint small">' + esc(n(d.total)) + " leads" + (L.q ? " · all time" : "") + "</span></div>";
     const tbl = table([
-      { label: "Lead", get: (r) => '<span class="t-name">' + esc([r.first_name, r.last_name].filter(Boolean).join(" ") || r.email) + '</span><span class="sub">' + esc(r.email) + "</span>" },
+      { label: "Lead", get: (r) => '<span class="t-name">' + esc([r.first_name, r.last_name].filter(Boolean).join(" ") || r.email) + "</span>" + (r.is_test === 1 ? " " + badge("Test", "b-amber") : "") + '<span class="sub">' + esc(r.email) + "</span>" },
       { label: "Status", get: (r) => statusBadge(r.status) },
       { label: "Tier", get: (r) => tierBadge(r.tier) },
       { label: "Score", num: true, get: (r) => (r.score == null ? '<span class="faint">—</span>' : esc(n(r.score))) },
@@ -1123,6 +1262,7 @@
   // ── Emails ─────────────────────────────────────────────────────────────────
   TAB.emails.load = () => api("/emails", { query: qs() });
   TAB.emails.actions = () => '<button class="btn" type="button" data-action="run-queue">Send due emails now</button>';
+  const seqName = (d, id) => ((d && d.sequence_names) || {})[id] || label(id);
   function offsetLabel(ms, anchor) {
     if (ms == null) return "Per lead";
     const a = Math.abs(ms);
@@ -1131,6 +1271,7 @@
     return ms === 0 ? "Immediately" : t + " after";
   }
   TAB.emails.render = (d) => {
+    d.subjects = Object.fromEntries((d.templates || []).map((t) => [t.id, t.subject]));
     const dv = d.deliverability;
     const tiles = kpis([
       kpi("Sent", esc(n(dv.sent)), esc(n(dv.simulated)) + " simulated"),
@@ -1147,7 +1288,7 @@
         return '<details class="seq"><summary class="seq-head"><svg class="seq-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg><div><div class="seq-name">' + esc(s.label) + '</div><div class="seq-trigger">' + esc(s.trigger) + (s.dynamic ? " · steps chosen per lead" : " · " + s.steps.length + " steps") + '</div></div><div class="seq-stats"><span>' + esc(n(tot.sent)) + " sent</span><span>" + esc(pc(tot.sent ? (tot.opened / tot.sent) * 100 : null)) + " opened</span><span>" + esc(n(tot.pending)) + " queued</span></div></summary>" +
           table([
             { label: "#", num: true, get: (r) => esc(r.index + 1) },
-            { label: "Template", get: (r) => '<code class="mono">' + esc(r.template) + "</code>" },
+            { label: "Email", cls: "wrap", get: (r) => '<span class="t-name">' + esc((d.subjects || {})[r.template] || r.template) + '</span><span class="sub mono">' + esc(r.template) + "</span>" },
             { label: "When", get: (r) => esc(offsetLabel(r.offset_ms, r.anchor)) },
             { label: "Sent", num: true, get: (r) => esc(n(r.sent + r.simulated)) },
             { label: "Opened", num: true, get: (r) => esc(pc(r.sent + r.simulated ? (r.opened / (r.sent + r.simulated)) * 100 : null)) },
@@ -1160,16 +1301,16 @@
       title: "Queue", sub: "The next emails waiting to go out", flush: true,
       body: table([
         { label: "When", get: (r) => esc(dt(r.send_at)) + '<span class="sub">' + esc(ago(r.send_at)) + "</span>" },
-        { label: "Lead", get: (r) => leadLink(r.lead_id, r.name || "Lead") },
-        { label: "Sequence", get: (r) => esc(label(r.sequence)) },
-        { label: "Template", get: (r) => '<code class="mono">' + esc(r.template) + "</code>" },
+        { label: "Lead", get: (r) => leadLink(r.lead_id, r.name || "Lead") + (r.count > 1 ? ' <span class="badge plain b-grey" title="Same person, same email, due within 10 minutes">×' + esc(r.count) + "</span>" : "") },
+        { label: "Sequence", get: (r) => esc(r.sequence_name || seqName(d, r.sequence)) },
+        { label: "Email", cls: "wrap", get: (r) => '<span class="small">' + esc(r.subject || r.template) + '</span><span class="sub mono">' + esc(r.template) + "</span>" },
       ], d.queue, { mid: true, empty: empty("Nothing queued", "Emails are queued when someone applies, books, misses a call or closes.", true) }),
     });
     const triggers = card({
       title: "Behaviour triggers", sub: "One-off emails when someone does something specific. Each fires at most once per lead.", flush: true,
       body: table([
         { label: "Rule", cls: "wrap", get: (r) => '<span class="t-name">' + esc(r.label) + '</span><span class="sub mono">' + esc(r.template) + "</span>" },
-        { label: "Delay", num: true, get: (r) => esc(r.delay_min ? r.delay_min + " min" : "None") },
+        { label: "When", get: (r) => esc(r.when || (r.delay_min ? r.delay_min + " min" : "Right away")) },
         { label: "Fired", num: true, get: (r) => esc(n(r.fired)) },
         { label: "", get: (r) => '<button class="btn btn-sm" type="button" data-action="preview" data-template="' + esc(r.template) + '">Preview</button>' },
       ], d.triggers),
@@ -1177,7 +1318,7 @@
     const tpl = card({
       title: "All templates", sub: d.templates.length + " templates", flush: true,
       body: table([
-        { label: "Template", get: (r) => '<code class="mono">' + esc(r.id) + "</code>" },
+        { label: "Subject", cls: "wrap", get: (r) => '<span class="t-name">' + esc(r.subject || r.id) + '</span><span class="sub mono">' + esc(r.id) + "</span>" },
         { label: "Topics", get: (r) => (r.topics || []).map((t) => '<span class="badge plain b-grey">' + esc(human(t)) + "</span>").join(" ") || '<span class="faint">—</span>' },
         { label: "", get: (r) => '<button class="btn btn-sm" type="button" data-action="preview" data-template="' + esc(r.id) + '">Preview</button>' },
       ], d.templates, { tall: true }),
@@ -1190,7 +1331,7 @@
     const health = card({
       title: "Deliverability by sequence", sub: "Live sends in the period (up to 90 days). Hard bounces and spam complaints stop all email to that address. Over 7 days, more than 0.2% complaints or 3% bounces pauses marketing.", flush: true,
       body: table([
-        { label: "Sequence", get: (r) => '<span class="t-name">' + esc(label(r.sequence)) + "</span>" + (h.pausable && h.pausable.includes(r.sequence) ? "" : '<span class="sub">never paused</span>') },
+        { label: "Sequence", get: (r) => '<span class="t-name">' + esc(seqName(d, r.sequence)) + "</span>" + (h.pausable && h.pausable.includes(r.sequence) ? "" : '<span class="sub">never paused</span>') },
         { label: "Sent", num: true, get: (r) => esc(n(r.sent)) },
         { label: "Delivered", num: true, get: (r) => esc(n(r.delivered)) },
         { label: "Hard bounces", num: true, get: (r) => esc(n(r.bounced)) + ' <span class="' + (r.bounce_rate > 3 ? "bad-text" : "faint") + '">' + esc(pc(r.bounce_rate)) + "</span>" },
@@ -1501,6 +1642,8 @@
     try {
       const d = await api("/leads/" + encodeURIComponent(id));
       if (!S.drawer || S.drawer.id !== id) return;
+      if (d.moved_to) { toast("This lead was merged into another; showing that one."); location.hash = "lead=" + encodeURIComponent(d.moved_to); return; }
+      if (d.gone) { S.drawer.error = "This lead was erased" + (d.erased_at ? " on " + dt(d.erased_at) : "") + ". Only the reference is kept, in the activity log."; S.drawer.gone = true; renderDrawer(); return; }
       S.drawer.data = d;
       renderDrawer();
     } catch (e) {
@@ -1521,11 +1664,11 @@
     const L = d && d.lead;
     const name = L ? [L.first_name, L.last_name].filter(Boolean).join(" ") || L.email : "Loading";
     const head = '<div class="drawer-head"><div class="drawer-top"><div class="drawer-title"><h2 class="drawer-name">' + esc(name) + "</h2>" +
-      (L ? '<div class="drawer-meta">' + statusBadge(L.status) + tierBadge(L.tier_override || L.tier) + '<span class="mono">' + esc(L.ref_code) + "</span><span>" + esc(L.email) + "</span>" + (L.phone ? "<span>" + esc(L.phone) + "</span>" : "") + (L.booking_source === "calendly-direct" ? badge("Booked directly in Calendly", "b-grey") : "") + "</div>" : "") +
+      (L ? '<div class="drawer-meta">' + statusBadge(L.status) + tierBadge(L.tier_override || L.tier) + '<span class="mono">' + esc(L.ref_code) + "</span><span>" + esc(L.email) + "</span>" + (L.phone ? "<span>" + esc(L.phone) + "</span>" : "") + (L.booking_source === "calendly-direct" ? badge("Booked directly in Calendly", "b-grey") : "") + (d.test && d.test.is_test ? badge("Test data", "b-amber") : "") + (d.plan && d.plan.viewed_at ? planSignal({ at: d.plan.last_viewed_at || d.plan.viewed_at, views: d.plan.views }) : "") + "</div>" : "") +
       '</div><span class="spacer"></span><button class="btn btn-ghost btn-icon" type="button" data-action="drawer-close" aria-label="Close lead"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>' +
       '<div class="drawer-tabs" role="tablist">' + DRAWER_TABS.map((t) => '<button type="button" role="tab" data-action="drawer-tab" data-tab="' + t[0] + '" aria-selected="' + (dr.tab === t[0]) + '">' + esc(t[1]) + "</button>").join("") + "</div></div>";
     let body;
-    if (dr.error) body = empty("Could not load this lead", dr.error);
+    if (dr.error) body = empty(dr.gone ? "Lead erased" : "Could not load this lead", dr.error);
     else if (!d) body = '<div class="loading">Loading</div>';
     else body = ({ overview: drawerOverview, pipeline: drawerPipeline, journey: drawerJourney, behaviour: drawerBehaviour, calls: drawerCalls })[dr.tab](d);
     root.innerHTML = '<div class="scrim" data-action="drawer-close"></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="Lead">' + head + '<div class="drawer-body" id="drawer-body">' + body + "</div></aside>";
@@ -1550,7 +1693,8 @@
       (d.revops && isNum(d.revops.p_win) ? "<dt>Win probability</dt><dd>" + esc(pp(d.revops.p_win)) + ' <span class="faint">· calibrated model</span></dd>' : "") +
       (d.revops && isNum(d.revops.noshow_risk) && L.status === "booked" ? "<dt>No-show risk</dt><dd>" + badge(Math.round(d.revops.noshow_risk * 100) + "%", d.revops.noshow_risk > 0.4 ? "b-red" : d.revops.noshow_risk > 0.25 ? "b-amber" : "b-green") +
         (d.revops.noshow_reasons && d.revops.noshow_reasons.length ? ' <span class="faint">· ' + esc(d.revops.noshow_reasons.map(human).join(", ")) + "</span>" : "") + "</dd>" : "") +
-      (d.revops && d.revops.ft_ad_id ? '<dt>First ad</dt><dd class="mono">' + esc(d.revops.ft_ad_id) + "</dd>" : "") + "</dl>";
+      (d.revops && d.revops.ft_ad_id ? '<dt>First ad</dt><dd class="mono">' + esc(d.revops.ft_ad_id) + "</dd>" : "") + reviewLine(d.review) +
+      "<dt>Data</dt><dd>" + testControls(d) + "</dd></dl>";
     const vsl = d.vsl.length ? '<div class="stack">' + d.vsl.map((v) => '<div class="bar-row"><span class="bar-label">' + esc(label(v.video)) + ' film</span><span class="bar-value">' + esc(v.watched_pct) + "%" + (v.completed ? '<span class="faint">finished</span>' : "") + '</span><div class="bar-track"><div class="bar-fill"' + w(v.watched_pct) + "></div></div></div>").join("") + "</div>" : '<p class="faint small">Has not played a film.</p>';
     const answers = d.answers.some((a) => a.answer) ? '<dl class="kv">' + d.answers.map((a) => '<dt title="' + esc(a.title) + '">' + esc(label(a.id)) + "</dt><dd>" + (a.answer ? esc(a.answer) : '<span class="faint">—</span>') + "</dd>").join("") + "</dl>" : '<p class="faint small">No application answers yet.</p>';
     const scoreLines = sb && sb.lines && sb.lines.length ? table([
@@ -1636,7 +1780,8 @@
         '<label class="field span2"><span class="field-label">Note</span><input class="input" name="note" maxlength="300"></label>' +
         '<div class="field"><span class="field-label">&nbsp;</span><button class="btn" type="submit">Add payment</button></div></form>',
     });
-    return pipeline + deal + receivablesCard(d) + pays;
+    const held = canWrite() && ["booked", "no_show", "showed"].includes(L.status) && L.call_at ? '<div class="row mb12"><button class="btn btn-primary btn-sm" type="button" data-action="held-open" data-id="' + esc(L.id) + '" data-name="' + esc([L.first_name, L.last_name].filter(Boolean).join(" ")) + '">' + (L.status === "showed" ? "Add call review" : "Log showed: review and plan") + "</button></div>" : "";
+    return held + planCard(d) + pipeline + deal + receivablesCard(d) + pays;
   }
 
   function drawerJourney(d) {
@@ -1651,8 +1796,8 @@
     }).join("");
     const pending = d.pending_emails.length ? card({ title: "Coming up", sub: "Emails queued for this lead", flush: true, body: table([
       { label: "When", get: (r) => esc(dt(r.send_at)) },
-      { label: "Sequence", get: (r) => esc(label(r.sequence)) },
-      { label: "Template", get: (r) => '<code class="mono">' + esc(r.template) + "</code>" },
+      { label: "Sequence", get: (r) => esc(r.sequence_name || label(r.sequence)) },
+      { label: "Email", cls: "wrap", get: (r) => '<span class="small">' + esc(r.subject || r.template) + '</span><span class="sub mono">' + esc(r.template) + "</span>" },
     ], d.pending_emails) }) : "";
     return pending + card({ title: "Journey", sub: d.timeline.length + " moments, newest first", body: '<div class="tl">' + items + "</div>" });
   }
@@ -1750,7 +1895,7 @@
     box.innerHTML = '<div class="seg" role="group" aria-label="Date range">' + R.map((r) => '<button type="button" data-action="range" data-range="' + r[0] + '" aria-pressed="' + (f.range === r[0]) + '">' + r[1] + "</button>").join("") + "</div>" +
       s("channel", "All channels", o.channels, "Channel") + s("campaign", "All campaigns", o.campaigns, "Campaign") + s("variant", "All headlines", o.variants, "Headline variant") + s("device", "All devices", o.devices, "Device") +
       (any ? '<button class="btn btn-ghost btn-sm" type="button" data-action="clear-filters">Clear</button>' : "") +
-      '<span class="spacer"></span><button class="btn btn-ghost btn-sm" type="button" data-action="refresh" title="Reload this view"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3"/></svg>Refresh</button>';
+      '<span class="spacer"></span>' + testToggle() + '<button class="btn btn-ghost btn-sm" type="button" data-action="refresh" title="Reload this view"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3"/></svg>Refresh</button>';
   }
 
   function renderShell() {
@@ -1792,12 +1937,19 @@
   function parseHash() {
     const h = decodeURIComponent(location.hash.replace(/^#/, ""));
     if (h.startsWith("lead=")) return { tab: null, lead: h.slice(5) };
+    if (h.startsWith("reassign=")) return { tab: null, lead: null, reassign: h.slice(9) };
     const home = S.me && (S.me.role === "closer" || S.me.role === "setter") ? "today" : "overview";
     return { tab: TAB[h] && tabAllowed(h) ? h : home, lead: null };
   }
   let booted = false;
   function route() {
     const r = parseHash();
+    if (r.reassign) {
+      if (!booted) { S.tab = tabAllowed("today") ? "today" : "overview"; renderShell(); loadTab(); }
+      booted = true;
+      openReassign(r.reassign);
+      return;
+    }
     if (r.lead) {
       if (!booted) { S.tab = tabAllowed("leads") ? "leads" : "today"; renderShell(); loadTab(); }
       if (!S.drawer || S.drawer.id !== r.lead) openLead(r.lead);
@@ -2104,6 +2256,14 @@
     }
     if (lbl) lbl.textContent = isManager() ? "Log out everywhere" : "Sign out";
   }
+  function waitedMs(ms) {
+    const s = Math.max(0, Math.floor((ms || 0) / 1000));
+    if (s < 3600) return Math.floor(s / 60) + "m " + String(s % 60).padStart(2, "0") + "s";
+    if (s < 86400) return Math.floor(s / 3600) + "h " + Math.floor((s % 3600) / 60) + "m";
+    return Math.floor(s / 86400) + "d " + Math.floor((s % 86400) / 3600) + "h";
+  }
+  /** Buying signal: the lead opened their written plan. */
+  const planSignal = (v) => '<span class="badge b-green signal" title="' + esc("Opened " + (v.views || 1) + "×, last " + dt(v.at)) + '">Viewed plan ' + esc(ago(v.at)) + "</span>";
   function waited(ts) {
     const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
     if (s < 3600) return Math.floor(s / 60) + "m " + String(s % 60).padStart(2, "0") + "s";
@@ -2162,18 +2322,23 @@
       kpi("Payments due", esc(n(st.payments_due)), "Instalments this week"),
     ], "today-kpis");
     const calls = d.calls.length ? '<div class="prep-list">' + d.calls.map(prepCard).join("") + "</div>" : empty("No calls today", "Booked calls for today show here with a prep card.", true);
+    const SLA = ["sla-0", "sla-1", "sla-2", "sla-3"], SLA_TXT = ["Under 5 min", "Over 5 min: rep pinged", "Over 30 min: managers pinged", "Over 2 h: reassign offered"];
     const fresh = card({
-      title: "New A/B leads not yet touched", sub: "Speed matters: the clock runs from the moment they applied.", flush: true,
-      body: d.fresh.length ? '<ul class="today-list">' + d.fresh.map((r) =>
-        '<li class="today-row' + (r.waiting_ms > 300000 ? " late" : "") + '"><div class="today-main">' + leadLink(r.id, r.name) + " " + tierBadge(r.tier) +
-        '<span class="sub">Waiting <span class="tnum" data-since="' + esc(r.applied_at) + '">' + esc(waited(r.applied_at)) + "</span>" + (r.closer ? " · " + esc(r.closer) : "") + "</span></div>" +
-        '<div class="today-actions">' + telBtn(r.phone, true) + (canWrite() ? '<button class="btn btn-sm" type="button" data-action="today-touch" data-id="' + esc(r.id) + '" data-name="' + esc(r.name) + '">Log touch</button>' : "") + "</div></li>").join("") + "</ul>"
+      title: "New A/B leads not yet touched",
+      sub: "The clock runs in sales hours (" + (d.sales_hours || "Mon–Fri 09:00–18:00") + ")" + (d.in_hours === false ? " and is paused now" : "") + ". Green under 5 min, amber past 5 (rep pinged), red past 30 (managers), dark past 2 h (reassign).", flush: true,
+      body: d.fresh.length ? '<ul class="today-list">' + d.fresh.map((r) => {
+        const lvl = Math.max(0, Math.min(3, r.sla_level || 0));
+        return '<li class="today-row ' + SLA[lvl] + '"><span class="sla-bar" aria-hidden="true"></span><div class="today-main">' + leadLink(r.id, r.name) + " " + tierBadge(r.tier) +
+          (r.also && r.also.length ? ' <span class="badge plain b-grey" title="' + esc("Applied " + (r.also.length + 1) + " times: " + r.also.map((a) => a.ref_code).join(", ")) + '">+' + esc(r.also.length) + " more</span>" : "") +
+          '<span class="sub"><span class="sr-only">' + esc(SLA_TXT[lvl]) + '. </span>Waiting <span class="tnum"' + (d.in_hours === false ? "" : ' data-sla="' + esc(r.sla_ms) + '" data-loaded="' + esc(Date.now()) + '"') + ">" + esc(waitedMs(r.sla_ms)) + "</span>" + (d.in_hours === false ? " (paused)" : "") + (r.closer ? " · " + esc(r.closer) : " · unassigned") + "</span></div>" +
+          '<div class="today-actions">' + telBtn(r.phone, true) + (canWrite() ? '<button class="btn btn-sm" type="button" data-action="today-touch" data-id="' + esc(r.id) + '" data-name="' + esc(r.name) + '">Log touch</button>' : "") + "</div></li>";
+      }).join("") + "</ul>"
         : empty("Inbox zero", "Every new A and B lead from the last 7 days has been touched.", true),
     });
     const fu = card({
       title: "Follow-ups due", flush: true,
       body: d.follow_ups.length ? '<ul class="today-list">' + d.follow_ups.map((r) =>
-        '<li class="today-row"><div class="today-main">' + leadLink(r.id, r.name) + " " + tierBadge(r.tier) + '<span class="sub">' + esc(day(r.due_at)) + " " + (r.overdue ? badge("Overdue", "b-red") : badge("Today", "b-amber")) + " " + statusBadge(r.status) + "</span></div>" +
+        '<li class="today-row"><div class="today-main">' + leadLink(r.id, r.name) + " " + tierBadge(r.tier) + (r.plan_viewed ? " " + planSignal(r.plan_viewed) : "") + '<span class="sub">' + esc(day(r.due_at)) + " " + (r.overdue ? badge("Overdue", "b-red") : badge("Today", "b-amber")) + " " + statusBadge(r.status) + "</span></div>" +
         '<div class="today-actions">' + (canWrite() ? '<button class="btn btn-sm" type="button" data-action="today-touch" data-id="' + esc(r.id) + '" data-name="' + esc(r.name) + '">Log touch</button>' : "") + '<a class="btn btn-sm btn-ghost" href="#lead=' + encodeURIComponent(r.id) + '">Open</a></div></li>').join("") + "</ul>"
         : empty("No follow-ups due", "Set a follow-up date on a lead and it shows here on the day.", true),
     });
@@ -2187,6 +2352,7 @@
     return '<article class="prep' + (c.needs_outcome ? " due" : "") + '">' +
       '<div class="prep-head"><div class="prep-time tnum">' + esc(hm(c.call_at)) + '</div><div class="prep-who">' + leadLink(c.id, c.name) + " " + tierBadge(c.tier) + " " + statusBadge(c.status) +
       '<div class="sub">' + esc([c.ref_code, c.closer, isNum(c.score) ? "score " + c.score : ""].filter(Boolean).join(" · ")) + "</div></div>" + (c.needs_outcome ? badge("Needs outcome", "b-red") : riskBadgeOf(c.noshow_risk)) + "</div>" +
+      (c.plan_viewed ? '<div class="row mt8">' + planSignal(c.plan_viewed) + "</div>" : "") +
       '<div class="prep-facts"><span>Film ' + (isNum(c.watched_pct) ? "<strong>" + esc(c.watched_pct) + "%</strong>" : "not played") + "</span>" + (isNum(c.p_win) ? "<span>Win prob. <strong>" + esc(pp(c.p_win)) + "</strong></span>" : "") + "<span>" + esc(n(c.touches)) + " touches</span></div>" +
       (c.noshow_reasons && c.noshow_reasons.length && !c.needs_outcome ? '<p class="small faint">No-show signals: ' + esc(c.noshow_reasons.join(" · ")) + "</p>" : "") +
       (top.length ? dl(top) : "") + (rest.length ? '<details class="prep-more"><summary>More answers</summary>' + dl(rest) + "</details>" : "") +
@@ -2207,7 +2373,7 @@
   }
   function outcomeForm(id, status) {
     const reasons = (S.today && S.today.lost_reasons) || ["Price", "Timing", "Chose agency", "Built in-house", "No response", "Not a fit", "Trust", "Other"];
-    return '<div class="stack gap16">' + (status === "booked" ? '<div class="row wrap"><button class="btn btn-primary" type="button" data-action="today-quick" data-id="' + esc(id) + '" data-status="showed">Showed – follow up</button><button class="btn" type="button" data-action="today-quick" data-id="' + esc(id) + '" data-status="no_show">No-show</button></div>' : "") +
+    return '<div class="stack gap16">' + (status === "booked" ? '<div class="row wrap"><button class="btn btn-primary" type="button" data-action="held-open" data-id="' + esc(id) + '">Showed: review and plan…</button><button class="btn" type="button" data-action="today-quick" data-id="' + esc(id) + '" data-status="no_show">No-show</button></div>' : "") +
       '<form data-submit="today-won" data-id="' + esc(id) + '" class="form-grid">' + field("Deal value (USD)", '<input class="input" name="revenue" type="number" min="1" step="1" required inputmode="numeric">') +
       field("Payment plan", sel("plan", [{ value: "full", label: "Paid in full" }, { value: "2", label: "2 instalments" }, { value: "3", label: "3 instalments" }, { value: "6", label: "6 instalments" }, { value: "12", label: "12 instalments" }], "full")) +
       '<div class="form-actions span-all"><button class="btn btn-primary" type="submit">Won</button></div></form>' +
@@ -2386,7 +2552,7 @@
       { label: "When", get: (r) => esc(dt(r.ts)) + '<span class="sub">' + esc(ago(r.ts)) + "</span>" },
       { label: "Who", get: (r) => esc(r.who) },
       { label: "Action", get: (r) => esc(label(r.action)) },
-      { label: "On", get: (r) => (r.entity === "lead" && r.entity_id && r.action !== "lead_erase" ? leadLink(r.entity_id, "Lead") : esc(label(r.entity))) + (r.entity_id && r.entity !== "lead" ? '<span class="sub mono">' + esc(r.entity_id) + "</span>" : "") },
+      { label: "On", get: (r) => (r.entity === "lead" && r.lead_target && r.action !== "lead_erase" ? leadLink(r.lead_target, r.lead_state === "merged" ? "Lead (merged)" : "Lead") : r.entity === "lead" && r.lead_state === "erased" ? '<span class="faint">Lead (erased)</span>' : esc(label(r.entity))) + (r.entity_id && r.entity !== "lead" ? '<span class="sub mono">' + esc(r.entity_id) + "</span>" : "") },
       { label: "Change", cls: "wrap", get: (r) => (r.before ? '<span class="faint small">' + esc(short(r.before)) + "</span>" : "") + (r.before && r.after ? " → " : "") + (r.after ? '<span class="small">' + esc(short(r.after)) + "</span>" : "") },
     ], d.rows, { empty: empty("Nothing logged yet", "Changes in Funnel HQ are recorded here from now on.") });
     const pager = d.page > 1 || d.more ? '<div class="pager"><span>Page ' + esc(d.page) + '</span><div class="row"><button class="btn btn-sm" type="button" data-action="activity-page" data-page="' + esc(d.page - 1) + '"' + (d.page <= 1 ? " disabled" : "") + '>Newer</button><button class="btn btn-sm" type="button" data-action="activity-page" data-page="' + esc(d.page + 1) + '"' + (d.more ? "" : " disabled") + ">Older</button></div></div>" : "";
@@ -2630,6 +2796,206 @@
     },
   });
 
+  // ══ Round 3: held calls and written plans, test data, launch readiness, reassign links, simple mode ══
+
+  // ── "Showed" form: review (offer made is required) + the written plan ──────────────────────────────
+  function planFields(p) {
+    p = p || {};
+    return '<fieldset class="plan-fields span-all"><legend class="field-label">Written plan <span class="faint">(the lead gets a private link; first build and next step are required for a plan)</span></legend><div class="form-grid">' +
+      field("First build", '<input class="input" name="first_build" maxlength="300" placeholder="e.g. Quote follow-up tool that replaces the agency CRM" value="' + esc(p.first_build || "") + '">', "span-all") +
+      field("Why it pays back, in their words", '<textarea class="textarea" name="why" maxlength="1200" rows="2" placeholder="Quote what they said">' + esc(p.why || "") + "</textarea>", "span-all") +
+      field("What they keep", '<input class="input" name="keep" maxlength="800" placeholder="Code, accounts, data, the dashboard" value="' + esc(p.keep || "") + '">', "span-all") +
+      field("Next step", '<input class="input" name="next_step" maxlength="300" placeholder="e.g. Decide with your partner, then a 20-minute kickoff call" value="' + esc(p.next_step || "") + '">') +
+      field("Next step date", '<input class="input" name="next_step_at" type="date" value="' + esc(p.next_step_at ? dateInput(p.next_step_at) : "") + '">') +
+      field("Price (if offered)", '<input class="input" name="price" maxlength="120" placeholder="$24,000" value="' + esc(p.price || "") + '">') +
+      field("Payment plan (if offered)", '<input class="input" name="plan" maxlength="200" placeholder="3 × $8,000, monthly" value="' + esc(p.plan || "") + '">') +
+      "</div></fieldset>";
+  }
+  function heldForm(id, objections, plan) {
+    const objs = objections || ["Price", "Timing", "Needs to think", "Partner/spouse", "Funding doubts", "Trust/proof", "Time to commit", "Not a fit"];
+    return '<form data-submit="held-save" data-id="' + esc(id) + '" class="form-grid">' +
+      '<div class="field span-all" role="radiogroup" aria-required="true" aria-labelledby="offer-l"><span class="field-label" id="offer-l">Offer made? <span class="req">required</span></span><div class="seg seg-wrap">' +
+      '<label class="seg-radio"><input type="radio" name="offer_made" value="yes" required><span>Yes, offer made</span></label><label class="seg-radio"><input type="radio" name="offer_made" value="no"><span>No offer</span></label></div></div>' +
+      field("Main objection", sel("objection", [{ value: "", label: "None / not yet" }].concat(objs.map((o) => ({ value: o, label: o }))), "")) +
+      field("Call QA (1–5)", sel("qa_score", [{ value: "", label: "—" }].concat([5, 4, 3, 2, 1].map((x) => ({ value: x, label: x + (x === 5 ? " · excellent" : x === 1 ? " · poor" : "") }))), "")) +
+      field("Recording link", '<input class="input" name="recording_url" type="url" inputmode="url" placeholder="https://… (optional)" maxlength="500">', "span-all") +
+      planFields(plan) +
+      '<div class="form-actions span-all"><button class="btn" type="button" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">Save: showed</button></div></form>';
+  }
+  const planFromForm = (b) => ({ first_build: b.first_build, why: b.why, keep: b.keep, next_step: b.next_step, next_step_at: b.next_step_at || null, price: b.price, plan: b.plan });
+  function planCard(d) {
+    const p = d.plan;
+    const can = canWrite();
+    if (!p) {
+      return card({ title: "Written plan", sub: "Promised on /book: they leave with a written plan whether or not they buy. Fill it in the Showed form or here.",
+        actions: can ? '<button class="btn btn-sm" type="button" data-action="plan-edit">Write plan</button>' : "",
+        body: '<p class="faint small">No plan yet. The recap email goes 2 hours after the call with the plan link once one is saved, otherwise a neutral note after 24 hours.</p>' });
+    }
+    const b = p.body || {};
+    return card({
+      title: "Written plan", sub: (p.viewed_at ? "Opened " + p.views + "× · last " + dt(p.last_viewed_at || p.viewed_at) : "Not opened yet") + " · saved " + dt(p.updated_at || p.created_at),
+      actions: (p.viewed_at ? planSignal({ at: p.last_viewed_at || p.viewed_at, views: p.views }) + " " : "") + copyBtn(p.url, "Copy link") + ' <a class="btn btn-sm btn-ghost" href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer">Open</a>' + (can ? ' <button class="btn btn-sm" type="button" data-action="plan-edit">Edit</button>' : ""),
+      body: '<dl class="kv"><dt>First build</dt><dd>' + esc(b.first_build) + "</dd>" + (b.why ? "<dt>Why it pays back</dt><dd>" + esc(b.why) + "</dd>" : "") + (b.keep ? "<dt>What they keep</dt><dd>" + esc(b.keep) + "</dd>" : "") +
+        "<dt>Next step</dt><dd>" + esc(b.next_step) + (b.next_step_at ? ' <span class="faint">· ' + esc(day(b.next_step_at)) + "</span>" : "") + "</dd>" + (b.price ? "<dt>Price</dt><dd>" + esc(b.price) + "</dd>" : "") + (b.plan ? "<dt>Payment plan</dt><dd>" + esc(b.plan) + "</dd>" : "") + "</dl>",
+    });
+  }
+  function reviewLine(r) {
+    if (!r) return "";
+    return "<dt>Call review</dt><dd>" + (r.offer_made ? badge("Offer made", "b-blue") : badge("No offer", "b-grey")) + (isNum(r.qa_score) ? ' <span class="faint">QA ' + esc(r.qa_score) + "/5</span>" : "") + (r.objection ? ' <span class="faint">· ' + esc(r.objection) + "</span>" : "") +
+      (r.recording_url ? ' · <a href="' + esc(r.recording_url) + '" target="_blank" rel="noopener noreferrer">Recording</a>' : "") + "</dd>";
+  }
+  function testControls(d) {
+    const t = d.test || {};
+    if (!canWrite()) return t.is_test ? badge("Test data", "b-amber") : "";
+    return t.is_test
+      ? badge("Test data", "b-amber") + ' <span class="faint small">' + esc(t.reason ? "(" + human(String(t.reason).replace(/^manual:.*/, "marked by hand")) + ")" : "") + '</span> <button class="btn btn-sm" type="button" data-action="lead-test" data-on="0">Not test data</button>'
+      : '<button class="btn btn-sm btn-ghost" type="button" data-action="lead-test" data-on="1">Mark as test data</button>' + (t.decided ? ' <span class="faint small">marked real by hand</span>' : "");
+  }
+
+  // ── Floating definition for the "?" buttons (inline tips would be clipped by cards and tables) ─────
+  let floatTip = null;
+  function showTip(btn) {
+    const src = document.getElementById(btn.getAttribute("aria-describedby") || "");
+    if (!src) return;
+    if (!floatTip) { floatTip = document.createElement("div"); floatTip.className = "float-tip"; floatTip.setAttribute("aria-hidden", "true"); document.body.appendChild(floatTip); }
+    floatTip.textContent = src.textContent;
+    floatTip.hidden = false;
+    const r = btn.getBoundingClientRect(), tw = Math.min(280, window.innerWidth - 24);
+    floatTip.style.maxWidth = tw + "px";
+    const left = clamp(r.left + r.width / 2 - tw / 2, 12, window.innerWidth - tw - 12);
+    floatTip.style.left = left + "px";
+    const h = floatTip.offsetHeight;
+    floatTip.style.top = (r.top - h - 8 > 8 ? r.top - h - 8 : r.bottom + 8) + "px";
+  }
+  const hideTip = () => { if (floatTip) floatTip.hidden = true; };
+  document.addEventListener("mouseover", (ev) => { const b = ev.target.closest && ev.target.closest(".mhelp-btn"); if (b) showTip(b); });
+  document.addEventListener("mouseout", (ev) => { if (ev.target.closest && ev.target.closest(".mhelp-btn")) hideTip(); });
+  document.addEventListener("focusin", (ev) => { const b = ev.target.closest && ev.target.closest(".mhelp-btn"); if (b) showTip(b); else hideTip(); });
+  document.addEventListener("focusout", (ev) => { if (ev.target.closest && ev.target.closest(".mhelp-btn")) hideTip(); });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") hideTip(); });
+  window.addEventListener("scroll", hideTip, { passive: true, capture: true });
+
+  // ── Simple mode: fewer tabs for part-time operators ────────────────────────────────────────────────
+  const SIMPLE_TABS = ["overview", "today", "leads", "pipeline", "emails"];
+  const simpleKey = () => "hq-simple:" + (S.me ? S.me.id : "anon");
+  function simpleOn() {
+    const v = store.get(simpleKey(), null);
+    return v === null ? !!S.me && S.me.role === "viewer" : v === true;
+  }
+  function simpleAllows(id) {
+    if (!simpleOn()) return true;
+    return SIMPLE_TABS.includes(id) || (id === "integrations" && S.me && S.me.role === "owner");
+  }
+  function renderSimpleToggle() {
+    const box = $("#simple-toggle");
+    if (!box || !S.me) return;
+    const on = simpleOn();
+    box.hidden = false;
+    box.innerHTML = '<label class="switch simple-switch"><input type="checkbox" data-change="simple-mode"' + (on ? " checked" : "") + '><span class="switch-track"></span><span>Simple mode</span></label>';
+    document.body.classList.toggle("simple-mode", on);
+  }
+
+  // ── Include test data (report tabs) ────────────────────────────────────────────────────────────────
+  const testToggle = () => '<label class="switch test-switch" title="Show test leads and our own browsers in these numbers"><input type="checkbox" data-change="include-test"' + (S.includeTest ? " checked" : "") + '><span class="switch-track"></span><span class="small">Include test data</span></label>';
+
+  // ── Reassign link (#reassign=<token>) ──────────────────────────────────────────────────────────────
+  async function openReassign(token) {
+    try {
+      const r = await api("/reassign", { query: "token=" + encodeURIComponent(token) });
+      const L = r.lead;
+      const body = '<div class="stack gap16"><p><strong>' + esc(L.name) + "</strong> " + tierBadge(L.tier) + ' <span class="mono faint">' + esc(L.ref_code) + "</span><br>" +
+        '<span class="faint">Applied ' + esc(ago(L.applied_at)) + " · now " + esc(STATUS_LABEL[L.status] || L.status) + "</span></p>" +
+        (r.touched ? '<div class="callout info"><span class="callout-dot"></span><div>Someone has touched this lead since the ping. Reassign only if they are not working it.</div></div>' : "") +
+        '<dl class="kv"><dt>Now</dt><dd>' + esc(r.current ? r.current.name : "Unassigned") + "</dd><dt>Next in rotation</dt><dd>" + esc(r.next ? r.next.name : "No other active rep for this tier") + "</dd></dl>" +
+        '<div class="form-actions"><button class="btn" type="button" data-action="modal-close">Keep as is</button>' + (r.next && isManager() ? '<button class="btn btn-primary" type="button" data-action="reassign-go" data-token="' + esc(token) + '">Reassign to ' + esc(r.next.name) + "</button>" : "") + "</div></div>";
+      openModal("Reassign lead", body, true);
+    } catch (e) { fail(e); }
+  }
+
+  Object.assign(actions, {
+    "held-open": async (el) => {
+      const id = el.dataset.id;
+      openModal("Showed · " + (el.dataset.name || "call"), '<div class="loading">Loading</div>');
+      let plan = null;
+      try { const d = await api("/leads/" + encodeURIComponent(id)); plan = d.plan && d.plan.body; if (!el.dataset.name) $(".modal .card-title").textContent = "Showed · " + [d.lead.first_name, d.lead.last_name].filter(Boolean).join(" "); } catch (e) { /* new plan */ }
+      $(".modal-body").innerHTML = heldForm(id, (S.today && S.today.objections) || null, plan);
+      const f = $(".modal-body input");
+      if (f) f.focus();
+    },
+    "plan-edit": () => {
+      if (!S.drawer || !S.drawer.data) return;
+      const p = S.drawer.data.plan && S.drawer.data.plan.body;
+      openModal("Written plan", '<form data-submit="plan-save" class="form-grid">' + planFields(p) + '<div class="form-actions span-all"><button class="btn" type="button" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">Save plan</button></div></form>');
+    },
+    "lead-test": async (el) => {
+      if (!S.drawer) return;
+      const on = el.dataset.on === "1";
+      try { await api("/leads/" + encodeURIComponent(S.drawer.id) + "/test", { method: "POST", body: { is_test: on } }); toast(on ? "Marked as test data: left out of reports, no emails or calls." : "Marked as real data."); openLead(S.drawer.id); loadTab(true); } catch (e) { fail(e); }
+    },
+    "go-live": async (el) => {
+      if (!confirm("Go live? Emails queued during testing that were due more than an hour ago are skipped, so real leads only get fresh emails.")) return;
+      el.disabled = true;
+      try { const r = await api("/readiness/go-live", { method: "POST" }); toast("Live. Skipped " + n(r.skipped) + " stale emails."); loadTab(true); } catch (e) { el.disabled = false; fail(e); }
+    },
+    "ready-dns": async (el) => {
+      el.disabled = true; el.textContent = "Checking…";
+      try { const r = await api("/readiness/dns", { method: "POST" }); toast(r.error ? r.error : "DNS checked for " + (r.domain || "your domain")); loadTab(true); } catch (e) { fail(e); el.disabled = false; el.textContent = "Check DNS"; }
+    },
+    "scroll-test": () => { const c = $("#test-data-card"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); },
+    "test-sweep": async (el) => {
+      el.disabled = true;
+      try { const r = await api("/test-data/sweep", { method: "POST" }); toast("Re-scanned: " + n(r.marked) + " newly marked, " + n(r.test_leads) + " test leads in total"); loadTab(true); } catch (e) { fail(e); el.disabled = false; }
+    },
+    "test-add-ip": async (el) => {
+      el.disabled = true;
+      try { const r = await api("/test-data/add-my-ip", { method: "POST" }); toast("This network is internal. " + n(r.marked) + " leads marked as test."); loadTab(true); } catch (e) { fail(e); el.disabled = false; }
+    },
+    "test-purge": async (el) => {
+      const v = prompt("This erases every test lead and everything linked to them (the normal erasure). Type PURGE to confirm.");
+      if (v !== "PURGE") return;
+      el.disabled = true;
+      try { const r = await api("/test-data/purge", { method: "POST", body: { confirm: "PURGE" } }); toast("Erased " + n(r.erased) + " test leads" + (r.left ? ", " + n(r.left) + " left: run it again" : "")); loadTab(true); } catch (e) { fail(e); el.disabled = false; }
+    },
+    "reassign-go": async (el) => {
+      el.disabled = true;
+      try { const r = await api("/reassign", { method: "POST", body: { token: el.dataset.token } }); closeModal(); toast("Reassigned to " + r.closer.name + ". They have been pinged."); history.replaceState(null, "", "#" + S.tab); loadTab(true); } catch (e) { el.disabled = false; fail(e); }
+    },
+  });
+  Object.assign(changes, {
+    "include-test": (el) => { S.includeTest = !!el.checked; store.set("hq-include-test", S.includeTest); loadTab(); },
+    "simple-mode": (el) => {
+      store.set(simpleKey(), !!el.checked);
+      renderSimpleToggle();
+      if (!tabAllowed(S.tab)) location.hash = "overview"; else renderShell();
+    },
+    "ready-confirm": async (el) => {
+      try { await api("/readiness/confirm", { method: "POST", body: { key: el.dataset.key, value: el.checked } }); toast("Saved"); loadTab(true); } catch (e) { el.checked = !el.checked; fail(e); }
+    },
+  });
+  Object.assign(submits, {
+    "held-save": async (form) => {
+      const b = formObj(form);
+      const offer = (form.querySelector('input[name="offer_made"]:checked') || {}).value;
+      if (!offer) { toast("Say whether an offer was made.", "err"); return; }
+      const plan = planFromForm(b);
+      const anyPlan = ["first_build", "why", "keep", "next_step", "price", "plan"].some((k) => String(plan[k] || "").trim());
+      if (anyPlan && (!String(plan.first_build || "").trim() || !String(plan.next_step || "").trim())) { toast("A plan needs the first build and the next step.", "err"); return; }
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      try {
+        const r = await api("/calls/held", { method: "POST", body: { lead_id: form.dataset.id, offer_made: offer, objection: b.objection || null, qa_score: b.qa_score || null, recording_url: b.recording_url || null, plan: anyPlan ? plan : null } });
+        closeModal();
+        toast(r.plan ? "Logged as showed. Plan saved: the recap with the link goes about 2 hours after the call." : "Logged as showed. Post-call follow-up started.");
+        if (S.drawer) openLead(S.drawer.id);
+        loadTab(true);
+      } catch (e) { if (btn) btn.disabled = false; fail(e); }
+    },
+    "plan-save": async (form) => {
+      const b = formObj(form);
+      try { const r = await api("/leads/" + encodeURIComponent(S.drawer.id) + "/plan", { method: "PUT", body: planFromForm(b) }); closeModal(); toast("Plan saved"); openLead(S.drawer.id); if (r.url) S.lastPlanUrl = r.url; } catch (e) { fail(e); }
+    },
+  });
+
   document.addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-action]");
     if (!el) return;
@@ -2675,14 +3041,19 @@
   // ── Boot ───────────────────────────────────────────────────────────────────
   async function boot() {
     try { S.me = (await api("/me")).user; } catch (e) { S.me = null; }
+    try { const m = await api("/metrics"); S.metrics = Object.fromEntries(m.metrics.map((x) => [x.id, x])); S.smallN = m.small_n; } catch (e) { S.metrics = {}; }
     renderMe();
+    renderSimpleToggle();
     window.addEventListener("hashchange", route);
     api("/filters").then((o) => { S.options = o; if (!TAB[S.tab].noFilters) renderFilters(); }).catch(() => {});
     route();
     if (S.tab !== "alerts") refreshBanner();
     setInterval(() => { if (!document.hidden && S.tab !== "alerts") refreshBanner(); }, 60000);
     // Live "waiting" counters on the Today view.
-    setInterval(() => { $$("[data-since]").forEach((el) => { el.textContent = waited(Number(el.getAttribute("data-since"))); }); }, 1000);
+    setInterval(() => {
+      $$("[data-since]").forEach((el) => { el.textContent = waited(Number(el.getAttribute("data-since"))); });
+      $$("[data-sla]").forEach((el) => { el.textContent = waitedMs(Number(el.getAttribute("data-sla")) + (Date.now() - Number(el.getAttribute("data-loaded")))); });
+    }, 1000);
   }
   // Deferred scripts run in order before DOMContentLoaded; waiting for it means funnel-map.js is loaded.
   if (document.readyState === "loading" || document.readyState === "interactive") document.addEventListener("DOMContentLoaded", boot, { once: true });

@@ -35,6 +35,8 @@ import { maybeRunAnalyst } from "./sales/analyst";
 import { sweepHotPartials } from "./funnel/application";
 import { hqPublic } from "./routes/hq-public";
 import { v1 } from "./routes/v1";
+import { sweepTestData } from "./admin/testdata";
+import { runEscalations } from "./sales/escalation";
 
 const app = new Hono<AppEnv>();
 
@@ -279,5 +281,7 @@ export default {
     await quiet("closer_pings", () => pingClosersFollowUps(rt));
     await quiet("analyst", () => maybeRunAnalyst(rt));
     await quiet("hot_partial", () => sweepHotPartials(rt));
+    await quiet("test_data", () => sweepTestData(rt));
+    await quiet("escalations", () => runEscalations(rt));
   },
 } satisfies ExportedHandler<Env>;
