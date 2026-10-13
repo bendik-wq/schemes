@@ -15,7 +15,7 @@ export const EVENTS: Record<string, EventDef> = {
   // Lifecycle (server)
   page_view: { meta: "PageView", ga4: "page_view" },
   lead_captured: { meta: "Lead", ga4: "generate_lead" },
-  app_step: { ga4: "app_step" },
+  app_step: { meta: "StartApplication", ga4: "app_step" }, // Meta: first step per lead only (forward.ts)
   app_submitted: { meta: "SubmitApplication", ga4: "app_submitted" },
   lead_qualified: { meta: "QualifiedLead", ga4: "qualify_lead" },
   booking_scheduled: { meta: "Schedule", ga4: "booking_scheduled" },
@@ -23,11 +23,11 @@ export const EVENTS: Record<string, EventDef> = {
   booking_cancelled: { ga4: "booking_cancelled" },
   booking_claimed: { micro: true },
   call_showed: { meta: "CallShowed", ga4: "call_showed" },
-  call_no_show: { ga4: "call_no_show" },
+  call_no_show: { meta: "NoShow", ga4: "call_no_show" },
   deal_won: { meta: "Purchase", ga4: "purchase" },
-  deal_lost: { ga4: "deal_lost" },
-  payment_recorded: { ga4: "payment" },
-  lead_status_changed: { ga4: "lead_status_changed" },
+  deal_lost: { meta: "DealLost", ga4: "deal_lost" },
+  payment_recorded: { meta: "CashCollected", ga4: "payment" }, // Meta: "Refund" when negative (forward.ts)
+  lead_status_changed: { ga4: "lead_status_changed" }, // Meta: "Disqualified" only (forward.ts)
   unsubscribed: {},
   consent_set: { micro: true },
   continue_link_sent: { micro: true },
@@ -49,12 +49,12 @@ export const EVENTS: Record<string, EventDef> = {
   // VSL (server-derived from heartbeats)
   vsl_play: { ga4: "video_start" },
   vsl_unmute: { ga4: "vsl_unmute" },
-  vsl_25: { ga4: "video_progress" },
+  vsl_25: { meta: "VideoView25", ga4: "video_progress" },
   vsl_50: { meta: "ViewContent", ga4: "video_progress" },
   vsl_75: { ga4: "video_progress" },
   vsl_95: { ga4: "video_progress" },
   vsl_complete: { ga4: "video_complete" },
-  vsl_cta_reveal: { ga4: "vsl_cta_reveal" },
+  vsl_cta_reveal: { meta: "VSLPitchReached", ga4: "vsl_cta_reveal" },
   vsl_cta_click: { ga4: "vsl_cta_click", client: true },
   vsl_rewatch: { micro: true, client: true },
   vsl_skip: { micro: true, client: true },

@@ -12,6 +12,7 @@ import { verifyElevenLabs, handlePostCall } from "../integrations/elevenlabs";
 import { initAuthorized, initVariables } from "../integrations/elevenlabs-inbound";
 import { verifyWhatsApp, handleWhatsAppInbound } from "../integrations/whatsapp";
 import { vapiAuthorized, handleVapi } from "../integrations/voice";
+import { verifySvix, handleResendEvent } from "../integrations/resend-webhook";
 
 export const hooks = new Hono<AppEnv>();
 
@@ -130,4 +131,22 @@ hooks.post("/vapi", async (c) => {
   const j = parse((await raw(c)) || "");
   if (!j) return c.json({ error: "bad json" }, 400);
   return c.json({ ok: true, result: await handleVapi(rt, j) });
+});
+
+/** Resend delivery events (Svix signature over `${svix-id}.${svix-timestamp}.${body}`, 5-minute window). */
+hooks.post("/resend", async (c) => {
+  const rt = c.get("rt");
+  const secret = rt.settings.get("RESEND_WEBHOOK_SECRET");
+  if (!secret) return c.json({ error: "not configured" }, 501);
+  const body = await raw(c);
+  if (body == null) return c.json({ error: "too large" }, 413);
+  const ok = await verifySvix(secret, {
+    id: c.req.header("svix-id") || c.req.header("webhook-id") || null,
+    timestamp: c.req.header("svix-timestamp") || c.req.header("webhook-timestamp") || null,
+    signature: c.req.header("svix-signature") || c.req.header("webhook-signature") || null,
+  }, body, rt.now());
+  if (!ok) return c.json({ error: "bad signature" }, 401);
+  const j = parse(body);
+  if (!j) return c.json({ error: "bad json" }, 400);
+  return c.json({ ok: true, ...(await handleResendEvent(rt, j)) });
 });

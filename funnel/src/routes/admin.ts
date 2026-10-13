@@ -33,6 +33,17 @@ import { insightsReport } from "../admin/insights";
 import { landersReport } from "../admin/landers";
 import { behaviourReport, cleanName } from "../admin/behaviour";
 import { MapError, loadMap, saveCustom, saveLayout } from "../admin/map";
+import { spendReport } from "../admin/spend";
+import { alertsReport, openAlerts, resolveAlert, runAlerts } from "../admin/alerts";
+import { backfillAdTouch, parseSpendCsv, syncMetaSpend, upsertSpend } from "../integrations/meta-ads";
+import { checkDeliverability, deliverabilityPayload, resumeMarketing } from "../integrations/resend-webhook";
+import { checkEmailDns } from "../integrations/email-dns";
+import { parseStageValues, recomputeStageValues, stageValueTable } from "../sales/values";
+import { activateModel, calibrationReport, runCalibration } from "../sales/calibration";
+import { scoreUpcomingCalls, upcomingByRisk } from "../sales/noshow";
+import { followUpsDue, paymentsDue, pingClosersFollowUps } from "../sales/followups";
+import { latestAiReport, runAnalyst } from "../sales/analyst";
+import { maybeSendDigest } from "../sales/digest";
 
 export { csvCell };
 
@@ -57,8 +68,84 @@ adminApi.get("/traffic", async (c) => c.json(await trafficReport(rtOf(c), filter
 adminApi.get("/landers", async (c) => c.json(await landersReport(rtOf(c), filters(c))));
 adminApi.get("/behaviour", async (c) => c.json(await behaviourReport(rtOf(c), filters(c))));
 adminApi.get("/application", async (c) => c.json(await applicationReport(rtOf(c), filters(c))));
-adminApi.get("/insights", async (c) => c.json(await insightsReport(rtOf(c), filters(c))));
-adminApi.get("/tracking", async (c) => c.json(await trackingReport(rtOf(c), filters(c))));
+adminApi.get("/insights", async (c) => {
+  const rt = rtOf(c);
+  const [r, ai] = await Promise.all([insightsReport(rt, filters(c)), latestAiReport(rt)]);
+  return c.json({ ...r, ai_report: ai, ai_enabled: rt.settings.has("ANTHROPIC_API_KEY") });
+});
+adminApi.get("/tracking", async (c) => {
+  const rt = rtOf(c);
+  const sv = parseStageValues(rt.settings.get("STAGE_VALUES"));
+  return c.json({ ...(await trackingReport(rt, filters(c))), stage_values: { computed_at: sv?.computed_at ?? null, avg_deal: sv?.avg_deal ?? null, n_total: sv?.n_total ?? 0, rows: stageValueTable(sv), locked: rt.settings.source("STAGE_VALUES") === "env" } });
+});
+adminApi.post("/tracking/stage-values", async (c) => {
+  const r = await recomputeStageValues(rtOf(c));
+  return r.ok ? c.json({ ok: true, rows: stageValueTable(r.values), n_total: r.values.n_total }) : bad(c, r.error || "Could not save", 409);
+});
+
+// ── Ad spend ─────────────────────────────────────────────────────────────────
+
+adminApi.get("/spend", async (c) => c.json(await spendReport(rtOf(c), filters(c), c.req.query("level"))));
+adminApi.post("/spend/sync", async (c) => {
+  const rt = rtOf(c);
+  const r = await syncMetaSpend(rt, true);
+  if (!r) return bad(c, "Add the Meta Marketing API token and ad account id in Integrations first.", 422);
+  await backfillAdTouch(rt, rt.now() - 365 * 86_400_000);
+  return r.ok ? c.json(r) : bad(c, r.error || "Sync failed", 422);
+});
+adminApi.post("/spend/import", async (c) => {
+  const rt = rtOf(c);
+  const b = await body(c);
+  const csv = typeof b.csv === "string" ? b.csv : "";
+  if (!csv.trim()) return bad(c, "Paste or choose a CSV file.");
+  if (csv.length > 2_000_000) return bad(c, "The file is too large (2 MB max). Split it by month.");
+  const platform = typeof b.platform === "string" ? b.platform : "other";
+  const { rows, errors } = parseSpendCsv(csv, platform);
+  if (!rows.length) return bad(c, errors[0] || "No rows found.", 422);
+  const n = await upsertSpend(rt, rows, "csv");
+  await backfillAdTouch(rt, rt.now() - 365 * 86_400_000);
+  return c.json({ ok: true, imported: n, errors });
+});
+
+// ── Alerts ───────────────────────────────────────────────────────────────────
+
+adminApi.get("/alerts", async (c) => c.json(await alertsReport(rtOf(c))));
+adminApi.get("/alerts/open", async (c) => c.json(await openAlerts(rtOf(c))));
+adminApi.post("/alerts/check", async (c) => {
+  const rt = rtOf(c);
+  await checkDeliverability(rt, true);
+  return c.json({ ok: true, ...(await runAlerts(rt, true)) });
+});
+adminApi.post("/alerts/:id/resolve", async (c) => {
+  const id = c.req.param("id");
+  if (!/^a[0-9a-z]{19}$/.test(id)) return bad(c, "bad id");
+  return (await resolveAlert(rtOf(c), id)) ? c.json({ ok: true }) : bad(c, "Alert not found or already resolved.", 404);
+});
+
+// ── Scoring calibration ──────────────────────────────────────────────────────
+
+adminApi.get("/calibration", async (c) => c.json(await calibrationReport(rtOf(c))));
+adminApi.post("/calibration/run", async (c) => c.json({ ok: true, ...(await runCalibration(rtOf(c), true)) }));
+adminApi.post("/calibration/activate", async (c) => {
+  const b = await body(c);
+  const id = typeof b.id === "string" ? b.id : "";
+  if (!/^sm[0-9a-z]{19}$/.test(id)) return bad(c, "bad id");
+  return (await activateModel(rtOf(c), id)) ? c.json({ ok: true }) : bad(c, "Model not found.", 404);
+});
+
+// ── Weekly analyst and digest ────────────────────────────────────────────────
+
+adminApi.post("/ai-report/run", async (c) => {
+  const r = await runAnalyst(rtOf(c));
+  return r.ok ? c.json(r) : bad(c, r.error || "The analyst could not run.", 422);
+});
+adminApi.post("/digest/send", async (c) => {
+  const rt = rtOf(c);
+  if (!rt.settings.has("SLACK_WEBHOOK_URL") && !rt.settings.has("DISCORD_WEBHOOK_URL")) return bad(c, "Add a Slack or Discord webhook in Integrations first.", 422);
+  await maybeSendDigest(rt, true);
+  await pingClosersFollowUps(rt, true);
+  return c.json({ ok: true });
+});
 adminApi.get("/live", async (c) => c.json(await liveEvents(rtOf(c), c.req.query("since"))));
 
 // ── Links & videos ───────────────────────────────────────────────────────────
@@ -86,7 +173,14 @@ adminApi.post("/links/:code/archive", async (c) => {
 
 // ── Sales ────────────────────────────────────────────────────────────────────
 
-adminApi.get("/sales", async (c) => c.json(await salesTeam(rtOf(c), filters(c))));
+adminApi.get("/sales", async (c) => {
+  const rt = rtOf(c);
+  const reps = await listReps(rt);
+  const [team, risk, fu, pay] = await Promise.all([salesTeam(rt, filters(c)), upcomingByRisk(rt), followUpsDue(rt, reps), paymentsDue(rt, reps)]);
+  const closer = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name || id : null);
+  return c.json({ ...team, upcoming_risk: { ...risk, rows: risk.rows.map((r) => ({ ...r, closer: closer(r.closer_id) })) }, follow_ups: fu, payments_due: pay });
+});
+adminApi.post("/sales/noshow/score", async (c) => c.json({ ok: true, scored: await scoreUpcomingCalls(rtOf(c), true) }));
 adminApi.post("/sales/outcome", async (c) => {
   const b = await body(c);
   const lead = await getLead(rtOf(c), typeof b.lead_id === "string" ? b.lead_id : "");
@@ -216,6 +310,8 @@ adminApi.get("/leads/:id", async (c) => {
     listReps(rt),
     buildProfile(rt, lead).catch(() => []),
   ]);
+  const revops = await one<{ ft_ad_id: string | null; p_win: number | null; noshow_risk: number | null; noshow_reasons: string | null; email_status: string | null }>(rt,
+    "SELECT ft_ad_id, p_win, noshow_risk, noshow_reasons, email_status FROM lead_revops WHERE lead_id = ?", [lead.id]).catch(() => null);
 
   const answers = parseAnswers(lead);
   const answerRows = APPLICATION.filter((q) => q.type !== "contact").map((q) => {
@@ -244,6 +340,7 @@ adminApi.get("/leads/:id", async (c) => {
 
   return c.json({
     lead: { ...publicLead(lead), closer: reps.find((r) => r.id === lead.closer_id)?.name || null, setter: reps.find((r) => r.id === lead.setter_id)?.name || null },
+    revops: revops ? { ft_ad_id: revops.ft_ad_id, p_win: revops.p_win, noshow_risk: revops.noshow_risk, noshow_reasons: parse<string[]>(revops.noshow_reasons, []), email_status: revops.email_status } : null,
     answers: answerRows,
     score_breakdown: parse(lead.score_breakdown, null),
     booking_answers: parse<Array<{ q: string; a: string }>>(lead.booking_answers, []),
@@ -359,6 +456,7 @@ adminApi.get("/emails", async (c) => {
   const d = deliv || {};
   const delivered = num(d.sent) + num(d.simulated);
   return c.json({
+    health: await deliverabilityPayload(rt, Math.max(f.since, rt.now() - 90 * 86_400_000)),
     mode: rt.settings.has("RESEND_API_KEY") && rt.settings.has("EMAIL_FROM") ? "live" : "simulated",
     sequences,
     queue: queue.map((q) => ({ id: q.id, lead_id: q.lead_id, name: [q.first_name, q.last_name].filter(Boolean).join(" ") || q.email || "", sequence: q.sequence, step: q.step, template: q.template, send_at: q.send_at })),
@@ -383,6 +481,10 @@ adminApi.get("/emails/preview", async (c) => {
   }
 });
 adminApi.post("/emails/run-queue", async (c) => c.json(await processEmailQueue(rtOf(c))));
+adminApi.post("/emails/resume", async (c) => {
+  await resumeMarketing(rtOf(c));
+  return c.json({ ok: true });
+});
 
 // ── Voice ────────────────────────────────────────────────────────────────────
 
@@ -484,13 +586,14 @@ adminApi.get("/voice/recording/:conversationId", async (c) => {
 
 const GROUPS: Record<string, { label: string; description: string; required: string[][] }> = {
   site: { label: "Site", description: "Your public domain and name. Links in emails use the URL.", required: [["PUBLIC_URL"]] },
-  email: { label: "Email (Resend)", description: "Sends every sequence. Without a key, emails are simulated and logged.", required: [["RESEND_API_KEY", "EMAIL_FROM", "BUSINESS_ADDRESS"]] },
+  email: { label: "Email (Resend)", description: "Sends every sequence. Without a key, emails are simulated and logged. Point a Resend webhook at /hooks/resend for bounces and complaints.", required: [["RESEND_API_KEY", "EMAIL_FROM", "BUSINESS_ADDRESS"]] },
   calendly: { label: "Calendly", description: "Verifies bookings, catches cancellations and no-shows, imports past calls.", required: [["CALENDLY_API_TOKEN", "CALENDLY_SIGNING_KEY"]] },
   booking: { label: "Booking calendars", description: "Where A and B tier leads book.", required: [["BOOKING_URL_A"]] },
   claude: { label: "Claude", description: "Personalises emails from what each lead did. Rules mode runs without a key.", required: [["ANTHROPIC_API_KEY"]] },
   voice: { label: "AI calls (ElevenLabs)", description: "Speed-to-lead, confirm and rebook calls, plus the inbound callback agent.", required: [["ELEVENLABS_API_KEY", "ELEVENLABS_AGENT_ID", "ELEVENLABS_PHONE_NUMBER_ID"]] },
   notify: { label: "Team pings", description: "Slack or Discord pings for hot leads, bookings, no-shows and wins, plus the daily digest.", required: [["SLACK_WEBHOOK_URL"], ["DISCORD_WEBHOOK_URL"]] },
-  meta: { label: "Meta Conversions API", description: "Server-side events with qualified-lead values, deduplicated with the Pixel.", required: [["META_PIXEL_ID", "META_ACCESS_TOKEN"]] },
+  meta: { label: "Meta Conversions API", description: "Server-side events with qualified-lead values, deduplicated with the Pixel. CRM stages (show, no-show, won, lost, payments) go as offline events.", required: [["META_PIXEL_ID", "META_ACCESS_TOKEN"]] },
+  ads: { label: "Meta Ads spend", description: "Pulls spend per ad every hour for CAC and ROAS on Traffic. Other platforms: import a CSV on the Traffic tab.", required: [["META_ADS_TOKEN", "META_AD_ACCOUNT_ID"]] },
   ga4: { label: "Google Analytics 4", description: "Measurement Protocol events from the server.", required: [["GA4_MEASUREMENT_ID", "GA4_API_SECRET"]] },
   posthog: { label: "PostHog", description: "Product analytics and optional session replay through a first-party proxy.", required: [["POSTHOG_KEY"]] },
   whatsapp: { label: "WhatsApp", description: "The founder number turns on the WhatsApp buttons. The Cloud API adds templates and inbound.", required: [["FOUNDER_WHATSAPP"]] },
@@ -553,6 +656,7 @@ adminApi.post("/integrations/test-email", async (c) => {
   const r = await sendTestEmail(rtOf(c), to);
   return r.ok ? c.json(r) : bad(c, r.error || "Send failed", 422);
 });
+adminApi.post("/integrations/email/dns-check", async (c) => c.json(await checkEmailDns(rtOf(c))));
 adminApi.post("/integrations/calendly/connect", async (c) => c.json(await connectCalendly(rtOf(c))));
 adminApi.post("/integrations/calendly/sync", async (c) => {
   const r = await syncCalendly(rtOf(c), true);

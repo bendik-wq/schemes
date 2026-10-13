@@ -17,6 +17,7 @@ import { SEQUENCES, precallTimes, validTimezone } from "./sequences";
 import { TEMPLATES, precallPlan } from "./all-templates";
 import type { EmailContent, EmailCtx } from "./email-types";
 import { personalizeEmail } from "../personalize/personalize";
+import { PAUSABLE_SEQUENCES, leadEmailStatus, marketingPause } from "../lib/suppress";
 
 export interface EmailRow {
   id: string;
@@ -271,6 +272,14 @@ async function processOne(rt: Runtime, row: EmailRow): Promise<Outcome> {
   const lead = await getLead(rt, row.lead_id);
   if (!lead) { await setStatus(rt, row.id, "cancelled", { error: "lead gone" }); return "cancelled"; }
   if (lead.unsubscribed_at) { await setStatus(rt, row.id, "cancelled", { error: "unsubscribed" }); return "cancelled"; }
+  // Hard bounce or spam complaint (Resend webhook): never send to this address again.
+  const bad = await leadEmailStatus(rt, lead.id);
+  if (bad) { await setStatus(rt, row.id, "cancelled", { error: bad === "bounced" ? "hard bounce" : "spam complaint" }); return "cancelled"; }
+  // Deliverability guard: marketing waits (not cancelled) while paused.
+  if (PAUSABLE_SEQUENCES.includes(row.sequence) && (await marketingPause(rt))) {
+    await rt.env.DB.prepare("UPDATE emails SET status = 'pending', attempts = MAX(0, attempts - 1), send_at = ? WHERE id = ?").bind(rt.now() + 60 * 60_000, row.id).run();
+    return null;
+  }
   if (lead.booking_source === "calendly-direct" && row.sequence !== "continue") { await setStatus(rt, row.id, "skipped", { error: "imported contact" }); return "skipped"; }
   const seq = SEQUENCES[row.sequence];
   if (seq?.stopIf(lead)) {

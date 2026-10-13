@@ -22,6 +22,13 @@ import { syncInbound } from "./integrations/elevenlabs-inbound";
 import { syncCalendly } from "./integrations/calendly";
 import { processTriggers } from "./personalize/triggers";
 import { purgeOld } from "./lib/retention";
+import { cronHeartbeat, runAlerts } from "./admin/alerts";
+import { hourlyAdTouch, syncMetaSpend } from "./integrations/meta-ads";
+import { checkDeliverability } from "./integrations/resend-webhook";
+import { scoreUpcomingCalls } from "./sales/noshow";
+import { runCalibration } from "./sales/calibration";
+import { pingClosersFollowUps } from "./sales/followups";
+import { maybeRunAnalyst } from "./sales/analyst";
 
 const app = new Hono<AppEnv>();
 
@@ -243,6 +250,7 @@ export default {
   fetch: app.fetch,
   async scheduled(_ctrl: ScheduledController, env: Env, ctx: ExecutionContext) {
     const rt = await makeRuntime(env, ctx);
+    await quiet("heartbeat", () => cronHeartbeat(rt));
     await quiet("emails", () => processEmailQueue(rt));
     await quiet("forwards", () => retryForwards(rt));
     await quiet("upcoming", () => pingUpcomingCalls(rt));
@@ -252,5 +260,13 @@ export default {
     await quiet("calendly", () => syncCalendly(rt));
     await quiet("triggers", () => processTriggers(rt));
     await quiet("purge", () => purgeOld(rt));
+    await quiet("meta_ads", () => syncMetaSpend(rt));
+    await quiet("ad_touch", () => hourlyAdTouch(rt));
+    await quiet("noshow", () => scoreUpcomingCalls(rt));
+    await quiet("deliverability", () => checkDeliverability(rt));
+    await quiet("alerts", () => runAlerts(rt));
+    await quiet("calibration", () => runCalibration(rt));
+    await quiet("closer_pings", () => pingClosersFollowUps(rt));
+    await quiet("analyst", () => maybeRunAnalyst(rt));
   },
 } satisfies ExportedHandler<Env>;

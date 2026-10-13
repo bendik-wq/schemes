@@ -52,6 +52,8 @@
     if (a >= 1e4) return s + NF1.format(a / 1e3) + "k";
     return s + NF.format(Math.round(a));
   }
+  const roas = (v) => (isNum(v) ? NF1.format(v) + "×" : "—");
+  const pp = (v) => (isNum(v) ? NF1.format(v * 100) + "%" : "—");
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function dt(ts, withYear) {
     if (!ts) return "—";
@@ -107,6 +109,9 @@
     options: null,
     leads: { q: "", status: "", tier: "", sort: "created", page: 1 },
     trafficDim: store.get("hq-traffic-dim", "channel"),
+    trafficView: store.get("hq-traffic-view", "sources") === "spend" ? "spend" : "sources",
+    spendLevel: ["campaign", "adset", "ad"].includes(store.get("hq-spend-level", "campaign")) ? store.get("hq-spend-level", "campaign") : "campaign",
+    insightsView: "booked",
     video: "main",
     trend: "visitors",
     landerIndustry: "",
@@ -151,6 +156,13 @@
 
   function delta(cur, prev, kind) {
     if (!isNum(cur) || !isNum(prev)) return "";
+    if (kind === "cost") {
+      // Lower is better: a rising cost reads as bad.
+      if (!prev) return '<span class="delta flat">new</span>';
+      const d = Math.round(((cur - prev) / prev) * 100);
+      if (!d) return '<span class="delta flat">no change</span>';
+      return '<span class="delta ' + (d > 0 ? "down" : "up") + '">' + (d > 0 ? "+" : "−") + esc(Math.abs(d)) + "%</span>";
+    }
     if (kind === "rate") {
       const d = Math.round((cur - prev) * 10) / 10;
       if (!d) return '<span class="delta flat">no change</span>';
@@ -357,6 +369,7 @@
     voice: '<path d="M5.5 2.5l1.5 3-1.5 1.2a7 7 0 0 0 3.3 3.3l1.2-1.5 3 1.5-.6 2.4c-.2.6-.7 1-1.3 1A10 10 0 0 1 2.1 4.4c0-.6.4-1.1 1-1.3z"/>',
     tracking: '<circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/>',
     live: '<path d="M1.5 8h3l1.5-4 3 8 1.5-4h4"/>',
+    alerts: '<path d="M8 2.5L14 13H2z"/><path d="M8 6.5v3M8 11.2v.1"/>',
     integrations: '<path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2.5a3.5 3.5 0 0 1-7 0zM8 11.5v2"/>',
   };
 
@@ -378,6 +391,7 @@
     { id: "voice", group: "Automation", title: "Voice", sub: "AI calls that confirm, chase and rebook. Set up, switch on and listen back." },
     { id: "tracking", group: "System", title: "Tracking", sub: "Server-side forwarding to Meta, GA4, PostHog and your CRM, and how well Meta can match people." },
     { id: "live", group: "System", title: "Live", sub: "What is happening on the site right now. Updates every five seconds while this tab is open.", noFilters: true },
+    { id: "alerts", group: "System", title: "Alerts", sub: "Automatic checks against the same hours of the last four weeks. Open alerts ping the team and show a red bar here.", noFilters: true },
     { id: "integrations", group: "System", title: "Integrations", sub: "Keys and settings for every service. Keys go here, never into a chat.", noFilters: true },
   ];
   const TAB = Object.fromEntries(TABS.map((t) => [t.id, t]));
@@ -401,6 +415,10 @@
       kpi("Pitch reached", esc(pc(k.pitch_rate)), delta(k.pitch_rate, p.pitch_rate, "rate") || "Of plays, reached the offer"),
       kpi("Revenue", esc(moneyShort(k.revenue)), (delta(k.revenue, p.revenue) ? delta(k.revenue, p.revenue) + " · " : "") + esc(moneyShort(k.cash)) + " cash collected"),
       kpi("WhatsApp clicks", esc(n(k.whatsapp)), delta(k.whatsapp, p.whatsapp) || "Taps on the WhatsApp button"),
+      kpi("Ad spend", esc(moneyShort(k.spend)), delta(k.spend, p.spend) || "All platforms, in the period"),
+      kpi("CAC", esc(moneyShort(k.cac)), delta(k.cac, p.cac, "cost") || "Spend ÷ deals won"),
+      kpi("Cash ROAS", esc(roas(k.cash_roas)), delta(k.cash_roas, p.cash_roas) || "Cash collected ÷ spend"),
+      kpi("Cost per booked call", esc(moneyShort(k.cost_per_booked)), delta(k.cost_per_booked, p.cost_per_booked, "cost") || "Spend ÷ new bookings"),
     ]);
     const series = d.trend.series[S.trend] || [];
     const total = series.reduce((a, b) => a + b, 0);
@@ -447,8 +465,78 @@
   };
 
   // ── Traffic ────────────────────────────────────────────────────────────────
-  TAB.traffic.load = () => api("/traffic", { query: qs({ dim: S.trafficDim }) });
+  TAB.traffic.load = () => (S.trafficView === "spend"
+    ? api("/spend", { query: qs({ level: S.spendLevel }) }).then((d) => Object.assign(d, { _view: "spend" }))
+    : api("/traffic", { query: qs({ dim: S.trafficDim }) }));
   TAB.traffic.render = (d) => {
+    const seg = '<div class="row between wrap"><div class="seg" role="group" aria-label="View">' +
+      [["sources", "Visitors by source"], ["spend", "Spend, CAC & ROAS"]].map((v) => '<button type="button" data-action="traffic-view" data-view="' + v[0] + '" aria-pressed="' + (S.trafficView === v[0]) + '">' + v[1] + "</button>").join("") + "</div></div>";
+    return seg + (d._view === "spend" ? renderSpend(d) : renderSources(d));
+  };
+
+  function renderSpend(d) {
+    const t = d.totals || {};
+    const LEVELS = { campaign: "Campaign", adset: "Ad set", ad: "Ad" };
+    const sync = d.configured
+      ? '<span class="faint small">' + (d.last_sync ? "Meta synced " + esc(ago(d.last_sync)) : "Meta not synced yet") + (d.last_error ? ' · <span class="bad-text">' + esc(d.last_error) + "</span>" : "") + "</span>"
+      : '<span class="faint small">Connect Meta Ads in Integrations to pull spend hourly.</span>';
+    const tiles = kpis([
+      kpi("Spend", esc(moneyShort(t.spend)), esc(n(t.impressions)) + " impressions"),
+      kpi("Cost per lead", esc(moneyShort(t.cpl)), esc(n(t.leads)) + " leads from ads"),
+      kpi("Cost per booked call", esc(moneyShort(t.cost_per_booked)), esc(n(t.booked)) + " booked"),
+      kpi("CAC", esc(moneyShort(t.cac)), esc(n(t.won)) + " won from ads"),
+      kpi("Cash ROAS", esc(roas(t.cash_roas)), esc(moneyShort(t.cash)) + " cash collected"),
+      kpi("Revenue ROAS", esc(roas(t.revenue_roas)), esc(moneyShort(t.revenue)) + " deal value"),
+    ], "k6");
+    const cost = (v) => (isNum(v) ? esc(moneyShort(v)) : '<span class="faint">—</span>');
+    const tbl = table([
+      { label: LEVELS[d.level], cls: "wrap", get: (r) => '<span class="t-name">' + esc(r.name) + "</span>" + '<span class="sub">' + esc([r.platform, r.parent].filter(Boolean).join(" · ")) + "</span>" + (r.zero_sessions ? " " + badge("Spend, no visits", "b-red") : "") },
+      { label: "Spend", num: true, get: (r) => esc(money(r.spend)) },
+      { label: "CTR", num: true, get: (r) => esc(pc(r.ctr)) },
+      { label: "Sessions", num: true, get: (r) => esc(n(r.sessions)) },
+      { label: "Leads", num: true, get: (r) => esc(n(r.leads)) },
+      { label: "CPL", num: true, get: (r) => cost(r.cpl) },
+      { label: "Applied", num: true, get: (r) => esc(n(r.applied)) },
+      { label: "Per app.", num: true, get: (r) => cost(r.cost_per_app) },
+      { label: "Qualified", num: true, get: (r) => esc(n(r.qualified)) },
+      { label: "Per qual.", num: true, get: (r) => cost(r.cost_per_qualified) },
+      { label: "Booked", num: true, get: (r) => esc(n(r.booked)) },
+      { label: "Per booked", num: true, get: (r) => cost(r.cost_per_booked) },
+      { label: "Showed", num: true, get: (r) => esc(n(r.showed)) },
+      { label: "Per show", num: true, get: (r) => cost(r.cost_per_show) },
+      { label: "Won", num: true, get: (r) => esc(n(r.won)) },
+      { label: "CAC", num: true, get: (r) => cost(r.cac) },
+      { label: "Cash ROAS", num: true, get: (r) => esc(roas(r.cash_roas)) },
+      { label: "Rev. ROAS", num: true, get: (r) => esc(roas(r.revenue_roas)) },
+    ], d.rows, {
+      tall: true,
+      empty: empty("No spend in this period", d.configured ? "Spend appears after the next hourly sync, or press Sync now." : "Connect Meta Ads in Integrations, or import a CSV below for other platforms."),
+    });
+    const main = card({
+      title: "By " + LEVELS[d.level].toLowerCase(),
+      sub: "Leads are credited to the ad they first arrived from (ad_id in the URL). Counts are things that happened in the period.",
+      actions: '<div class="seg" role="group" aria-label="Level">' + d.levels.map((l) => '<button type="button" data-action="spend-level" data-level="' + esc(l) + '" aria-pressed="' + (d.level === l) + '">' + esc(LEVELS[l]) + "</button>").join("") + "</div>" +
+        (d.configured ? '<button class="btn btn-sm" type="button" data-action="spend-sync">Sync now</button>' : ""),
+      body: tbl, flush: true, foot: sync,
+    });
+    const zero = d.zero_session_ads.length ? card({
+      title: "Ads spending with no visits", sub: "These ads spent money but no session arrived with their ad id. Check the URL parameters (ad_id={{ad.id}}) and the landing page.", flush: true,
+      body: table([
+        { label: "Ad", cls: "wrap", get: (r) => '<span class="t-name">' + esc(r.name) + '</span><span class="sub mono">' + esc(r.ad_id) + "</span>" },
+        { label: "Platform", get: (r) => esc(r.platform) },
+        { label: "Spend", num: true, get: (r) => esc(money(r.spend)) },
+      ], d.zero_session_ads),
+    }) : "";
+    const imp = card({
+      title: "Import spend for other platforms", sub: "CSV with date, spend and an ad_id or campaign column (impressions, clicks, ad set and names optional). Re-importing a day replaces it.",
+      body: '<form data-submit="spend-import" class="form-grid g3"><label class="field"><span class="field-label">Platform</span><input class="input" name="platform" value="google" maxlength="30" required></label>' +
+        '<label class="field span2"><span class="field-label">CSV file</span><input class="input" type="file" name="file" accept=".csv,text/csv" required></label>' +
+        '<div class="form-actions span-all"><button class="btn btn-primary" type="submit">Import</button><span class="faint small" id="spend-import-out"></span></div></form>',
+    });
+    return tiles + main + zero + imp;
+  }
+
+  function renderSources(d) {
     const maxV = Math.max(1, ...d.rows.map((r) => r.visitors));
     const t = d.totals || {};
     const dimLabel = (d.dims.find((x) => x.id === d.dim) || {}).label || d.dim;
@@ -484,7 +572,7 @@
       actions: sel("dim", d.dims.map((x) => ({ value: x.id, label: x.label })), d.dim, { change: "traffic-dim", sm: true, label: "Break down by" }),
       body: tbl, flush: true,
     });
-  };
+  }
 
   // ── Landing pages & tests ──────────────────────────────────────────────────
   TAB.landers.load = () => api("/landers", { query: qs() });
@@ -764,12 +852,138 @@
       ], d.reps, { empty: empty("No reps yet", "Add closers and setters on the Team tab. Until then, calls go to the founder.") }),
     });
     const log = card({ title: "Call log", sub: "Calls in the period and the next 14 days", flush: true, body: table(callCols(), d.call_log, { tall: true, rowAction: (r) => ({ action: "open-lead", id: r.id }), empty: empty("No calls in this period", "Booked calls appear here with their outcome.") }) });
-    return tiles + needs + reps + log;
+    const ur = d.upcoming_risk || { rows: [], labels: {}, model: {} };
+    const riskBadge = (v) => (isNum(v) ? badge(Math.round(v * 100) + "%", v > ur.model.threshold ? "b-red" : v > 0.25 ? "b-amber" : "b-green") : '<span class="faint">Not scored</span>');
+    const risk = card({
+      title: "Upcoming calls by no-show risk",
+      sub: "Booked calls in the next 72 hours. " + (ur.model.fitted ? "Fitted on " + n(ur.model.n) + " past calls." : "Rules-based until " + n(ur.model.min_outcomes) + " past calls have an outcome.") + " Above " + Math.round((ur.model.threshold || 0.4) * 100) + "% the team gets a ping with the reasons.",
+      actions: '<button class="btn btn-sm" type="button" data-action="noshow-score">Rescore now</button>', flush: true,
+      body: table([
+        { label: "Lead", get: (r) => leadLink(r.id, r.name) + '<span class="sub mono">' + esc(r.ref_code) + "</span>" },
+        { label: "Tier", get: (r) => tierBadge(r.tier) },
+        { label: "Call", get: (r) => esc(dt(r.call_at)) + '<span class="sub">' + esc(ago(r.call_at)) + "</span>" },
+        { label: "Closer", get: (r) => esc(r.closer || "Unassigned") },
+        { label: "Risk", get: (r) => riskBadge(r.risk) },
+        { label: "Why", cls: "wrap", get: (r) => (r.reasons.length ? '<span class="small">' + esc(r.reasons.map((x) => ur.labels[x] || human(x)).join(" · ")) + "</span>" : '<span class="faint">—</span>') },
+        { label: "Win prob.", num: true, get: (r) => esc(pp(r.p_win)) },
+      ], ur.rows, { mid: true, empty: empty("No calls in the next 72 hours", "Booked calls show here with their risk, scored every hour.", true) }),
+    });
+    const dueCols = (dateLabel) => [
+      { label: "Lead", get: (r) => leadLink(r.id, r.name) + '<span class="sub mono">' + esc(r.ref_code) + "</span>" },
+      { label: "Tier", get: (r) => tierBadge(r.tier) },
+      { label: dateLabel, get: (r) => esc(day(r.due_at)) + " " + (r.overdue ? badge("Overdue", "b-red") : badge("Due", "b-amber")) },
+      { label: "Closer", get: (r) => esc(r.closer || "Unassigned") },
+    ];
+    const fu = card({
+      title: "Follow-ups due", sub: "Follow-up dates set on the Deal tab, due today or overdue. Each closer gets their list at " + "9:00 (sales time).", flush: true,
+      body: table(dueCols("Follow up").concat([{ label: "Status", get: (r) => statusBadge(r.status) }]), d.follow_ups || [], { mid: true, empty: empty("No follow-ups due", "Set a follow-up date on a lead's Deal tab and it shows here on the day.", true) }),
+    });
+    const pay = card({
+      title: "Payments due", sub: "Next instalment within 7 days or overdue, on won deals not fully paid.", flush: true,
+      body: table(dueCols("Next payment").concat([
+        { label: "Collected", num: true, get: (r) => esc(money(r.cash_collected)) + '<span class="sub">of ' + esc(money(r.revenue)) + "</span>" },
+      ]), d.payments_due || [], { mid: true, empty: empty("No instalments due", "Set the next payment date on a won deal and it shows here a week before.", true) }),
+    });
+    return tiles + needs + risk + '<div class="grid g2">' + fu + pay + "</div>" + reps + log;
   };
+  TAB.sales.actions = () => '<button class="btn" type="button" data-action="digest-send">Send digest now</button>';
 
   // ── Insights ───────────────────────────────────────────────────────────────
-  TAB.insights.load = () => api("/insights", { query: qs() });
+  TAB.insights.load = () => (S.insightsView === "scoring"
+    ? api("/calibration").then((d) => Object.assign(d, { _view: "scoring" }))
+    : api("/insights", { query: qs() }));
   TAB.insights.render = (d) => {
+    const seg = '<div class="row between wrap"><div class="seg" role="group" aria-label="View">' +
+      [["booked", "Bookings by tier"], ["scoring", "Scoring calibration"]].map((v) => '<button type="button" data-action="insights-view" data-view="' + v[0] + '" aria-pressed="' + (S.insightsView === v[0]) + '">' + v[1] + "</button>").join("") + "</div></div>";
+    return seg + (d._view === "scoring" ? renderCalibration(d) : aiCard(d) + renderBookings(d));
+  };
+
+  function aiCard(d) {
+    const r = d.ai_report;
+    const run = d.ai_enabled ? '<button class="btn btn-sm" type="button" data-action="ai-run">' + (r ? "Run again" : "Run now") + "</button>" : "";
+    if (!r) {
+      return card({ title: "AI summary", sub: "Every Monday Claude reads the week's numbers and posts a short summary here and to Slack.", actions: run,
+        body: empty(d.ai_enabled ? "No weekly summary yet" : "Needs the Anthropic key", d.ai_enabled ? "The first one arrives on Monday, or press Run now." : "Add the Anthropic API key in Integrations to turn on the weekly analyst.", true) });
+    }
+    const list = (title, items, cls) => (items && items.length ? '<div><div class="ai-h">' + esc(title) + '</div><ul class="ai-list' + (cls ? " " + cls : "") + '">' + items.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul></div>" : "");
+    return card({
+      title: "AI summary · " + r.week, sub: "Claude's read of the week, from aggregate numbers only. Written " + dt(r.created_at) + ".", actions: run, cls: "ai-card",
+      body: '<p class="ai-headline">' + esc(r.headline) + '</p><p class="muted">' + esc(r.summary) + '</p><div class="grid g3 mt16">' + list("Working", r.wins) + list("Watch", r.concerns) + list("Do this week", r.actions, "act") + "</div>",
+    });
+  }
+
+  function renderCalibration(d) {
+    const m = d.model, rep = d.report;
+    const actions = '<button class="btn btn-sm btn-primary" type="button" data-action="calibration-run">Recompute now</button>';
+    const tiles = kpis([
+      kpi("Outcomes to learn from", esc(n(d.n_terminal)), esc(n(d.n_won)) + " won · needs " + esc(n(d.min_train))),
+      kpi("Model AUC", esc(m && isNum(m.auc) ? m.auc.toFixed(2) : "—"), rep ? (rep.auc_kind === "holdout" ? "On " + esc(n(rep.n_test)) + " held-out leads" : "In-sample (too few for a hold-out)") : "0.5 is a coin flip, 1 is perfect"),
+      kpi("Brier score", esc(m && isNum(m.brier) ? m.brier.toFixed(3) : "—"), "Lower is better"),
+      kpi("Open leads scored", esc(n(d.p_win.n)), "Average win probability " + esc(pp(d.p_win.avg))),
+    ]);
+    if (!m) {
+      return tiles + card({ title: "Scoring calibration", actions, body: empty("Not enough outcomes yet", "The model needs at least " + d.min_train + " completed applications that ended won, lost, no-show or disqualified, with a few of each. It retrains every night.") });
+    }
+    const newer = d.newer_inactive ? '<div class="callout warn"><span class="callout-dot"></span><div><strong>A newer model is not in use</strong> (AUC ' + esc(isNum(d.newer_inactive.auc) ? d.newer_inactive.auc.toFixed(2) : "—") + ", trained " + esc(dt(d.newer_inactive.created_at)) + '). It scored worse than the active one. <button class="link-btn" type="button" data-action="model-activate" data-id="' + esc(d.newer_inactive.id) + '">Use it anyway</button></div></div>' : "";
+    const relRows = (rep && rep.reliability) || [];
+    const rel = card({
+      title: "Reliability by decile", sub: "Leads sorted by predicted win probability, in ten equal groups. A calibrated model's predicted and actual rates match.", flush: true,
+      body: table([
+        { label: "Decile", get: (r) => esc(r.bin) },
+        { label: "Leads", num: true, get: (r) => esc(n(r.n)) },
+        { label: "Predicted", num: true, get: (r) => esc(pp(r.predicted)) },
+        { label: "Actual", num: true, get: (r) => esc(pp(r.actual)) },
+        { label: "", get: (r) => '<div class="rel"><div class="bar-track"><div class="bar-fill"' + w((r.predicted || 0) * 100) + '></div></div><div class="bar-track"><div class="bar-fill c3"' + w((r.actual || 0) * 100) + "></div></div></div>" },
+      ], relRows),
+      foot: '<div class="legend"><span><span class="swatch"></span>Predicted</span><span><span class="swatch sw3"></span>Actual</span></div>',
+    });
+    const tiers = card({
+      title: "By tier", sub: "Booked calls in the training window: show rate, close rate and deal value per booked call.", flush: true,
+      body: table([
+        { label: "Tier", get: (r) => tierBadge(r.tier) },
+        { label: "Booked", num: true, get: (r) => esc(n(r.booked)) },
+        { label: "Show rate", num: true, get: (r) => esc(pp(r.show_rate)) },
+        { label: "Close rate", num: true, get: (r) => esc(pp(r.close_rate)) },
+        { label: "$ per booked call", num: true, get: (r) => esc(moneyShort(r.per_booked_call)) },
+      ], (rep && rep.tiers) || []),
+    });
+    const byQ = {};
+    for (const o of (rep && rep.options) || []) (byQ[o.question] = byQ[o.question] || []).push(o);
+    const optCards = Object.keys(byQ).map((q) => card({
+      title: byQ[q][0].title, flush: true,
+      body: table([
+        { label: "Answer", cls: "wrap", get: (r) => esc(r.label) },
+        { label: "n", num: true, get: (r) => esc(n(r.n)) },
+        { label: "Win rate", num: true, get: (r) => esc(pp(r.smoothed)) + (r.n < 10 ? ' <span class="faint">few</span>' : "") },
+        { label: "Lift", num: true, get: (r) => (isNum(r.lift) ? '<span class="' + (r.lift >= 1.2 ? "good-text" : r.lift <= 0.8 ? "bad-text" : "") + '">' + esc(NF1.format(r.lift)) + "×</span>" : "—") },
+        { label: "Points now", num: true, get: (r) => esc(r.points) },
+        { label: "Suggested", num: true, get: (r) => '<span class="t-name">' + esc(r.suggested) + "</span>" + (r.suggested !== r.points ? ' <span class="faint">(' + (r.suggested > r.points ? "+" : "−") + esc(Math.abs(r.suggested - r.points)) + ")</span>" : "") },
+      ], byQ[q]),
+    }));
+    const weights = card({
+      title: "Strongest signals", sub: "Log-odds weights in the win model (positive raises P(won)).", flush: true,
+      body: table([
+        { label: "Signal", get: (r) => '<code class="mono">' + esc(r.feature) + "</code>" },
+        { label: "Weight", num: true, get: (r) => '<span class="' + (r.weight > 0 ? "good-text" : "bad-text") + '">' + esc((r.weight > 0 ? "+" : "") + r.weight.toFixed(2)) + "</span>" },
+      ], d.top_weights),
+    });
+    const hist = card({
+      title: "Models", sub: "Win models (P(won)) and no-show models. The active win model sets each open lead's win probability.", flush: true,
+      body: table([
+        { label: "Trained", get: (r) => esc(dt(r.created_at)) },
+        { label: "Kind", get: (r) => esc(r.kind === "win" ? "Win" : "No-show") },
+        { label: "Leads", num: true, get: (r) => esc(n(r.n_train)) },
+        { label: "AUC", num: true, get: (r) => esc(isNum(r.auc) ? r.auc.toFixed(3) : "—") },
+        { label: "Brier", num: true, get: (r) => esc(isNum(r.brier) ? r.brier.toFixed(3) : "—") },
+        { label: "", get: (r) => (r.active ? badge("Active", "b-green") : r.kind === "win" ? '<button class="btn btn-sm btn-ghost" type="button" data-action="model-activate" data-id="' + esc(r.id) + '">Use</button>' : "") },
+      ], d.history),
+    });
+    const note = '<div class="callout info"><span class="callout-dot"></span><div><strong>Suggested points are advice.</strong> Routing still uses the points in <code class="mono">src/config.ts</code>. Copy a suggestion there when its n is large enough; win probabilities and ad values already use the model.</div></div>';
+    return tiles + newer + '<div class="row between"><span></span>' + actions + "</div>" + '<div class="grid g2">' + rel + '<div class="stack gap16">' + tiers + weights + "</div></div>" +
+      note + '<h2 class="section-title">Answers: current vs suggested points</h2><div class="grid g2">' + optCards.join("") + "</div>" + hist;
+  }
+
+  function renderBookings(d) {
     const tiers = card({
       title: "Everyone who booked, by tier", sub: n(d.total) + " people booked in the period, from the funnel and straight through Calendly.", flush: true,
       body: table([
@@ -804,7 +1018,7 @@
       ], d.calendly_months, { empty: empty("No Calendly bookings yet", "Connect Calendly in Integrations, then import history to see past months here.") }),
     });
     return tiers + unpacked + months;
-  };
+  }
 
   // ── Team ───────────────────────────────────────────────────────────────────
   TAB.team.load = () => api("/team");
@@ -936,7 +1150,24 @@
         { label: "", get: (r) => '<button class="btn btn-sm" type="button" data-action="preview" data-template="' + esc(r.id) + '">Preview</button>' },
       ], d.templates, { tall: true }),
     });
-    return mode + tiles + seqs + '<div class="grid g2">' + queue + triggers + "</div>" + tpl;
+    const h = d.health || { by_sequence: [], paused: null, last_check: null };
+    const paused = h.paused ? '<div class="callout bad"><span class="callout-dot"></span><div><strong>Marketing emails are paused</strong> since ' + esc(dt(h.paused.at)) + ". " + esc(h.paused.reason || "") + " Reminders, pre-call and post-call emails keep going. Fix the cause, then " +
+      '<button class="link-btn" type="button" data-action="emails-resume">resume marketing</button>.</div></div>' : "";
+    const hook = !h.webhook ? '<div class="callout warn"><span class="callout-dot"></span><div><strong>Bounces and complaints are not tracked yet.</strong> In Resend add a webhook to <code class="mono">' + esc(h.webhook_url || "/hooks/resend") + "</code> for delivered, delayed, bounced and complained events, then paste its signing secret in Integrations → Email.</div></div>" : "";
+    const lc = h.last_check || {};
+    const health = card({
+      title: "Deliverability by sequence", sub: "Live sends in the period (up to 90 days). Hard bounces and spam complaints stop all email to that address. Over 7 days, more than 0.2% complaints or 3% bounces pauses marketing.", flush: true,
+      body: table([
+        { label: "Sequence", get: (r) => '<span class="t-name">' + esc(label(r.sequence)) + "</span>" + (h.pausable && h.pausable.includes(r.sequence) ? "" : '<span class="sub">never paused</span>') },
+        { label: "Sent", num: true, get: (r) => esc(n(r.sent)) },
+        { label: "Delivered", num: true, get: (r) => esc(n(r.delivered)) },
+        { label: "Hard bounces", num: true, get: (r) => esc(n(r.bounced)) + ' <span class="' + (r.bounce_rate > 3 ? "bad-text" : "faint") + '">' + esc(pc(r.bounce_rate)) + "</span>" },
+        { label: "Soft", num: true, get: (r) => esc(n(r.soft)) },
+        { label: "Complaints", num: true, get: (r) => esc(n(r.complained)) + ' <span class="' + (r.complaint_rate > 0.2 ? "bad-text" : "faint") + '">' + esc(r.complaint_rate == null ? "—" : r.complaint_rate.toFixed(2) + "%") + "</span>" },
+      ], h.by_sequence, { empty: empty("No live sends in this period", d.mode === "simulated" ? "Emails are simulated, so there is nothing to bounce yet." : "Rates appear with the first live sends.", true) }),
+      foot: lc.detail ? "Last 7-day check: " + esc(lc.detail) : "",
+    });
+    return paused + mode + hook + tiles + health + seqs + '<div class="grid g2">' + queue + triggers + "</div>" + tpl;
   };
 
   function previewModal(title, p) {
@@ -1037,8 +1268,35 @@
         { label: "Error", cls: "wrap", get: (r) => '<span class="small mono faint">' + esc(r.error || "—") + "</span>" },
       ], d.errors, { empty: empty("No errors", "Every forwarded event in this period was accepted.", true) }),
     });
+    const META_LABEL = { lead_status_changed: "Disqualified", payment_recorded: "CashCollected / Refund", app_step: "StartApplication (first)" };
+    const cell = (c, dest) => {
+      if (!c) return '<span class="faint">—</span>';
+      const tot = c.sent + c.failed;
+      const cls = c.failed && c.failed / Math.max(1, tot) > 0.1 ? "bad-text" : "";
+      return '<span class="tnum">' + esc(n(c.sent)) + "</span>" + (c.failed ? ' <span class="' + (cls || "faint") + '">· ' + esc(n(c.failed)) + " failed</span>" : "") + (c.retry ? ' <span class="faint">· ' + esc(n(c.retry)) + " retrying</span>" : "") +
+        (dest === "meta" && isNum(c.match_rate) ? '<span class="sub">' + esc(pc(c.match_rate)) + " with email or phone</span>" : "");
+    };
+    const matrix = card({
+      title: "Stages by destination", sub: "Sent, failed and retrying per funnel stage. CRM stages (show, no-show, won, lost, disqualified, payments) reach Meta as offline events (system_generated).", flush: true,
+      body: table([
+        { label: "Stage", get: (r) => '<code class="mono">' + esc(r.event) + "</code>" + ((META_LABEL[r.event] || r.meta) ? '<span class="sub">Meta: ' + esc(META_LABEL[r.event] || r.meta) + "</span>" : '<span class="sub">Not sent to Meta</span>') },
+        { label: NAMES.meta, get: (r) => cell(r.cells.meta, "meta") },
+        { label: NAMES.ga4, get: (r) => cell(r.cells.ga4, "ga4") },
+        { label: NAMES.posthog, get: (r) => cell(r.cells.posthog, "posthog") },
+        { label: NAMES.crm, get: (r) => cell(r.cells.crm, "crm") },
+      ], d.stage_matrix || [], { mid: true }),
+    });
+    const sv = d.stage_values || { rows: [] };
+    const values = card({
+      title: "Conversion values sent to ad platforms", sub: "P(won | stage, tier) × average deal (" + (sv.avg_deal ? moneyShort(sv.avg_deal) : "not computed") + "), from " + n(sv.n_total) + " leads with an outcome in 365 days. Cells with fewer than 20 outcomes use the fixed value." + (sv.computed_at ? " Computed " + dt(sv.computed_at) + "." : ""),
+      actions: sv.locked ? '<span class="lock">locked (env)</span>' : '<button class="btn btn-sm" type="button" data-action="stage-values">Recompute</button>', flush: true,
+      body: table([{ label: "Stage", get: (r) => '<span class="t-name">' + esc(r.label) + "</span>" }].concat(["A", "B", "C"].map((t, i) => ({
+        label: "Tier " + t, num: true,
+        get: (r) => { const c = r.tiers[i]; return '<span class="t-name">' + esc(isNum(c.used) ? money(c.used) : "—") + "</span>" + '<span class="sub">' + (isNum(c.calibrated) ? esc(pp(c.p)) + " of " + esc(n(c.n)) : "fixed" + (c.n ? " · n " + esc(n(c.n)) : "")) + "</span>"; },
+      }))), sv.rows),
+    });
     return (d.test_event_code ? '<div class="callout warn"><span class="callout-dot"></span><div><strong>Meta test event code is set.</strong> Events go to Test Events in Events Manager. Clear it in Integrations when you are done testing.</div></div>' : "") +
-      dests + '<div class="grid g2">' + match + ev + "</div>" + errs;
+      dests + matrix + '<div class="grid g2">' + match + values + "</div>" + '<div class="grid g2">' + ev + errs + "</div>";
   };
 
   // ── Live ───────────────────────────────────────────────────────────────────
@@ -1084,6 +1342,64 @@
   function stopLive() { if (LIVE.timer) clearInterval(LIVE.timer); LIVE.timer = null; }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && S.tab === "live") pollLive(); });
 
+  // ── Alerts ─────────────────────────────────────────────────────────────────
+  TAB.alerts.load = () => api("/alerts");
+  TAB.alerts.actions = () => '<button class="btn" type="button" data-action="alerts-check">Run checks now</button>';
+  const SEV = (s) => badge(s === "crit" ? "Critical" : "Warning", s === "crit" ? "b-red" : "b-amber");
+  const alertVal = (v) => (isNum(v) ? n1(v) : "—");
+  TAB.alerts.render = (d) => {
+    renderBanner(d);
+    const hb = d.heartbeat_at
+      ? (d.heartbeat_stale ? '<div class="callout bad"><span class="callout-dot"></span><div><strong>The cron has not run for ' + esc(dur(Date.now() - d.heartbeat_at)) + ".</strong> Emails, AI calls, syncs and these checks are waiting. Check the Worker's Cron Triggers in Cloudflare.</div></div>"
+        : '<div class="callout info"><span class="callout-dot"></span><div>Scheduled jobs are running. Last beat ' + esc(ago(d.heartbeat_at)) + ". Checks run every 15 minutes" + (d.pings ? " and ping Slack/Discord when an alert opens or resolves." : ". Add a Slack or Discord webhook in Integrations to get pinged.") + "</div></div>")
+      : '<div class="callout warn"><span class="callout-dot"></span><div>No cron heartbeat yet. It appears after the first scheduled run.</div></div>';
+    const open = card({
+      title: "Open", sub: d.open.length ? d.open.length + " open" : "Nothing needs attention", flush: true,
+      body: table([
+        { label: "Alert", cls: "wrap", get: (r) => '<span class="t-name">' + esc(r.label) + '</span><span class="sub">' + esc(r.detail || "") + "</span>" },
+        { label: "Severity", get: (r) => SEV(r.severity) },
+        { label: "Opened", get: (r) => esc(dt(r.opened_at)) + '<span class="sub">' + esc(ago(r.opened_at)) + "</span>" },
+        { label: "Now", num: true, get: (r) => esc(alertVal(r.last_value)) },
+        { label: "Usual", num: true, get: (r) => esc(alertVal(r.baseline)) },
+        { label: "", get: (r) => '<button class="btn btn-sm btn-ghost" type="button" data-action="alert-resolve" data-id="' + esc(r.id) + '">Resolve</button>' },
+      ], d.open, { empty: empty("All clear", "Every check is within its normal range.", true) }),
+    });
+    const recent = card({
+      title: "History", sub: "Resolved alerts, newest first", flush: true,
+      body: table([
+        { label: "Alert", cls: "wrap", get: (r) => '<span class="t-name">' + esc(r.label) + '</span><span class="sub">' + esc(r.detail || "") + "</span>" },
+        { label: "Severity", get: (r) => SEV(r.severity) },
+        { label: "Opened", get: (r) => esc(dt(r.opened_at)) },
+        { label: "Lasted", num: true, get: (r) => esc(dur(r.resolved_at - r.opened_at)) },
+      ], d.recent, { mid: true, empty: empty("No alerts yet", "Resolved alerts are kept here.", true) }),
+    });
+    const rules = card({
+      title: "What is checked", flush: true,
+      body: table([
+        { label: "Check", get: (r) => '<span class="t-name">' + esc(r.label) + "</span>" },
+        { label: "Severity", get: (r) => SEV(r.severity) },
+        { label: "When it fires", cls: "wrap", get: (r) => '<span class="small">' + esc(r.help) + "</span>" },
+      ], d.rules),
+    });
+    return hb + open + '<div class="grid g2">' + recent + rules + "</div>";
+  };
+
+  /** Red bar above every view while alerts are open (or the cron has stalled). */
+  function renderBanner(d) {
+    const el = $("#alert-banner");
+    if (!el) return;
+    const crit = d.open.filter((a) => a.severity === "crit");
+    const items = d.open.slice(0, 3).map((a) => a.label);
+    if (d.heartbeat_stale) items.unshift("Scheduled jobs stalled");
+    if (!items.length) { el.hidden = true; el.innerHTML = ""; return; }
+    el.className = "alert-banner" + (crit.length || d.heartbeat_stale ? "" : " warn");
+    el.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5L14 13H2z"/><path d="M8 6.5v3M8 11.2v.1"/></svg><span><strong>' + esc(d.open.length + (d.heartbeat_stale ? 1 : 0)) + " open alert" + (d.open.length + (d.heartbeat_stale ? 1 : 0) === 1 ? "" : "s") + ":</strong> " + esc(items.join(" · ")) + (d.open.length > 3 ? " …" : "") + '</span><a class="btn btn-sm" href="#alerts">View alerts</a>';
+    el.hidden = false;
+  }
+  async function refreshBanner() {
+    try { renderBanner(await api("/alerts/open")); } catch (e) { /* the banner is best effort */ }
+  }
+
   // ── Integrations ───────────────────────────────────────────────────────────
   TAB.integrations.load = () => api("/integrations");
   const STATE_BADGE = { connected: ["Connected", "b-green"], partial: ["Partly set up", "b-amber"], off: ["Not connected", "b-grey"], defaults: ["Using defaults", "b-grey"] };
@@ -1102,7 +1418,9 @@
       '<div class="setting-line">' + val + '<span class="setting-key">' + esc(x.key) + "</span></div>" + (x.help ? '<div class="setting-help">' + esc(x.help) + "</div>" : "") + input + "</div>";
   }
   function groupActions(id) {
-    if (id === "email") return '<form class="inline-form" data-submit="test-email"><input class="input sm" type="email" name="to" placeholder="you@company.com" required><button class="btn btn-sm" type="submit">Send test email</button></form>';
+    if (id === "email") return '<form class="inline-form" data-submit="test-email"><input class="input sm" type="email" name="to" placeholder="you@company.com" required><button class="btn btn-sm" type="submit">Send test email</button></form>' +
+      '<div class="row mt8"><button class="btn btn-sm" type="button" data-action="dns-check">Check DNS (SPF, DKIM, DMARC)</button><span class="faint small">Webhook for bounces: <code class="mono">/hooks/resend</code></span></div><div id="dns-out"></div>';
+    if (id === "ads") return '<div class="row"><button class="btn btn-sm" type="button" data-action="spend-sync">Sync spend now</button><a class="btn btn-sm btn-ghost" href="#traffic">Spend, CAC &amp; ROAS</a></div>';
     if (id === "notify") return '<div class="row"><button class="btn btn-sm" type="button" data-action="test-ping">Send test ping to Slack / Discord</button></div>';
     if (id === "calendly") return '<div class="row wrap">' + [["connect", "Connect"], ["sync", "Sync now"], ["import", "Import history"], ["requalify", "Requalify direct bookings"], ["link-orphans", "Link orphans"]].map((a) => '<button class="btn btn-sm" type="button" data-action="calendly" data-op="' + a[0] + '">' + a[1] + "</button>").join("") + '</div><div class="small faint" id="calendly-out"></div>';
     if (id === "voice") return '<div class="row"><a class="btn btn-sm" href="#voice">Open the guided voice setup</a></div>';
@@ -1196,7 +1514,11 @@
       "<dt>Location</dt><dd>" + esc([L.city, L.country].filter(Boolean).join(", ") || "—") + (L.device ? ' <span class="faint">· ' + esc(L.device) + "</span>" : "") + "</dd>" +
       "<dt>Deal value</dt><dd>" + esc(L.revenue ? money(L.revenue) : "—") + (L.cash_collected ? ' <span class="faint">· ' + esc(money(L.cash_collected)) + " collected</span>" : "") + "</dd>" +
       "<dt>Calls</dt><dd>" + (L.do_not_call_at ? badge("Do not call", "b-red") : L.call_consent_at ? "Consented " + esc(day(L.call_consent_at)) : '<span class="faint">No consent</span>') + "</dd>" +
-      "<dt>Emails</dt><dd>" + (L.unsubscribed_at ? badge("Unsubscribed", "b-amber") : "Subscribed") + "</dd></dl>";
+      "<dt>Emails</dt><dd>" + (d.revops && d.revops.email_status === "bounced" ? badge("Hard bounce", "b-red") : d.revops && d.revops.email_status === "complained" ? badge("Spam complaint", "b-red") : L.unsubscribed_at ? badge("Unsubscribed", "b-amber") : "Subscribed") + "</dd>" +
+      (d.revops && isNum(d.revops.p_win) ? "<dt>Win probability</dt><dd>" + esc(pp(d.revops.p_win)) + ' <span class="faint">· calibrated model</span></dd>' : "") +
+      (d.revops && isNum(d.revops.noshow_risk) && L.status === "booked" ? "<dt>No-show risk</dt><dd>" + badge(Math.round(d.revops.noshow_risk * 100) + "%", d.revops.noshow_risk > 0.4 ? "b-red" : d.revops.noshow_risk > 0.25 ? "b-amber" : "b-green") +
+        (d.revops.noshow_reasons && d.revops.noshow_reasons.length ? ' <span class="faint">· ' + esc(d.revops.noshow_reasons.map(human).join(", ")) + "</span>" : "") + "</dd>" : "") +
+      (d.revops && d.revops.ft_ad_id ? '<dt>First ad</dt><dd class="mono">' + esc(d.revops.ft_ad_id) + "</dd>" : "") + "</dl>";
     const vsl = d.vsl.length ? '<div class="stack">' + d.vsl.map((v) => '<div class="bar-row"><span class="bar-label">' + esc(label(v.video)) + ' film</span><span class="bar-value">' + esc(v.watched_pct) + "%" + (v.completed ? '<span class="faint">finished</span>' : "") + '</span><div class="bar-track"><div class="bar-fill"' + w(v.watched_pct) + "></div></div></div>").join("") + "</div>" : '<p class="faint small">Has not played a film.</p>';
     const answers = d.answers.some((a) => a.answer) ? '<dl class="kv">' + d.answers.map((a) => '<dt title="' + esc(a.title) + '">' + esc(label(a.id)) + "</dt><dd>" + (a.answer ? esc(a.answer) : '<span class="faint">—</span>') + "</dd>").join("") + "</dl>" : '<p class="faint small">No application answers yet.</p>';
     const scoreLines = sb && sb.lines && sb.lines.length ? table([
@@ -1447,7 +1769,7 @@
       if (!S.drawer || S.drawer.id !== r.lead) openLead(r.lead);
     } else {
       if (S.drawer) closeDrawer();
-      if (!booted || r.tab !== S.tab) { S.tab = r.tab; renderShell(); loadTab(); }
+      if (!booted || r.tab !== S.tab) { S.tab = r.tab; renderShell(); loadTab(); if (booted && r.tab !== "alerts") refreshBanner(); }
     }
     booted = true;
     document.body.classList.remove("nav-open");
@@ -1570,6 +1892,62 @@
       if (!confirm("Clear " + el.dataset.key + "? The default (or nothing) will be used.")) return;
       try { await api("/integrations", { method: "PUT", body: { key: el.dataset.key, value: "" } }); toast("Cleared"); loadTab(true); } catch (e) { fail(e); }
     },
+    "traffic-view": (el) => { S.trafficView = el.dataset.view === "spend" ? "spend" : "sources"; store.set("hq-traffic-view", S.trafficView); loadTab(); },
+    "spend-level": (el) => { S.spendLevel = el.dataset.level; store.set("hq-spend-level", S.spendLevel); loadTab(true); },
+    "spend-sync": async (el) => {
+      el.disabled = true;
+      try { const r = await api("/spend/sync", { method: "POST" }); toast("Synced " + n(r.rows) + " rows of spend"); if (S.tab === "traffic") loadTab(true); } catch (e) { fail(e); } finally { el.disabled = false; }
+    },
+    "noshow-score": async (el) => {
+      el.disabled = true;
+      try { const r = await api("/sales/noshow/score", { method: "POST" }); toast("Scored " + n(r.scored) + " upcoming calls"); loadTab(true); } catch (e) { fail(e); } finally { el.disabled = false; }
+    },
+    "digest-send": async (el) => {
+      el.disabled = true;
+      try { await api("/digest/send", { method: "POST" }); toast("Digest and follow-up pings sent"); } catch (e) { fail(e); } finally { el.disabled = false; }
+    },
+    "insights-view": (el) => { S.insightsView = el.dataset.view === "scoring" ? "scoring" : "booked"; loadTab(); },
+    "ai-run": async (el) => {
+      el.disabled = true; el.textContent = "Running…";
+      try { await api("/ai-report/run", { method: "POST" }); toast("Weekly summary written"); loadTab(true); } catch (e) { fail(e); el.disabled = false; el.textContent = "Run now"; }
+    },
+    "calibration-run": async (el) => {
+      el.disabled = true; el.textContent = "Working…";
+      try {
+        const r = await api("/calibration/run", { method: "POST" });
+        toast(r.model_id ? "Model trained on " + n(r.n) + " outcomes" + (r.activated ? " and activated" : " (kept the active model)") : "Not enough outcomes yet: " + n(r.n) + " so far");
+        loadTab(true);
+      } catch (e) { fail(e); el.disabled = false; el.textContent = "Recompute now"; }
+    },
+    "model-activate": async (el) => {
+      try { await api("/calibration/activate", { method: "POST", body: { id: el.dataset.id } }); toast("Model activated; open leads rescored"); loadTab(true); } catch (e) { fail(e); }
+    },
+    "emails-resume": async () => {
+      if (!confirm("Resume marketing sequences? Only do this once the cause of the bounces or complaints is fixed.")) return;
+      try { await api("/emails/resume", { method: "POST" }); toast("Marketing emails resumed"); loadTab(true); } catch (e) { fail(e); }
+    },
+    "stage-values": async (el) => {
+      el.disabled = true;
+      try { const r = await api("/tracking/stage-values", { method: "POST" }); toast("Values recomputed from " + n(r.n_total) + " outcomes"); loadTab(true); } catch (e) { fail(e); } finally { el.disabled = false; }
+    },
+    "alerts-check": async (el) => {
+      el.disabled = true;
+      try { const r = await api("/alerts/check", { method: "POST" }); toast("Checks done: " + (r.opened || []).length + " opened, " + (r.resolved || []).length + " resolved"); if (S.tab === "alerts") loadTab(true); else refreshBanner(); } catch (e) { fail(e); } finally { el.disabled = false; }
+    },
+    "alert-resolve": async (el) => {
+      try { await api("/alerts/" + encodeURIComponent(el.dataset.id) + "/resolve", { method: "POST" }); toast("Resolved. It reopens if the check still fails after the cooldown."); loadTab(true); } catch (e) { fail(e); }
+    },
+    "dns-check": async (el) => {
+      const out = $("#dns-out");
+      el.disabled = true;
+      if (out) out.innerHTML = '<p class="faint small mt8">Looking up DNS…</p>';
+      try {
+        const r = await api("/integrations/email/dns-check", { method: "POST" });
+        const ST = { pass: ["Pass", "b-green"], warn: ["Check", "b-amber"], fail: ["Fail", "b-red"] };
+        if (out) out.innerHTML = r.error && !r.checks.length ? '<p class="small bad-text mt8">' + esc(r.error) + "</p>" : '<div class="dns-list">' + r.checks.map((c) =>
+          '<div class="dns-row">' + badge(ST[c.state][0], ST[c.state][1]) + '<div><div class="t-name small">' + esc(c.label) + '</div><div class="small faint">' + esc(c.detail) + "</div>" + (c.records.length ? '<code class="mono small dns-rec">' + esc(c.records.join(" | ")) + "</code>" : "") + "</div></div>").join("") + "</div>";
+      } catch (e) { fail(e); if (out) out.innerHTML = ""; } finally { el.disabled = false; }
+    },
     "delete-payment": async (el) => {
       if (!confirm("Delete this payment? Cash collected will be recalculated.")) return;
       try { await api("/leads/" + encodeURIComponent(S.drawer.id) + "/payments/" + encodeURIComponent(el.dataset.id), { method: "DELETE" }); toast("Payment deleted"); openLead(S.drawer.id); } catch (e) { fail(e); }
@@ -1655,6 +2033,20 @@
       for (const k of ["fit_rating", "installments_total", "refund_amount"]) patch[k] = numOrNull(b[k]);
       try { await patchLead(patch, "Deal saved"); } catch (e) { fail(e); }
     },
+    "spend-import": async (form) => {
+      const file = form.elements.file.files && form.elements.file.files[0];
+      const out = $("#spend-import-out");
+      if (!file) { toast("Choose a CSV file first.", "err"); return; }
+      if (file.size > 2000000) { toast("The file is too large (2 MB max).", "err"); return; }
+      try {
+        const csv = await file.text();
+        const r = await api("/spend/import", { method: "POST", body: { csv, platform: form.elements.platform.value } });
+        const msg = "Imported " + n(r.imported) + " rows" + (r.errors.length ? ", skipped " + r.errors.length + ": " + r.errors.slice(0, 2).join(" ") : "");
+        if (out) out.textContent = msg;
+        toast(msg.slice(0, 140));
+        loadTab(true);
+      } catch (e) { fail(e); }
+    },
     "add-payment": async (form) => {
       const b = formObj(form);
       try {
@@ -1712,6 +2104,8 @@
     window.addEventListener("hashchange", route);
     api("/filters").then((o) => { S.options = o; if (!TAB[S.tab].noFilters) renderFilters(); }).catch(() => {});
     route();
+    if (S.tab !== "alerts") refreshBanner();
+    setInterval(() => { if (!document.hidden && S.tab !== "alerts") refreshBanner(); }, 60000);
   }
   // Deferred scripts run in order before DOMContentLoaded; waiting for it means funnel-map.js is loaded.
   if (document.readyState === "loading" || document.readyState === "interactive") document.addEventListener("DOMContentLoaded", boot, { once: true });

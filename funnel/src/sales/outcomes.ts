@@ -165,21 +165,21 @@ export async function applyLeadUpdate(
     await cancelSequences(rt, lead.id, ["booked", "precall"]);
     await enqueueSequence(rt, fresh, "no_show");
     await queueCall(rt, fresh, "rebook");
-    await track(rt, { leadId: lead.id }, { name: "call_no_show", source: "admin" });
+    await track(rt, { leadId: lead.id }, { name: "call_no_show", source: "admin", eventId: `noshow_${lead.id}_${lead.call_at || 0}` });
     rt.waitUntil(notifyTeam(rt, "no_show", fresh));
   } else if (next === "showed") {
     await cancelSequences(rt, lead.id, ["booked", "precall", "no_show"]);
     await enqueueSequence(rt, fresh, "post_call");
-    await track(rt, { leadId: lead.id }, { name: "call_showed", source: "admin" });
+    await track(rt, { leadId: lead.id }, { name: "call_showed", source: "admin", eventId: `showed_${lead.id}_${lead.call_at || 0}` });
     rt.waitUntil(notifyTeam(rt, "showed", fresh));
   } else if (next === "won") {
     await enqueueSequence(rt, fresh, "won");
-    if (prev !== "showed") await track(rt, { leadId: lead.id }, { name: "call_showed", source: "admin" });
-    await track(rt, { leadId: lead.id }, { name: "deal_won", source: "admin", value: fresh.revenue || undefined, currency: "USD" });
+    if (prev !== "showed") await track(rt, { leadId: lead.id }, { name: "call_showed", source: "admin", eventId: `showed_${lead.id}_${lead.call_at || 0}` });
+    await track(rt, { leadId: lead.id }, { name: "deal_won", source: "admin", value: fresh.revenue || undefined, currency: "USD", eventId: `won_${lead.id}` });
     rt.waitUntil(notifyTeam(rt, "won", fresh, fresh.revenue ? `Deal value ${Math.round(fresh.revenue).toLocaleString("en-US")}` : undefined));
   } else if (next === "lost") {
     await enqueueSequence(rt, fresh, "lost");
-    await track(rt, { leadId: lead.id }, { name: "deal_lost", source: "admin", props: { reason: fresh.lost_reason } });
+    await track(rt, { leadId: lead.id }, { name: "deal_lost", source: "admin", props: { reason: fresh.lost_reason }, eventId: `lost_${lead.id}` });
     rt.waitUntil(notifyTeam(rt, "lost", fresh, fresh.lost_reason || undefined));
   }
   return fresh;
@@ -204,7 +204,10 @@ export async function recordPayment(rt: Runtime, lead: Lead, input: { amount: un
   await rt.env.DB.prepare("INSERT INTO payments (id, lead_id, amount, paid_at, method, note, created_at) VALUES (?,?,?,?,?,?,?)")
     .bind(p.id, p.lead_id, p.amount, p.paid_at, p.method, p.note, p.created_at).run();
   await syncCash(rt, lead.id);
-  if (!isHistorical(lead, rt.now())) await track(rt, { leadId: lead.id }, { name: "payment_recorded", source: "admin", props: { amount }, localOnly: true });
+  // Sent to Meta as CashCollected (or Refund when negative) with the amount as value; the id dedupes.
+  if (!isHistorical(lead, rt.now())) {
+    await track(rt, { leadId: lead.id }, { name: "payment_recorded", source: "admin", props: { amount }, value: amount, currency: "USD", eventId: `pay_${p.id}` });
+  }
   return p;
 }
 
