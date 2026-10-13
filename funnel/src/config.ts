@@ -136,6 +136,8 @@ export const BREAKOUT = {
   eyebrow: "Your application is in",
   h1: "One more step before we talk.",
   sub: "Watch this short video. It answers the questions most founders have before the call, including the cost and how much time it takes.",
+  /** Used while no breakout video is configured. */
+  subNoVideo: "Pick a time that suits you. On the call we cover the cost, the time it takes and whether it fits your business.",
   bookedEyebrow: "You're booked",
   bookedH1: "Here is how to get the most from the call.",
   prep: [

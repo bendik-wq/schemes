@@ -287,14 +287,15 @@ export async function breakoutPage(c: Ctx): Promise<Response> {
   const objections = FAQS.filter((f) => ["cost", "time", "tech", "agency", "guarantee", "results"].includes(f.id));
   const remove: string[] = [booked ? "[data-when=open]" : "[data-when=booked]"];
   if (!wa) remove.push("[data-section=whatsapp]");
-  if (!video.src) remove.push("[data-section=video]");
+  if (!video.src) remove.push("[data-section=video]", ".cta-band h2");
   if (!lead?.booking_join_url) remove.push("[data-when=join]");
   return renderTemplate(c, "breakout.html", {
+    bodyClass: video.src ? "has-video" : "",
     title: `${booked ? "Before your call" : "Next step"} · ${BRAND.name}`,
     text: {
       eyebrow: booked ? BREAKOUT.bookedEyebrow : BREAKOUT.eyebrow,
       h1: booked ? BREAKOUT.bookedH1 : BREAKOUT.h1,
-      sub: booked ? `Your call is on ${lv?.callTime || "the time you picked"}. The confirmation email has the link.` : BREAKOUT.sub,
+      sub: booked ? `Your call is on ${lv?.callTime || "the time you picked"}. The confirmation email has the link.` : video.src ? BREAKOUT.sub : BREAKOUT.subNoVideo,
       first: lead?.first_name || "",
       disclaimer: BRAND.disclaimer,
       guarantee: BRAND.guarantee,

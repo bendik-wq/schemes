@@ -26,6 +26,8 @@
     var qs = cfg.questions || [];
     var root = d.querySelector(".steps");
     var bar = d.querySelector(".progress i");
+    // The inline bar reveals one full-width gradient (so its colour tracks progress); the width is the fallback.
+    function setBar(pct) { if (!bar) return; bar.style.width = pct + "%"; bar.style.setProperty("--p", pct + "%"); }
     if (!root || !qs.length) return;
     var lead = cfg.lead;
     var answers = (lead && lead.answers) || {};
@@ -52,7 +54,7 @@
       }
     }
 
-    function progress() { if (bar) bar.style.width = Math.round((idx / qs.length) * 100) + "%"; }
+    function progress() { setBar(Math.round(((idx + 1) / qs.length) * 100)); }
 
     function frame(q, body, foot) {
       var n = el("p", { class: "step-n", text: "Step " + (idx + 1) + " of " + qs.length });
@@ -234,7 +236,7 @@
     }
 
     function finish() {
-      if (bar) bar.style.width = "100%";
+      setBar(100);
       var items = ["Reading your answers", "Checking fit with the program", "Finding the right next step"].map(function (t) { return el("li", { text: t }); });
       root.innerHTML = "";
       root.appendChild(el("div", { class: "step analysing" }, [el("div", { class: "spinner", "aria-hidden": "true" }), el(titleTag, { class: "q-title", text: "One moment." }), el("ul", {}, items)]));
@@ -269,7 +271,7 @@
           el("p", { class: "help", text: "Thank you. Your next step is ready." }),
           el("div", { class: "step-foot" }, [el("span"), el("a", { class: "btn lg", href: cfg.done.route, text: "See your next step" })]),
         ]));
-        if (bar) bar.style.width = "100%";
+        setBar(100);
         return;
       }
       if (q.type === "contact") return renderContact(q);
