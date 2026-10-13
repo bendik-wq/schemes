@@ -1,5 +1,70 @@
+# Static assets (served without the Worker). Pages, the Worker's own headers and the CSP live in src/index.ts.
+#
+# Caching rules:
+# - css/js used by the funnel pages are always referenced as ?v=<deployed version> (renderTemplate), so they are
+#   cached for a year. Never reference them without the version.
+# - fonts and the flow ribbons are cached for a year by filename: give a changed file a new name.
+# - admin assets stay short-lived (Funnel HQ loads them without a version).
+# Each rule sets Cache-Control once: several matching rules would join their values with a comma.
+
 /assets/*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Robots-Tag: noindex, nofollow
+
+/assets/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/flow/*
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/site.css
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/form.css
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/f.js
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/vsl.js
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/book.js
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/apply.js
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/hls.light.min.js
+  Cache-Control: public, max-age=31536000, immutable
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/admin.css
   Cache-Control: public, max-age=300
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/admin.js
+  Cache-Control: public, max-age=300
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/funnel-map.js
+  Cache-Control: public, max-age=300
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/mark.svg
+  Cache-Control: public, max-age=86400
+  Cross-Origin-Resource-Policy: same-origin
+
+# Link-preview image: fetched by Slack, LinkedIn, X and Facebook from their own servers and shown in their apps.
+/assets/og.png
+  Cache-Control: public, max-age=86400
+  Cross-Origin-Resource-Policy: cross-origin

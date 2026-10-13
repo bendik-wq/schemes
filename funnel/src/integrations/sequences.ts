@@ -30,6 +30,12 @@ const BOOKED_LIKE = new Set(["booked", "showed", "won"]);
 const isBooked = (l: Lead) => l.status === "booked" || (!!l.call_at && !l.booking_cancelled_at && BOOKED_LIKE.has(l.status));
 const isClosed = (l: Lead) => ["won", "lost", "disqualified"].includes(l.status);
 
+/** "I'll be there" was tapped for the call that is booked now (a reschedule needs a new confirmation). */
+export function attendanceConfirmedFor(l: Lead): boolean {
+  const x = l as Lead & { attendance_confirmed_at?: number | null; attendance_call_at?: number | null };
+  return !!x.attendance_confirmed_at && !!l.call_at && x.attendance_call_at === l.call_at;
+}
+
 const steps = (templates: string[], offsets: number[]): Step[] => templates.map((t, i) => ({ template: t, offset: offsets[i] }));
 
 export const SEQUENCES: Record<string, Sequence> = {
@@ -70,6 +76,8 @@ export const SEQUENCES: Record<string, Sequence> = {
       { template: "bk_3h", offset: -3 * H, anchor: "call" },
       { template: "bk_1h", offset: -1 * H, anchor: "call" },
       { template: "bk_10m", offset: -10 * M, anchor: "call" },
+      // Appended: two hours before, only when attendance is not confirmed for this call time.
+      { template: "bk_2h", offset: -2 * H, anchor: "call", skipIf: (l) => attendanceConfirmedFor(l) },
     ],
     stopIf: (l) => l.status !== "booked" || !!l.booking_cancelled_at || !l.call_at,
   },

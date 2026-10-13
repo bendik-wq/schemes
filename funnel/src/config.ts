@@ -50,8 +50,24 @@ export const OUTCOME_PROMISES = [
   /\bwithout fail\b/i,
 ];
 
+/**
+ * VSL gate on the landing page.
+ * - hard: the application opens only at ctaRevealAt (the pitch).
+ * - soft: after softAt seconds of watching (with sound, or muted with captions on) a small "Ready already?" link
+ *   opens it early; the full CTA and the sticky CTA still appear at the pitch.
+ * - open: the application is always visible under the film.
+ * Retargeting (utm_content starting "rt_"), referral links (?r=) and known leads are never gated.
+ */
+export type GateMode = "hard" | "soft" | "open";
+export interface VideoGate { mode: GateMode; softAt: number; }
+
+/**
+ * Films. `captions` is an optional WebVTT URL (https or same-site path); the VSL_<ID>_CAPTIONS setting overrides it.
+ * The film source itself is the VSL_<ID>_SRC setting (MP4, or HLS .m3u8 such as Cloudflare Stream).
+ * `label` is the accessible name of the player.
+ */
 export const VIDEOS = {
-  main: { id: "main", title: "The film", ctaRevealAt: 312, duration: 540, chapters: [
+  main: { id: "main", title: "The film", label: "The film: nine minutes on how founders stop renting their growth", captions: "", gate: { mode: "soft", softAt: 90 } as VideoGate, ctaRevealAt: 312, duration: 540, chapters: [
     { at: 0, key: "market_moved", label: "The market has moved" },
     { at: 70, key: "two_types", label: "Two kinds of founders" },
     { at: 140, key: "not_your_fault", label: "Why agencies and SaaS stack up" },
@@ -60,13 +76,13 @@ export const VIDEOS = {
     { at: 312, key: "offer", label: "The offer and guarantee" },
     { at: 420, key: "close", label: "Who this is for" },
   ] },
-  breakout: { id: "breakout", title: "What happens on the call", ctaRevealAt: 0, duration: 300, chapters: [
+  breakout: { id: "breakout", title: "What happens on the call", label: "Short video: what happens on the call", captions: "", ctaRevealAt: 0, duration: 300, chapters: [
     { at: 0, key: "bo_intro", label: "Why there is a call" },
     { at: 60, key: "bo_cost", label: "What it costs, honestly" },
     { at: 150, key: "bo_time", label: "How much of your time it takes" },
     { at: 230, key: "bo_next", label: "What to bring" },
   ] },
-  precall: { id: "precall", title: "Before we speak", ctaRevealAt: 0, duration: 240, chapters: [
+  precall: { id: "precall", title: "Before we speak", label: "Short video: before we speak", captions: "", ctaRevealAt: 0, duration: 240, chapters: [
     { at: 0, key: "pc_intro", label: "How the call runs" },
     { at: 90, key: "pc_prep", label: "Three things to prepare" },
   ] },
@@ -119,6 +135,21 @@ export const LANDING = {
     { label: "Weeks 6–7", title: "Dashboard and follow-up", body: "The sales dashboard and the email follow-up go live." },
     { label: "Week 8", title: "Handover", body: "Your team ships a change on its own. We review and hand over." },
   ],
+  /** Shown in place of the film while no film is configured (VSL_MAIN_SRC empty). */
+  noFilm: {
+    title: "What we build with you in eight weeks",
+    sub: "Built with your team on Claude Code, on your accounts. Yours to keep and change.",
+    foot: "Live by the end of week eight, or we keep working with you at no extra cost.",
+  },
+  /** Below the application: compact, calm, revealed with it. */
+  below: {
+    weeksKicker: "How the eight weeks work",
+    weeksTitle: "One system a fortnight. Your team alongside.",
+    faqKicker: "Questions",
+    faqTitle: "What founders ask first.",
+    faqIds: ["what", "cost", "time", "tech", "agency", "results"],
+  },
+  softCta: "Ready already? Start your application",
   fit: {
     yes: [
       "You run a business doing $1M or more a year.",
@@ -311,11 +342,34 @@ export type Status = (typeof STATUSES)[number];
 /** Economics used in the dashboard (illustrative defaults; edit to your numbers). */
 export const ECONOMICS = { avgDeal: 30000, currency: "USD" };
 
-export const RESOURCES = [
+/**
+ * Starter kit on /resources. `url` is optional (https or a same-site path); without one the item shows
+ * "Coming soon" instead of a dead title.
+ */
+export interface Resource { title: string; body: string; url?: string; }
+export const RESOURCES: Resource[] = [
   { title: "The growth-stack audit", body: "A one-page worksheet to list what you rent today and what it costs a year." },
   { title: "Server-side tracking, explained", body: "Why the Pixel alone under-reports, and what the Conversions API changes." },
   { title: "Your first Claude Code session", body: "A 30-minute walkthrough to build your first internal tool." },
 ];
+
+/** The call, as sold on /book and /breakout. */
+export const OFFER = {
+  callMinutes: 45,
+  agenda: [
+    { title: "Where you are", body: "Your current spend, your funnel and what is working." },
+    { title: "What we'd build first", body: "The one system that would pay back soonest for you." },
+    { title: "Cost and timeline", body: "What it would take, and whether it fits. If it doesn't, we say so." },
+  ],
+  takeaway: "You leave with a written plan, whether or not we work together.",
+  faqs: [
+    { id: "call_sales", q: "Is this a sales call?", topics: ["offer"], a: "It is a working session on your numbers. If the program fits, we talk about working together and the price. If it doesn't, we tell you and you keep the plan." },
+    { id: "call_prep", q: "Do I need to prepare anything?", topics: ["time"], a: "A rough idea of what you spend a year on agencies, freelancers and software. Bring anyone who signs off on decisions like this." },
+    { id: "call_cost", q: "Is there a charge for the call?", topics: ["price"], a: "No. The program's price is covered on the call, once we know the scope." },
+  ] as Faq[],
+  forwardSubject: "Worth a look: owning our growth stack",
+  forwardBody: "I looked into this for us. They build a VSL page, Meta tracking and a sales dashboard with your own team on Claude Code over eight weeks. Built for owners of businesses doing $1M+ a year, so the application should come from you:",
+};
 
 // Voice prompts. Variables in {{double_braces}} are filled by ElevenLabs from dynamic variables.
 export function outboundSystemPrompt(faqs: Faq[]): string {

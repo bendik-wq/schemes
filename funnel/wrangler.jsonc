@@ -26,6 +26,9 @@
     }
   ],
 
+  // The deployed version id: page templates append it to css/js URLs (?v=…) so those can be cached for a year.
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+
   "triggers": { "crons": ["*/5 * * * *"] },
 
   // Non-secret defaults. Secrets go in `wrangler secret put` or the Integrations tab.
