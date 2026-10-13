@@ -46,6 +46,8 @@ export function fitLogistic(features: string[], data: Sample[], opts: FitOptions
   let b = opts.biasInit ?? logit(Math.min(0.99, Math.max(0.01, rate)));
   if (!n) return { features, weights: w, bias: b };
   const gw = new Array(d).fill(0);
+  // A strong penalty on little data makes plain steps overshoot; shrink the step to stay stable.
+  const step = lr / (1 + l2 / n);
   for (let it = 0; it < iters; it++) {
     gw.fill(0);
     let gb = 0;
@@ -54,8 +56,8 @@ export function fitLogistic(features: string[], data: Sample[], opts: FitOptions
       gb += err;
       for (let j = 0; j < d; j++) if (r.x[j]) gw[j] += err * r.x[j];
     }
-    for (let j = 0; j < d; j++) w[j] -= lr * (gw[j] / n + (l2 / n) * (w[j] - prior[j]));
-    b -= lr * (gb / n);
+    for (let j = 0; j < d; j++) w[j] -= step * (gw[j] / n + (l2 / n) * (w[j] - prior[j]));
+    b -= step * (gb / n);
   }
   return { features, weights: w.map((v) => Math.round(v * 1e6) / 1e6), bias: Math.round(b * 1e6) / 1e6 };
 }

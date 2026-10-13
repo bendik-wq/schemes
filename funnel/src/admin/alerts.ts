@@ -159,7 +159,7 @@ export async function runChecks(rt: Runtime): Promise<CheckResult[]> {
   await safe("deliverability", async () => {
     const st = await kvGetJson<{ firing?: boolean; detail?: string; bounce?: number; complaint?: number } | null>(rt.env, "email:deliverability", null);
     if (!st) return null;
-    return { rule: "deliverability", firing: !!st.firing, value: st.complaint ?? null, baseline: 0.002, detail: st.detail || "" };
+    return { rule: "deliverability", firing: !!st.firing, value: st.complaint == null ? null : Math.round(st.complaint * 10000) / 100, baseline: 0.2, detail: st.detail || "" };
   });
   await safe("calendly_stale", async () => {
     if (!rt.settings.has("CALENDLY_API_TOKEN")) return null;

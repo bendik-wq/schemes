@@ -19,7 +19,7 @@ export const BUILTIN_NODE_IDS = [
 /** Funnel HQ tab ids (a node's "Open in Funnel HQ" target). KEEP IN SYNC with TABS in public/assets/admin.js. */
 export const TAB_IDS = [
   "overview", "map", "traffic", "landers", "links", "vsl", "behaviour", "application", "leads", "sales", "insights", "team",
-  "emails", "voice", "tracking", "live", "integrations",
+  "emails", "voice", "tracking", "live", "alerts", "integrations",
 ] as const;
 
 export const NODE_KINDS = ["traffic", "page", "decision", "auto", "people", "data"] as const;

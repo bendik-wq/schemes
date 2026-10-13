@@ -50,7 +50,7 @@ export interface NoShowInput {
 export function noShowFeatures(i: NoShowInput): number[] {
   const domain = (i.email.split("@")[1] || "").toLowerCase();
   return [
-    i.booked_at && i.call_at - i.booked_at > 5 * DAY ? 1 : 0,
+    i.booked_at != null && i.call_at - i.booked_at > 5 * DAY ? 1 : 0,
     i.emails_sent > 0 && i.emails_opened === 0 ? 1 : 0,
     i.confirm === "unanswered" ? 1 : 0,
     (i.watched_pct ?? 0) < 25 ? 1 : 0,
