@@ -136,14 +136,17 @@ describe("book page copy", () => {
 });
 
 describe("resources", () => {
-  it("renders a link when a URL exists and 'Coming soon' otherwise", () => {
-    expect(resourceHtml({ title: "Guide", body: "b" }, 0)).toContain("Coming soon");
+  it("renders only items with a safe URL, titles as h2, never 'Coming soon'", () => {
+    expect(resourceHtml({ title: "Guide", body: "b" }, 0)).toBe("");
     const linked = resourceHtml({ title: "Guide", body: "b", url: "https://example.test/g.pdf" }, 1);
     expect(linked).toContain('href="https://example.test/g.pdf"');
     expect(linked).toContain('rel="noopener"');
-    expect(resourceHtml({ title: "G", body: "b", url: "javascript:alert(1)" }, 0)).toContain("Coming soon");
+    expect(linked).toContain("<h2");
+    expect(resourceHtml({ title: "G", body: "b", url: "javascript:alert(1)" }, 0)).toBe("");
     expect(RESOURCES.length).toBeGreaterThan(0);
+    expect(readFileSync("src/funnel/pages.ts", "utf8")).not.toContain("Coming soon");
   });
+
 });
 
 describe("attendance confirmation", () => {

@@ -73,6 +73,19 @@
     return "+" + best + " " + groupDigits(dd.slice(best.length));
   }
 
+  // ── company website: the same rule as cleanWebsite() in src/funnel/application.ts ──
+  function cleanUrl(raw) {
+    var s = String(raw || "").trim();
+    if (!s) return "";
+    if (/\s/.test(s) || s.length > 200) return null;
+    var u;
+    try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(s) ? s : "https://" + s); } catch (e) { return null; }
+    if ((u.protocol !== "https:" && u.protocol !== "http:") || u.username || u.password || u.port) return null;
+    var host = u.hostname.toLowerCase();
+    if (!/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/.test(host)) return null;
+    return "https://" + host + (u.pathname === "/" ? "" : u.pathname.replace(/\/+$/, ""));
+  }
+
   // ── email typos: suggest, never correct ──
   var MAIL_DOMAINS = ["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "icloud.com", "yahoo.com", "proton.me", "protonmail.com", "online.no"];
   var TLD_FIX = { con: "com", cmo: "com", ocm: "com", vom: "com", xom: "com", comm: "com", coom: "com", cm: "com", om: "com", nte: "net", nett: "net", ner: "net", ogr: "org", orgg: "org", nno: "no", noo: "no", couk: "co.uk" };
@@ -105,9 +118,11 @@
     var cfg = w.OPCFG || {};
     var all = cfg.questions || [];
     // After-submit questions (optional, multi) are asked under the result, never in the scored flow.
+    // Inline questions (inlineWith) are extra fields on another question's screen, never a step of their own.
     function isPost(q) { return !!q.afterSubmit || (q.optional && q.type === "multi"); }
-    var qs = all.filter(function (q) { return !isPost(q); });
-    var postQs = all.filter(isPost);
+    function companion(q) { for (var i = 0; i < all.length; i++) if (all[i].inlineWith === q.id) return all[i]; return null; }
+    var qs = all.filter(function (q) { return !isPost(q) && !q.inlineWith; });
+    var postQs = all.filter(function (q) { return isPost(q) && !q.inlineWith; });
     var root = d.querySelector(".steps");
     var bar = d.querySelector(".progress i");
     // The inline bar reveals one full-width gradient (so its colour tracks progress); the width is the fallback.
@@ -356,12 +371,16 @@
       if (L.callConsent) consent.checked = true;
       function samePhone() { return !!L.phone && normPhone(f.phone.input.value, sel.value) === L.phone; }
       var consentRow = el("label", { class: "check", for: "f-consent" }, [consent, el("span", { text: (cfg.callConsent && cfg.callConsent.label) || "" })]);
+      // Text reminders: their own unticked box, only while SMS reminders are on. Per number, like the call consent.
+      var sms = cfg.smsConsent ? el("input", { type: "checkbox", name: "sms_consent", id: "f-sms" }) : null;
+      if (sms && L.smsConsent) sms.checked = true;
+      var smsRow = sms ? el("label", { class: "check sms-check", for: "f-sms" }, [sms, el("span", { text: cfg.smsConsent.label })]) : null;
       if (w.turnstile && ts.id != null) { try { w.turnstile.remove(ts.id); } catch (e) { /* gone with its old step */ } }
       ts.box = cfg.turnstile ? el("div", { class: "ts-box" }) : null;
       ts.id = null; ts.token = "";
       var status = el("div");
       var btn = el("button", { class: "btn lg", type: "submit", text: "Continue" });
-      var body = el("div", {}, [grid, consentRow, ts.box, status]);
+      var body = el("div", {}, [grid, consentRow, smsRow, ts.box, status]);
       frame(q, body, footer({ button: btn, hint: "Enter ↵" }));
       if (w.turnstile) tsRender();
       if (firstRender && !embedded) focusSoon(L.first ? f.email.input : f.first_name.input);
@@ -438,6 +457,7 @@
         var c = prefixCountry(v, sel.value);
         if (c && c !== sel.value) sel.value = c;
         if (!samePhone() && consent.checked && L.phone) consent.checked = false;
+        if (sms && !samePhone() && sms.checked && L.phone) sms.checked = false;
         if (/^\s*(\+|00)/.test(v) || !e.inputType || e.inputType.indexOf("delete") === 0) return;
         if (inp.selectionStart !== v.length) return;
         var digits = v.replace(/\D/g, "");
@@ -448,8 +468,9 @@
       sel.addEventListener("change", function () {
         changed(); keep();
         if (f.phone.input.value.trim()) { var err = check("phone"); show("phone", err); if (!err) phoneOk(); }
-        if (!samePhone() && L.phone) consent.checked = false;
+        if (!samePhone() && L.phone) { consent.checked = false; if (sms) sms.checked = false; }
       });
+      if (sms) sms.addEventListener("change", changed);
       consent.addEventListener("change", function () { changed(); if (!f.phone.wrap.classList.contains("bad")) phoneOk(); });
 
       function emailSuggest() {
@@ -483,7 +504,7 @@
         if (blockedEmail === null) { btn.textContent = "Continue"; btn.disabled = false; }
       }
       function send(v, retried) {
-        post("/api/apply/contact", { first_name: v.first_name, last_name: v.last_name, email: v.email, phone: v.phone, phone_country: sel.value, call_consent: consent.checked, turnstile: ts.token || undefined })
+        post("/api/apply/contact", { first_name: v.first_name, last_name: v.last_name, email: v.email, phone: v.phone, phone_country: sel.value, call_consent: consent.checked, sms_consent: sms ? sms.checked : undefined, turnstile: ts.token || undefined })
           .then(function (r) {
             // Every post spends the token; the widget makes a new one.
             if (!r.ok) tsReset();
@@ -491,7 +512,7 @@
               busy = false; btn.classList.remove("busy");
               store(CKEY, null);
               var e164 = normPhone(v.phone, sel.value);
-              lead = { first: v.first_name, last: v.last_name, email: v.email, phone: e164 || v.phone, callConsent: consent.checked, answers: answers };
+              lead = { first: v.first_name, last: v.last_name, email: v.email, phone: e164 || v.phone, callConsent: consent.checked, smsConsent: sms ? sms.checked : false, answers: answers };
               if (r.phone_callable === false && consent.checked) phoneNote = "Heads-up: that looks like a landline or service number, so our assistant won't ring it. You can change it with Back.";
               go(1);
               return;
@@ -620,9 +641,24 @@
       input.value = answers[q.id] || "";
       var msg = el("p", { class: "msg", id: "m-" + q.id });
       var wrap = el("div", { class: "field full" }, [input, msg]);
+      // Optional companion field on the same screen (the company website under "What does your business sell").
+      var cq = companion(q), cInput = null, cMsg = null, cWrap = null;
+      if (cq) {
+        cInput = el("input", { id: "f-" + cq.id, name: cq.id, type: cq.format === "url" ? "url" : "text", inputmode: cq.format === "url" ? "url" : null,
+          autocomplete: cq.format === "url" ? "url" : "off", autocapitalize: "none", autocorrect: "off", spellcheck: "false", placeholder: cq.placeholder || "",
+          "aria-describedby": "m-" + cq.id, enterkeyhint: "next" });
+        cInput.value = answers[cq.id] || "";
+        cMsg = el("p", { class: "msg", id: "m-" + cq.id });
+        cWrap = el("div", { class: "field full companion" }, [el("label", { for: "f-" + cq.id, text: cq.label || cq.title }), cInput, cMsg]);
+        cInput.addEventListener("input", function () { touched(); if (cWrap.classList.contains("bad")) cShow(cErr()); });
+        cInput.addEventListener("blur", function () { if (cInput.value.trim()) cShow(cErr()); });
+        cInput.addEventListener("change", changed);
+      }
+      function cErr() { return cInput && cleanUrl(cInput.value) === null ? "That doesn't look like a web address. Try something like yourcompany.com, or leave it empty." : null; }
+      function cShow(e) { if (!cWrap) return; cWrap.classList.toggle("bad", !!e); cMsg.textContent = e || ""; if (e) cInput.setAttribute("aria-invalid", "true"); else cInput.removeAttribute("aria-invalid"); }
       var last = idx === qs.length - 1;
       var btn = el("button", { class: "btn lg", type: "submit", text: last ? "Submit application" : "Continue" });
-      frame(q, el("div", { class: "fields" }, [wrap]), footer({ button: btn, hint: touch ? null : long ? (q.optional ? "Optional · ⌘ Enter" : "⌘ Enter") : "Enter ↵" }));
+      frame(q, el("div", { class: "fields" }, [wrap, cWrap]), footer({ button: btn, hint: touch ? null : long ? (q.optional ? "Optional · ⌘ Enter" : "⌘ Enter") : "Enter ↵" }));
       if (firstRender && !embedded) focusSoon(input);
       var min = Math.max(1, q.minLength || 1), shown = false, saving = false, dT = 0;
       function err() {
@@ -654,9 +690,17 @@
         var v = input.value.replace(/\s+/g, " ").trim();
         var bad = err();
         if (bad) { show(bad); trackErr(q.id, v ? "short" : "required"); input.focus(); return; }
+        var cBad = cErr();
+        if (cBad) { cShow(cBad); trackErr(cq.id, "invalid"); cInput.focus(); return; }
         clearTimeout(dT); draft = null;
         saving = true; btn.classList.add("busy");
-        save(q.id, v).then(function () { saving = false; next(); }).catch(function () { saving = false; btn.classList.remove("busy"); trackErr(q.id, "save_failed"); show("Not saved. Please check your connection and try again."); });
+        var send = {}; send[q.id] = v;
+        if (cq) { send[cq.id] = cleanUrl(cInput.value) || ""; answers[cq.id] = send[cq.id]; }
+        answers[q.id] = v;
+        post("/api/apply/answers", { answers: send, step: idx + 1 }).then(function (r) {
+          if (r && r.ok === false && r._status !== 429) throw new Error("save");
+          saving = false; next();
+        }).catch(function () { saving = false; btn.classList.remove("busy"); trackErr(q.id, "save_failed"); show("Not saved. Please check your connection and try again."); });
       };
     }
 
@@ -665,23 +709,43 @@
       go(1);
     }
 
-    // ── after submit: optional prep question, open times ──
-    function prepBlock(q) {
+    // ── after submit: optional prep questions (and "where did you hear about us"), open times ──
+    function prepBlocks() {
+      var box = el("div", { class: "prep-blocks" });
+      postQs.forEach(function (q, i) { box.appendChild(prepBlock(q, i)); });
+      return postQs.length ? box : null;
+    }
+    function prepBlock(q, n) {
       if (!q) return null;
+      var other = companion(q), otherInput = null, otherWrap = null, ot = 0;
       var picked = (Array.isArray(answers[q.id]) ? answers[q.id] : []).slice(), t = 0;
       var cards = q.options.map(function (o, i) { return optionCard(q, o, i, "checkbox", picked.indexOf(o.value) >= 0); });
       cards.forEach(function (c) { var k = c.label.querySelector("kbd"); if (k) k.parentNode.removeChild(k); });
       function sync() {
         picked = cards.filter(function (c) { return c.input.checked; }).map(function (c) { return c.input.value; });
         cards.forEach(function (c) { c.label.classList.toggle("is-on", c.input.checked); });
+        if (otherWrap) otherWrap.hidden = picked.indexOf("other") < 0;
         clearTimeout(t);
         t = setTimeout(function () { save(q.id, picked.slice(), stepOf(q)).then(function () { say("Saved."); }).catch(function () { say("Not saved. Please try again."); }); }, 600);
       }
       cards.forEach(function (c) { c.input.addEventListener("change", sync); });
+      if (other) {
+        // "Somewhere else": a short text field, saved as the person types (debounced), only once they pick it.
+        otherInput = el("input", { type: "text", id: "f-" + other.id, name: other.id, maxlength: "120", autocomplete: "off", placeholder: other.placeholder || "", "data-private": true });
+        otherInput.value = answers[other.id] || "";
+        otherWrap = el("div", { class: "field full other-field" }, [el("label", { for: "f-" + other.id, text: other.label || other.title }), otherInput]);
+        otherWrap.hidden = picked.indexOf("other") < 0;
+        otherInput.addEventListener("input", function () {
+          clearTimeout(ot);
+          ot = setTimeout(function () { save(other.id, otherInput.value.replace(/\s+/g, " ").trim().slice(0, 120), stepOf(q)).then(function () { say("Saved."); }).catch(function () { say("Not saved. Please try again."); }); }, 800);
+        });
+      }
+      var first = !n;
       return el("fieldset", { class: "choice prep" }, [
-        el("legend", {}, [el("span", { class: "prep-title", text: "Help " + ((cfg.founder) || "Bendik") + " prepare (optional)" })]),
-        el("p", { class: "help", text: q.title }),
-        el("div", { class: "options compact" }, cards.map(function (c) { return c.label; }))
+        el("legend", {}, [el("span", { class: "prep-title", text: first ? "Help " + ((cfg.founder) || "Bendik") + " prepare (optional)" : q.title + " (optional)" })]),
+        first ? el("p", { class: "help", text: q.title }) : null,
+        el("div", { class: "options compact" }, cards.map(function (c) { return c.label; })),
+        otherWrap
       ]);
     }
 
@@ -690,7 +754,7 @@
       root.innerHTML = "";
       var h = heading("Thank you" + (lead && lead.first ? ", " + lead.first : "") + ". Your application is in.");
       var cta = el("a", { class: "btn lg", href: r.route, text: r.route === "/book" ? "Pick a time" : "See your next step" });
-      root.appendChild(el("div", { class: "step result" }, [h, prepBlock(postQs[0]), el("div", { class: "step-foot" }, [el("span"), cta])]));
+      root.appendChild(el("div", { class: "step result" }, [h, prepBlocks(), el("div", { class: "step-foot" }, [el("span"), cta])]));
       setTimeout(function () { h.focus({ preventScroll: embedded }); }, 60);
     }
 
@@ -771,7 +835,8 @@
       });
       var kids = [h, help];
       if (note) kids.push(notice(note, true));
-      kids.push(tablist, panel, msg, el("div", { class: "step-foot slot-foot" }, [full, confirm]), prepBlock(postQs[0]));
+      kids.push(tablist, panel, msg, el("div", { class: "step-foot slot-foot" }, [full, confirm]), prepBlocks());
+
       root.appendChild(el("div", { class: "step slots" }, kids));
       showDay(0, false);
       track("slot_view", { days: days.length, slots: r.slots.length });

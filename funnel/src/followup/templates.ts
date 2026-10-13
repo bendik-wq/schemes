@@ -6,6 +6,8 @@
 import type { EmailContent, EmailCtx, Template } from "../integrations/email-types";
 import type { Dossier } from "./dossier";
 import { cohortSnapshot } from "../growth/snapshot";
+import { RESOURCES } from "../config";
+
 
 // ── Copy blocks keyed by answer value ─────────────────────────────────────────
 
@@ -14,7 +16,7 @@ export const BLOCKERS: Record<string, { name: string; subject: string; body: str
     name: "no one to build it",
     subject: "No one to build it: what that means here",
     body: [
-      "You said there is no one on the team to build this. It is the most common reason founders keep renting.",
+      "You said there is no one on the team to build this. It is a common reason founders keep renting.",
       "The program does not need a developer. Claude Code writes the code. What it needs is one curious person who sits in the weekly sessions and keeps going between them.",
       "On the call we can work out who that person might be. Often it is someone in operations or marketing who already does half of it by hand.",
     ],
@@ -41,7 +43,7 @@ export const BLOCKERS: Record<string, { name: string; subject: string; body: str
     name: "too many tools that don't connect",
     subject: "One place instead of nine logins",
     body: [
-      "You said you have too many tools and nothing is connected. Most growing businesses end up there. Each tool made sense when you bought it.",
+      "You said you have too many tools and nothing is connected. Many growing businesses end up there. Each tool made sense when you bought it.",
       "Part of the work is to put the pieces that matter in one place you own: pages, applications, calls, closes and cash, in one dashboard.",
       "Some tools are worth keeping. We will look at your list together and decide which ones earn their place.",
     ],
@@ -69,7 +71,7 @@ export const BLOCKERS: Record<string, { name: string; subject: string; body: str
 const BLOCKER_FALLBACK = {
   name: "whatever has held you back",
   body: [
-    "Most founders who apply have tried to fix their growth setup before. Usually something got in the way: no one to build it, a retainer, tracking nobody trusts, or simply time.",
+    "If you have tried to fix your growth setup before, something usually got in the way: no one to build it, a retainer, tracking nobody trusts, or simply time.",
     "Asymmetrical is built around those. Claude Code does the heavy lifting, your team owns the result, and we sit with them weekly until they can run it.",
     "If something specific has held you back, reply and tell me. I would rather hear it now than guess.",
   ],
@@ -89,7 +91,7 @@ export const GOALS: Record<string, string[]> = {
   internal_tools: [
     "You said what matters most is internal tools and dashboards.",
     "That is often where Claude Code surprises people. The quoting tool, the weekly report, the integration you were going to pay a dev shop for: your team can build these.",
-    "We usually start with the one your team asks for most, because that is the one they will actually use.",
+    "A good place to start is the one your team asks for most, because that is the one they will actually use.",
   ],
   unsure: [
     "You said you are not sure yet what matters most. That is a fine place to start.",
@@ -99,7 +101,7 @@ export const GOALS: Record<string, string[]> = {
 };
 
 const GOAL_FALLBACK = [
-  "You did not pick one thing that matters most, so here is how most founders think about it.",
+  "You did not pick one thing that matters most, so here are the usual starting points.",
   "Some want a growth machine they own: pages, ads and tracking. Some want to stop paying for agencies and tools. Some want the internal tools nobody has had time to build.",
   "Any of those is a reasonable place to start. We will pick one with you.",
 ];
@@ -177,14 +179,14 @@ export const OBJECTION_COPY: Record<string, { subject: string; body: string[] }>
     body: [
       "On the call it looked like this might not be the right fit. I would rather we both say that than force it.",
       "If anything changes, a new team member, a new offer, an agency contract ending, I am happy to look again.",
-      "In the meantime the resources page has a few things you can use on your own.",
+      "In the meantime, if a question comes up as you build things yourself, reply and ask.",
     ],
   },
 };
 
 const OBJECTION_FALLBACK = [
   "I have been thinking about our conversation and what might be holding you back.",
-  "Most founders weigh the same few things: the price against what they rent today, the time it asks of their team, and whether it will actually work for them.",
+  "Decisions like this usually come down to the same few things: the price against what you rent today, the time it asks of your team, and whether it will actually work for you.",
   "If one of those is on your mind, reply and tell me which. I will give you a straight answer.",
 ];
 
@@ -225,7 +227,7 @@ export const LOST_ANGLES: Record<string, string[][]> = {
   "No response": [
     ["We did not hear back after our conversation, so I will assume now is not the moment. No hard feelings."],
     ["If my emails got buried, that is fine. One reply with yes, no or later is all I need."],
-    ["In case it is useful whatever you decide, the resources page has a worksheet for listing what you rent today."],
+    ["In case it is useful whatever you decide: list what you pay each year for agencies, freelancers and software. It is a number worth knowing."],
     ["If things got busy, I understand. If you want to pick the conversation up again, book a time when it suits you."],
     ["Still here if you want to talk. If you would rather I stopped writing, just reply and say so."],
     ["I will leave it here. If it ever makes sense to talk again, you know where to find me."],
@@ -233,7 +235,7 @@ export const LOST_ANGLES: Record<string, string[][]> = {
   "Not a fit": [
     ["We agreed it was not a fit for now. Thank you for the honest conversation."],
     ["Fit can change. A new hire, a new offer or an agency contract ending can all make it look different."],
-    ["In the meantime, the resources page has a few things you can use on your own."],
+    ["In the meantime, if a question comes up as you build things yourself, reply and ask."],
     ["If your business has changed since we spoke, I am happy to take another look."],
     ["No pitch here. Just checking whether anything has changed that would make it worth another conversation."],
     ["If it ever becomes a fit, the door is open."],
@@ -248,7 +250,7 @@ export const LOST_ANGLES: Record<string, string[][]> = {
   ],
   Other: [
     ["Thank you for considering Asymmetrical. I understand it was not the right moment."],
-    ["If it is useful, the resources page has a worksheet for listing what you rent today and what it costs."],
+    ["If it is useful, one exercise: list what you rent today and what each piece costs a year."],
     ["A few months on, I wanted to check whether anything has changed on your side."],
     ["If owning your growth setup is still on your list, I am happy to talk again."],
     ["Still here if you want to pick it up. If you would rather I stopped writing, reply and say so."],
@@ -295,14 +297,19 @@ function buildLine(d: Dossier): string {
 function industryLines(d: Dossier): string[] {
   if (d.industry) {
     return [
-      `In ${d.industry.many}, the pieces most often rented are ${d.industry.rent}.`,
-      `A first internal tool that tends to make sense for a ${d.industry.one} is ${d.industry.tool}. Your team would build it with Claude Code and own it afterwards.`,
+      `In ${d.industry.many}, the pieces commonly rented include ${d.industry.rent}.`,
+      `A first internal tool that could make sense for ${article(d.industry.one)} ${d.industry.one} is ${d.industry.tool}. Your team would build it with Claude Code and own it afterwards.`,
     ];
   }
   return [
-    "Most businesses at your size rent the same few pieces: an ads agency, a page builder, a tracking tool and someone to stitch the reports together.",
+    "Businesses at your size often rent the same few pieces: an ads agency, a page builder, a tracking tool and someone to stitch the reports together.",
     "A first internal tool is usually the one your team asks for most: a quote tracker, a weekly report, a pipeline view. Your team would build it with Claude Code and own it afterwards.",
   ];
+}
+
+/** "a" or "an" before a word (an MSP, an advisory firm). */
+export function article(word: string): string {
+  return /^(?:[aeiou]|MSP\b|SEO\b|FAQ\b)/i.test(word) && !/^(?:uni|use|one)/i.test(word) ? "an" : "a";
 }
 
 function lostAngle(d: Dossier, i: number): string[] {
@@ -328,9 +335,10 @@ function answerList(d: Dossier): string {
 const PREP: Record<string, Template> = {
   pp_brief: (c) => {
     const list = answerList(c.d);
-    return mk("I read your application before our call", [
+    // Sent by the system: it lists what the lead told us and asks them to correct it, without claiming a read.
+    return mk("Your application, before our call", [
       hi(c),
-      `Before we speak${onCall(c)}, I read your application properly. Here is what I took from it, so you can correct me if I have anything wrong.`,
+      `Before we speak${onCall(c)}, here is what you told us in your application, so you can correct anything that has changed.`,
       list || "Most of the application came through blank. That is fine, we will cover it on the call.",
       c.d.whyNow && `And in your words, why now: ${quoted(c.d.whyNow)}`,
       "I will use this to skip the basics and spend the call on your situation.",
@@ -346,7 +354,7 @@ const PREP: Record<string, Template> = {
     const qa = c.d.bookingQA.slice(0, 3);
     return mk("Your answers from the booking form", [
       hi(c),
-      qa.length ? "When you booked, you answered a few questions. I read them." : "When you booked there were a few optional questions. If you skipped them, no problem.",
+      qa.length ? "When you booked, you answered a few questions. Here they are, so they are in front of us on the call." : "When you booked there were a few optional questions. If you skipped them, no problem.",
       ...qa.map((x) => (x.q ? `To ${quoted(x.q)} you wrote: ${quoted(x.a)}` : `You wrote: ${quoted(x.a)}`)),
       qa.length
         ? "I will come to the call with those in mind. If anything has changed since, reply and tell me."
@@ -525,7 +533,7 @@ const POST_CALL: Record<string, Template> = {
   fu_time: (c) =>
     mk("What the eight weeks ask of your calendar", [
       hi(c),
-      "A practical note on time, since it is the thing founders underestimate in both directions.",
+      "A practical note on time, since it is easy to misjudge in both directions.",
       "It is three to four hours a week for eight weeks, from one person who will own the machine. That includes the weekly session.",
       "You join for decisions, not for every session. After week eight it takes less, because your team runs it.",
     ]),
@@ -589,8 +597,10 @@ const LOST: Record<string, Template> = {
     mk("Something you can use whether or not we work together", [
       hi(c),
       ...lostAngle(c.d, 2),
-      "The resources page has a worksheet for listing what you rent and a short note on server-side tracking. Both are yours to use.",
-    ], { cta: { label: "Open the resources", path: "/resources" } }),
+      RESOURCES.some((r) => r.url)
+        ? "The resources page has a few short guides, including one on listing what you rent. They are yours to use."
+        : "One exercise worth ten minutes: list what you pay each year for agencies, freelancers and software, and which of it you would keep if you stopped tomorrow.",
+    ], RESOURCES.some((r) => r.url) ? { cta: { label: "Open the resources", path: "/resources" } } : {}),
   lo_4: (c) =>
     mk("A quarter later: has anything changed on your side", [
       hi(c),
@@ -714,7 +724,7 @@ const NURTURE: Record<string, Template> = {
     const b = blockerCopy(c.d.blockers[0]?.value);
     return mk("Revisiting what held you back", [
       hi(c),
-      c.d.blockers[0] ? `When you applied, you said what had held you back was ${b.name}.` : "When founders apply, most name something that has held them back.",
+      c.d.blockers[0] ? `When you applied, you said what had held you back was ${b.name}.` : "Something usually holds a project like this back for a while.",
       b.body[1],
       b.body[2],
     ], { cta: book("Book a call")(c) });
@@ -729,7 +739,7 @@ const NURTURE: Record<string, Template> = {
   nu_agency: (c) =>
     mk("Agency or own it: the honest trade-off", [
       hi(c),
-      "An honest view on agencies, since most founders who apply are paying one.",
+      "An honest view on agencies, since many founders are paying one.",
       "A good agency saves you time. You pay every month, and when you stop, the work usually stops with it.",
       "Owning it costs your team some hours up front. In return the pages, tracking and dashboards are yours, and your people know how to change them.",
       "Neither is right for everyone. It depends on whether you have one person who can own it.",
@@ -755,8 +765,8 @@ const NURTURE: Record<string, Template> = {
       "One idea worth knowing whatever you decide about Asymmetrical.",
       "Meta optimises for whatever event you send it. If that is a form fill or a page view, it finds more people who fill forms and view pages.",
       "With server-side tracking you can send a value for qualified applications instead. Then Meta learns from the people who fit, not the people who click.",
-      "The resources page has a short note on how it works.",
-    ], { cta: { label: "Read the note", path: "/resources" } }),
+      RESOURCES[1]?.url ? "The resources page has a short note on how it works." : "If you would like to see how that works for your account, a call is a good place to look at it together.",
+    ], RESOURCES[1]?.url ? { cta: { label: "Read the note", path: "/resources" } } : { cta: book("Book a call")(c) }),
   nu_checkin: (c) =>
     mk("A short check-in, no agenda", [
       hi(c),

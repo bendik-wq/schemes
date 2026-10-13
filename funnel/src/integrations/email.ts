@@ -13,7 +13,11 @@ import { getLead, effectiveTier, type Lead } from "../funnel/leads";
 import { buildDossier } from "../followup/dossier";
 import { getRep } from "../sales/reps";
 import { track } from "../tracking/track";
-import { SEQUENCES, precallTimes, validTimezone } from "./sequences";
+import {
+  SEQUENCES, PRECALL_MAX_TOTAL, PRECALL_PER_DAY_DEFAULT, PRECALL_UNOPENED_STOP, TRANSACTIONAL,
+  localDayStart, maxLateMs, nextLocalMorning, precallTimes, quietUntil, respectsQuietHours, validTimezone,
+} from "./sequences";
+import { processSmsQueue, scheduleSmsReminders, smsReminderDelivered } from "./sms";
 import { TEMPLATES, precallPlan } from "./all-templates";
 import type { EmailContent, EmailCtx } from "./email-types";
 import { personalizeEmail } from "../personalize/personalize";
@@ -148,6 +152,9 @@ You are getting this because you applied for ${escHtml(BRAND.name)}. <a href="${
 
 /** Insert (or refresh) one row per step. Re-enqueueing reschedules pending/cancelled/skipped rows. */
 export async function enqueueSequence(rt: Runtime, lead: Lead, seqId: string, opts: { anchor?: number } = {}): Promise<number> {
+  // Text reminders follow every verified booking or reschedule (only with their own consent; see sms.ts).
+  // An email unsubscribe is not a text opt-out, so this runs before the email checks below.
+  if (seqId === "booked") await scheduleSmsReminders(rt, lead).catch((e) => console.error("sms schedule", lead.id, e));
   if (lead.unsubscribed_at || lead.booking_source === "calendly-direct") return 0;
   const seq = SEQUENCES[seqId];
   if (!seq) throw new Error(`unknown sequence ${seqId}`);
@@ -157,9 +164,10 @@ export async function enqueueSequence(rt: Runtime, lead: Lead, seqId: string, op
 
   if (seqId === "precall") {
     if (!lead.call_at) return 0;
-    const perDay = rt.settings.num("PRECALL_EMAILS_PER_DAY", 6);
+    const perDay = Math.min(PRECALL_MAX_TOTAL, rt.settings.num("PRECALL_EMAILS_PER_DAY", PRECALL_PER_DAY_DEFAULT));
     if (perDay <= 0) return 0;
-    const plan = precallPlan(buildDossier(lead));
+    // Ranked by fit with the lead's blockers and goal; never more than PRECALL_MAX_TOTAL per booking.
+    const plan = precallPlan(buildDossier(lead)).slice(0, PRECALL_MAX_TOTAL);
     const times = precallTimes(now, lead.call_at, await leadTimezone(rt, lead), perDay, plan.length);
     times.forEach((t, i) => rows.push({ step: i, template: plan[i], at: t }));
   } else {
@@ -221,7 +229,20 @@ export async function sendOneOff(rt: Runtime, lead: Lead, sequence: string, temp
 
 export interface QueueResult { processed: number; sent: number; simulated: number; failed: number; skipped: number; }
 
+/**
+ * Go-live switch (for Funnel HQ): every pending email that was due more than `olderThanMs` ago (default 1 h) is
+ * marked skipped with error "backlog", so switching sending on after a pause, an outage or a data import never
+ * sends weeks of old mail at once. Future emails are untouched; safe to run twice. Returns how many were skipped.
+ */
+export async function skipBacklog(rt: Runtime, olderThanMs = 60 * 60_000): Promise<number> {
+  const r = await rt.env.DB.prepare("UPDATE emails SET status = 'skipped', error = 'backlog' WHERE status = 'pending' AND send_at < ?")
+    .bind(rt.now() - Math.max(0, olderThanMs)).run();
+  return Number(r.meta?.changes || 0);
+}
+
 export async function processEmailQueue(rt: Runtime, limit = 60): Promise<QueueResult> {
+  // Text reminders ride on the email cron (same 5-minute tick), isolated so a failure never stops the email.
+  await processSmsQueue(rt).catch((e) => console.error("sms queue", e));
   const now = rt.now();
   // Rows stuck in 'sending' (Worker evicted mid-send) go back to the queue.
   await rt.env.DB.prepare("UPDATE emails SET status='pending' WHERE status='sending' AND send_at < ?").bind(now - 15 * 60_000).run();
@@ -265,7 +286,64 @@ async function setStatus(rt: Runtime, id: string, status: string, extra: Record<
     .bind(status, ...keys.map((k) => extra[k] ?? null), id).run();
 }
 
+/** Hold a claimed row until `at` (not an attempt; the row stays pending). */
+async function defer(rt: Runtime, row: EmailRow, at: number, why: string): Promise<null> {
+  // Up to 20 minutes of spread per row, so a morning of deferred mail does not leave in one burst.
+  const jitter = (parseInt(row.id.slice(-4), 36) % 20) * 60_000;
+  await rt.env.DB.prepare("UPDATE emails SET status = 'pending', attempts = MAX(0, attempts - 1), send_at = ?, error = ? WHERE id = ?")
+    .bind(at + jitter, why, row.id).run();
+  return null;
+}
+
+/** Sends today (local day) of non-transactional email to this lead: the daily marketing cap counts these. */
+export async function marketingSentToday(rt: Runtime, leadId: string, tz: string): Promise<number> {
+  const r = await rt.env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM emails WHERE lead_id = ? AND status IN ('sent','simulated') AND sent_at >= ?
+     AND sequence NOT IN (${[...TRANSACTIONAL].map(() => "?").join(",")})`,
+  ).bind(leadId, localDayStart(rt.now(), tz), ...TRANSACTIONAL).first<{ n: number }>();
+  return Number(r?.n || 0);
+}
+
+/**
+ * Round 3 sending safety, in order: the booking confirmation never arrives after the call; a stale step is
+ * skipped ("stale", see maxLateMs); the 3 h / 1 h emails stay quiet once a text reminder was delivered; the
+ * pre-call run stops after three unopened in a row; outside 08:00–20:00 local the row waits for the morning;
+ * over MAX_MARKETING_PER_DAY (default 2, booked reminders and other transactional mail exempt) it waits for
+ * the next local morning.
+ */
+async function sendingSafety(rt: Runtime, row: EmailRow, lead: Lead): Promise<"send" | Outcome> {
+  const now = rt.now();
+  if (row.sequence === "booked" && lead.call_at && now > lead.call_at) { await setStatus(rt, row.id, "skipped", { error: "call passed" }); return "skipped"; }
+  const late = maxLateMs(row.sequence, row.step, row.template);
+  if (late != null && now - row.send_at > late) { await setStatus(rt, row.id, "skipped", { error: "stale" }); return "skipped"; }
+  if (row.sequence === "booked" && (row.template === "bk_3h" || row.template === "bk_1h") && (await smsReminderDelivered(rt, lead.id, lead.call_at))) {
+    await setStatus(rt, row.id, "skipped", { error: "text reminder delivered" });
+    return "skipped";
+  }
+  if (row.sequence === "precall") {
+    const last = await rt.env.DB.prepare("SELECT opens FROM emails WHERE lead_id = ? AND sequence = 'precall' AND status IN ('sent','simulated') ORDER BY sent_at DESC LIMIT ?")
+      .bind(lead.id, PRECALL_UNOPENED_STOP).all<{ opens: number }>();
+    const rows = last.results || [];
+    if (rows.length >= PRECALL_UNOPENED_STOP && rows.every((r) => !r.opens)) {
+      await setStatus(rt, row.id, "cancelled", { error: "unopened" });
+      await rt.env.DB.prepare("UPDATE emails SET status = 'cancelled', error = 'unopened' WHERE lead_id = ? AND sequence = 'precall' AND status = 'pending'").bind(lead.id).run();
+      return "cancelled";
+    }
+  }
+  const tz = await leadTimezone(rt, lead);
+  if (respectsQuietHours(row.sequence, row.step, row.template)) {
+    const until = quietUntil(now, tz);
+    if (until) return defer(rt, row, until, "quiet hours");
+  }
+  if (!TRANSACTIONAL.has(row.sequence)) {
+    const cap = rt.settings.num("MAX_MARKETING_PER_DAY", 2);
+    if (cap > 0 && (await marketingSentToday(rt, lead.id, tz)) >= cap) return defer(rt, row, nextLocalMorning(now, tz), "daily cap");
+  }
+  return "send";
+}
+
 async function processOne(rt: Runtime, row: EmailRow): Promise<Outcome> {
+
   const claim = await rt.env.DB.prepare("UPDATE emails SET status='sending', attempts = attempts + 1 WHERE id = ? AND status = 'pending'").bind(row.id).run();
   if (!claim.meta?.changes) return null;
   const attempts = row.attempts + 1;
@@ -290,6 +368,8 @@ async function processOne(rt: Runtime, row: EmailRow): Promise<Outcome> {
   const step = seq?.steps[row.step];
   if (step?.skipIf?.(lead)) { await setStatus(rt, row.id, "skipped", { error: "step skipped" }); return "skipped"; }
   if (step?.anchor === "call" && lead.call_at && rt.now() > lead.call_at) { await setStatus(rt, row.id, "skipped", { error: "call passed" }); return "skipped"; }
+  const safety = await sendingSafety(rt, row, lead);
+  if (safety !== "send") return safety;
   const template = TEMPLATES[row.template];
   if (!template) { await setStatus(rt, row.id, "failed", { error: `unknown template ${row.template}` }); return "failed"; }
 

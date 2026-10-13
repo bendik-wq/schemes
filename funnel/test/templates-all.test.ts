@@ -22,15 +22,17 @@ describe("all templates", () => {
     for (const r of RULES) expect(TEMPLATES[r.template], r.template).toBeTypeOf("function");
     for (const t of ["continue_link", "voice_link_book", "voice_link_reschedule", "test_email"]) expect(TEMPLATES[t], t).toBeTypeOf("function");
   });
-  it("pre-call plan puts two personal emails first and only uses real templates", () => {
+  it("pre-call plan: the brief, then the best match for their blockers and goal, at most five, only real templates", () => {
     const full = buildDossier({ answers: JSON.stringify({ business: "Dental clinics", goal: "own_growth", blockers: ["tracking", "time"], spend: "100k_300k", timeline: "0_3", why_now: "Because." }) } as Lead);
     const plan = precallPlan(full);
     expect(plan[0]).toBe("pp_brief");
-    expect(plan[1].startsWith("pp_")).toBe(true);
+    expect(plan[1]).toBe("pc_pixel"); // first-named blocker: tracking
+    expect(plan.length).toBeLessThanOrEqual(5);
     for (const t of plan) expect(TEMPLATES[t], t).toBeTypeOf("function");
     expect(new Set(plan).size).toBe(plan.length);
-    expect(precallPlan(buildDossier(null))[0]).toBe("pp_homework");
+    expect(precallPlan(buildDossier(null))).toEqual(["pc_agenda", "pp_homework"]);
   });
+
   it("subjects are unique across every template and topics exist", () => {
     const c = ctx({ answers: "{}" });
     const seen = new Map<string, string>();

@@ -10,6 +10,7 @@ import { kvGate } from "./lib/kv";
 import { api } from "./routes/api";
 import { links } from "./routes/links";
 import { hooks } from "./routes/hooks";
+import { smsHooks } from "./routes/sms-hooks";
 import { landingPage, smartRoute, applyPage, bookPage, breakoutPage, resourcesPage, privacyPage } from "./funnel/pages";
 import { getAngle, getIndustry } from "./landers/catalog";
 import { isDocumentNavigation } from "./lib/identity";
@@ -177,6 +178,7 @@ app.get("/privacy", (c) => privacyPage(c));
 
 app.route("/api/v1", v1);
 app.route("/api", api);
+app.route("/hooks/twilio-sms", smsHooks);
 app.route("/hooks", hooks);
 app.route("/", links);
 

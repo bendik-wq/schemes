@@ -28,6 +28,8 @@ import {
   applyInlineBooking, availableTimes, bookInvitee, pickSlots, resolveEventType, type EventTypeRef,
 } from "../integrations/calendly";
 import { inlineBookingOn } from "../growth/experiments";
+import { recordSmsConsent } from "../integrations/sms";
+
 
 // RFC 5322 atext, minus characters that have no business in a real address and break HTML contexts.
 const EMAIL_RE = /^[A-Za-z0-9!#$%&'*+/=?^_{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_{|}~-]+)*@([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$/;
@@ -110,6 +112,8 @@ export async function verifyTurnstile(rt: Runtime, token: unknown, ip: string | 
 export interface ContactInput {
   first_name?: unknown; last_name?: unknown; email?: unknown; phone?: unknown;
   call_consent?: unknown; whatsapp_opt_in?: unknown; turnstile?: unknown;
+  /** Text reminders about a booked call: its own unticked box (SMS_CONSENT), stored per number in sms_consent. */
+  sms_consent?: unknown;
   /** ISO country picked in the form's dial-code select; used for numbers typed without a prefix. */
   phone_country?: unknown;
 }
@@ -195,6 +199,7 @@ export async function saveContact(
       patch.call_consent_text = null;
     }
     await updateLead(rt, linked.id, patch);
+    if (input.sms_consent !== undefined) await recordSmsConsent(rt, linked.id, phone, input.sms_consent === true || input.sms_consent === "on");
     return { ok: true, leadId: linked.id, ref: linked.ref_code, created: false, phoneCallable };
   }
 
@@ -227,6 +232,7 @@ export async function saveContact(
   id.leadId = leadId;
   if (emailSuppressed) await updateLead(rt, leadId, { unsubscribed_at: now });
   const lead = (await getLead(rt, leadId))!;
+  if (input.sms_consent === true || input.sms_consent === "on") await recordSmsConsent(rt, leadId, phone, true);
   if (opts.unverified) {
     // Stored only: no ad platform, CRM or sequence hears of it until the inbox confirms (confirmNojsLead).
     await kvSet(rt.env, `nojs_unverified:${leadId}`, String(now));
@@ -244,6 +250,7 @@ export function cleanAnswer(qid: string, value: unknown): string | string[] | nu
   if (!q || q.type === "contact") return null;
   if (q.type === "text") {
     const s = String(value ?? "").replace(/\s+/g, " ").trim().slice(0, 1200);
+    if (q.format === "url") return s ? cleanWebsite(s) : "";
     return s;
   }
   if (q.type === "single") {
@@ -253,6 +260,25 @@ export function cleanAnswer(qid: string, value: unknown): string | string[] | nu
   const arr = Array.isArray(value) ? value.map(String) : String(value ?? "").split(",");
   const ok = arr.filter((v) => q.options?.some((o) => o.value === v));
   return [...new Set(ok)].slice(0, 10);
+}
+
+/**
+ * Pure: a company website typed by a person ("acme.no", "www.acme.no/en", "https://acme.no") as
+ * "https://host/path", or null when it is not a plausible public web address (no scheme other than http(s), no
+ * credentials, no IP literals, no localhost, a dotted host with a 2–24 letter TLD).
+ */
+export function cleanWebsite(v: unknown): string | null {
+  const s = String(v ?? "").trim();
+  if (!s || s.length > 200 || /\s/.test(s)) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(s) ? s : `https://${s}`;
+  let u: URL;
+  try { u = new URL(withScheme); } catch { return null; }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+  if (u.username || u.password || u.port) return null;
+  const host = u.hostname.toLowerCase();
+  if (!/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/.test(host)) return null;
+  const path = u.pathname === "/" ? "" : u.pathname.replace(/\/+$/, "");
+  return `https://${host}${path}`.slice(0, 200);
 }
 
 /** Pure: an incomplete application that already reads as a strong owner (see APPLICATION_HOT_PARTIAL). */

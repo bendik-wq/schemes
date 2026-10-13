@@ -928,3 +928,52 @@ html.consent-open > body.consent-open { padding-bottom: calc(var(--consent-h, 16
   .proof-grid { grid-template-columns: 1fr; }
   .plain-form .row2 { grid-template-columns: 1fr; }
 }
+
+/* ── Round 3: mobile apply link, no-film card on phones, founder block, product shots, C-tier page ── */
+.m-apply { display: none; margin: 14px 0 0; text-align: center; font-size: 15px; }
+.m-apply a { font-weight: 600; text-decoration: underline; text-decoration-color: rgba(47,91,255,.35); text-underline-offset: 4px; }
+.fc-m { display: none; }
+.fc-more { margin-top: 8px; }
+.fc-more summary { cursor: pointer; padding: 10px 2px; font: 600 14px/1.4 var(--text); color: #fff; text-decoration: underline; text-decoration-color: rgba(255,255,255,.45); text-underline-offset: 4px; }
+.fc-more summary:focus-visible { outline-color: #fff; }
+.fc-more .fc-list { margin-top: 4px; counter-reset: fc 3; }
+@media (max-width: 760px) {
+  body:not(.gated) .m-apply { display: block; }
+  .fc-all { display: none; }
+  .fc-m { display: block; }
+}
+
+.founder { display: flex; align-items: center; gap: 16px; max-width: 640px; margin: 0 auto 22px; padding: 16px 20px; border-radius: 18px; background: #fff; border: 1px solid var(--hair-2); }
+.founder-photo { flex: none; width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: var(--paper); }
+.founder-text { min-width: 0; }
+.founder .kicker { margin: 0 0 2px; font-size: 13px; }
+.founder-name { margin: 0; font: 650 17px/1.3 var(--display); letter-spacing: -.012em; color: var(--ink); }
+.founder-role { margin-left: 8px; font: 500 14px var(--text); color: var(--grey); letter-spacing: 0; }
+.founder-bio { margin: 4px 0 0; font-size: 14.5px; line-height: 1.5; color: var(--ink-2); }
+.founder-link { margin: 6px 0 0; font-size: 14px; }
+.founder-link a { font-weight: 600; }
+@media (max-width: 760px) {
+  .founder { align-items: flex-start; padding: 14px 16px; }
+  .founder-photo { width: 56px; height: 56px; }
+  .founder-role { display: block; margin: 0; }
+}
+
+.sec-sub { max-width: 36em; margin: 10px auto 0; color: var(--ink-2); font-size: 16px; line-height: 1.5; text-wrap: balance; }
+.shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.shot { margin: 0; min-width: 0; }
+.shot img { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--hair); background: var(--paper); box-shadow: 0 24px 60px -36px rgba(30,30,90,.35); }
+.shot figcaption { margin-top: 10px; font-size: 14px; line-height: 1.45; color: var(--ink-2); }
+.demo-tag { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; background: var(--paper); border: 1px solid var(--hair); font: 600 12px/1.6 var(--text); color: var(--grey); letter-spacing: 0; vertical-align: 1px; }
+@media (max-width: 960px) { .shots { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) { .shots { grid-template-columns: 1fr; gap: 22px; } }
+
+.kit h2.kit-title { font: 600 18px/1.35 var(--text); letter-spacing: -.012em; margin: 0; }
+.kit h2 a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--hair); text-underline-offset: 4px; }
+.kit h2 a:hover { text-decoration-color: var(--blue); color: var(--blue); }
+.kit-empty { max-width: 34em; margin: 0 auto; padding: 22px 24px; border-radius: 18px; background: #fff; border: 1px solid var(--hair-2); color: var(--ink-2); text-align: center; }
+.review-line { margin: 18px 0 0; text-align: center; font-size: 15px; color: var(--grey); }
+.review-line a { font-weight: 600; }
+
+/* Text reminders box under the phone field (apply.js) */
+.check.sms-check { margin-top: 10px; }
+.h2 span.h1a { background: none; -webkit-text-fill-color: currentColor; color: inherit; }
