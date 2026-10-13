@@ -55,14 +55,14 @@ export const ANGLES: Angle[] = [
     id: "agency",
     label: "Replace the agency",
     pre: (i) => `For ${i.owners} doing $1M+`,
-    headline: (i) => `${cap(i.owners)}: stop renting ${i.rent}.`,
+    headline: (i) => `${cap(i.owners)}: 56 days to stop renting ${i.rent}.`,
     sub: (i) => `In eight weeks your team builds and runs its own pages, ads tracking and sales dashboard on Claude Code. The ${i.one} owns the machine, not the agency.`,
   },
   {
     id: "tracking",
     label: "Tracking you can trust",
     pre: (i) => `For ${i.many} running Meta ads`,
-    headline: (i) => `${i.label}: your Meta ads are guessing. Give every lead a real value.`,
+    headline: (i) => `${i.label}: in 56 days, Meta optimises for buyers, not clicks.`,
     sub: () => "Server-side Conversions API, deduplicated with the Pixel, with qualified-lead values so Meta optimises for buyers. Built with your team in eight weeks.",
   },
   {
@@ -76,14 +76,14 @@ export const ANGLES: Angle[] = [
     id: "dashboard",
     label: "Sales dashboard",
     pre: (i) => `For ${i.owners} who want the numbers`,
-    headline: (i) => `Every lead, call and close for ${i.many}, on one screen.`,
+    headline: (i) => `Every lead, call and close for ${i.many}, on one screen in 56 days.`,
     sub: () => "A live dashboard from first click to cash collected: show rate, close rate and revenue by source and by rep. Yours, on your own accounts.",
   },
   {
     id: "tools",
     label: "Internal tools",
     pre: (i) => `For ${i.owners} with a list of tools to build`,
-    headline: (i) => `Build ${i.tool} without hiring a dev shop.`,
+    headline: (i) => `Build ${i.tool} in 56 days, without a dev shop.`,
     sub: (i) => `Claude Code and one curious person on your team can build what your ${i.one} has been quoted six figures for. We sit beside you for eight weeks.`,
   },
 ];

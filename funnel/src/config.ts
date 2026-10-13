@@ -77,16 +77,16 @@ export const HEADLINES = [
   {
     id: "a",
     eyebrow: "For founders doing $1M+ a year",
-    h1: "Own your growth.",
-    h1b: "Stop renting it.",
-    sub: "Your team builds and runs its own VSL pages, Meta ads with server-side tracking and a live sales dashboard on Claude Code. Eight weeks, done with you.",
+    h1: "56 days to hands-free scaling.",
+    h1b: "Leads in, calls booked, without you.",
+    sub: "A VSL page that qualifies every lead, Meta ads that track buyers, and follow-up that books the call. Built with your team on Claude Code. Live by day 56, or we keep working at no extra cost.",
   },
   {
     id: "b",
     eyebrow: "For founders doing $1M+ a year",
-    h1: "Replace the agency.",
-    h1b: "Keep the machine.",
-    sub: "In eight weeks we build your growth stack with your team, on Claude Code, so the pages, tracking and dashboards are yours. Not a retainer. An asset.",
+    h1: "In 56 days, your funnel runs itself.",
+    h1b: "No agency. No retainer. Yours.",
+    sub: "Ads, pages and follow-up that qualify and book your sales calls hands-free. Built with your team on Claude Code, owned by you. Live by day 56, or we keep working at no extra cost.",
   },
 ];
 
