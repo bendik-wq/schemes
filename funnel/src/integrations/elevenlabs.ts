@@ -39,6 +39,9 @@ export function blockReason(lead: Lead, kind: CallKind, now: number): string | n
   if (kind === "confirm") {
     if (lead.status !== "booked" || !lead.call_at || lead.booking_cancelled_at) return "not booked";
     if (lead.call_at - now < 30 * MIN) return "call too close";
+    // They already clicked "I'll be there" for this call time: no need to ring them.
+    const a = lead as Lead & { attendance_confirmed_at?: number | null; attendance_call_at?: number | null };
+    if (a.attendance_confirmed_at && a.attendance_call_at === lead.call_at) return "attendance confirmed";
   }
   if (kind === "speed_to_lead") {
     if (lead.call_at || lead.status !== "applied") return "already booked or not applied";

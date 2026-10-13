@@ -29,6 +29,7 @@ import { scoreUpcomingCalls } from "./sales/noshow";
 import { runCalibration } from "./sales/calibration";
 import { pingClosersFollowUps } from "./sales/followups";
 import { maybeRunAnalyst } from "./sales/analyst";
+import { sweepHotPartials } from "./funnel/application";
 
 const app = new Hono<AppEnv>();
 
@@ -268,5 +269,6 @@ export default {
     await quiet("calibration", () => runCalibration(rt));
     await quiet("closer_pings", () => pingClosersFollowUps(rt));
     await quiet("analyst", () => maybeRunAnalyst(rt));
+    await quiet("hot_partial", () => sweepHotPartials(rt));
   },
 } satisfies ExportedHandler<Env>;

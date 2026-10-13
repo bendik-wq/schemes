@@ -35,6 +35,7 @@ export const SETTINGS: SettingDef[] = [
   { key: "CALENDLY_WEBHOOK_URI", group: "calendly", label: "Webhook subscription (managed)" },
   { key: "CALENDLY_USER_URI", group: "calendly", label: "User URI (managed)" },
   { key: "CALENDLY_ORG_URI", group: "calendly", label: "Organization URI (managed)" },
+  { key: "INLINE_BOOKING_TIERS", group: "calendly", label: "Tiers that pick a time inside the form", help: "Comma-separated, e.g. A or A,B. Needs the access token above." },
   { key: "BOOKING_URL_A", group: "booking", label: "Closer calendar (A tier)", kind: "url" },
   { key: "BOOKING_URL_B", group: "booking", label: "Setter calendar (B tier)", kind: "url" },
   { key: "BOOKING_WEBHOOK_SECRET", group: "booking", label: "Generic booking webhook secret", secret: true, help: "Cal.com signing secret, or a header secret for GHL/Zapier." },
@@ -98,6 +99,9 @@ export const SETTINGS: SettingDef[] = [
   { key: "VSL_MAIN_POSTER", group: "video", label: "Main VSL poster" },
   { key: "VSL_BREAKOUT_SRC", group: "video", label: "Breakout video" },
   { key: "VSL_BREAKOUT_POSTER", group: "video", label: "Breakout poster" },
+  { key: "VSL_MAIN_CAPTIONS", group: "video", label: "Main VSL captions (VTT URL)" },
+  { key: "VSL_BREAKOUT_CAPTIONS", group: "video", label: "Breakout captions (VTT URL)" },
+  { key: "VSL_PRECALL_CAPTIONS", group: "video", label: "Pre-call captions (VTT URL)" },
   { key: "VSL_PRECALL_SRC", group: "video", label: "Pre-call video" },
 
   { key: "CONSENT_REQUIRED_EU", group: "privacy", label: "Consent banner in EU/UK/EEA/CH", kind: "bool", def: "true" },

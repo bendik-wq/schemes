@@ -91,6 +91,16 @@ export const EVENTS: Record<string, EventDef> = {
   slot_pick: { micro: true, client: true },
   slot_booked: { micro: true, client: true },
   slot_failed: { micro: true, client: true },
+  // Page health and engagement (f.js, vsl.js, book.js)
+  cwv: { micro: true, client: true },
+  js_error: { micro: true, client: true },
+  consent_banner_shown: { micro: true, client: true },
+  vsl_error: { micro: true, client: true },
+  vsl_stall: { micro: true, client: true },
+  vsl_soft_cta: { micro: true, client: true },
+  booking_embed_failed: { micro: true, client: true },
+  attendance_confirmed: { micro: true },
+  requalify_started: { micro: true },
   booking_date_selected: { micro: true, client: true },
   booking_page_ready: { micro: true, client: true },
 };
