@@ -255,3 +255,12 @@ describe("second skeptic round", () => {
     expect(ipKey("2001:0db8:0001:0000::1")).toBe(ipKey("2001:db8:1::"));
   });
 });
+
+describe("headline no-wrap hyphens", () => {
+  it("escapes before wrapping hyphenated words", async () => {
+    const { nowrapHyphens } = await import("../src/funnel/pages");
+    expect(nowrapHyphens("56 days to hands-free scaling.")).toBe('56 days to <span class="nw">hands-free</span> scaling.');
+    expect(nowrapHyphens("No agency. No retainer. Yours.")).toBe('<span class="nw">No agency.</span> <span class="nw">No retainer.</span> <span class="nw">Yours.</span>');
+    expect(nowrapHyphens("<img src=x>-y")).toBe('&lt;img <span class="nw">src=x&gt;-y</span>');
+  });
+});

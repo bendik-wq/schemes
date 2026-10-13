@@ -31,6 +31,13 @@ export function safeJson(v: unknown): string {
   return JSON.stringify(v).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
+/** Escapes text and wraps hyphenated words, and short sentences ("No agency."), in no-wrap spans. */
+export function nowrapHyphens(text: string): string {
+  const parts = text.split(/(?<=[.!?])\s+/);
+  if (parts.length > 1 && parts.every((p) => p.length <= 16)) return parts.map((p) => `<span class="nw">${escHtml(p)}</span>`).join(" ");
+  return escHtml(text).replace(/(\S+-\S+)/g, '<span class="nw">$1</span>');
+}
+
 export async function renderTemplate(c: Ctx, file: string, fill: Fill, status = 200): Promise<Response> {
   const res = await c.env.ASSETS.fetch(new Request(new URL(`/${file}`, c.req.url).toString()));
   if (!res.ok) return c.text("Template missing", 500);
@@ -40,7 +47,11 @@ export async function renderTemplate(c: Ctx, file: string, fill: Fill, status = 
   rw.on("[data-slot]", {
     element(el) {
       const k = el.getAttribute("data-slot") || "";
-      if (fill.text && k in fill.text) el.setInnerContent(fill.text[k]);
+      if (fill.text && k in fill.text) {
+        // Headlines and the sub: keep hyphenated words ("hands-free") on one line.
+        if ((k === "h1" || k === "h1b" || k === "sub") && /\S-\S|[.!?]\s/.test(fill.text[k])) el.setInnerContent(nowrapHyphens(fill.text[k]), { html: true });
+        else el.setInnerContent(fill.text[k]);
+      }
       else if (fill.html && k in fill.html) el.setInnerContent(fill.html[k], { html: true });
     },
   });

@@ -55,7 +55,7 @@
     function progress() { if (bar) bar.style.width = Math.round((idx / qs.length) * 100) + "%"; }
 
     function frame(q, body, foot) {
-      var n = el("p", { class: "step-n", text: String(idx + 1).padStart(2, "0") + " / " + String(qs.length).padStart(2, "0") });
+      var n = el("p", { class: "step-n", text: "Step " + (idx + 1) + " of " + qs.length });
       var h = el(titleTag, { id: "q-title", class: "q-title", text: q.title });
       var kids = [n, h];
       if (q.help) kids.push(el("p", { class: "help", text: q.help }));
