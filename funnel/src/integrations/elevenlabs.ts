@@ -3,6 +3,7 @@
 // do-not-call re-checked at queue time and at every dial, verified bookings only.
 
 import type { Runtime } from "../app";
+import { isTestLead } from "../admin/testdata";
 import { AI_CALLER, BRAND, FAQS, OUTBOUND_FIRST_MESSAGE, inboundSystemPrompt, outboundSystemPrompt } from "../config";
 import { hmacHex, safeEqual } from "../lib/crypto";
 import { newId } from "../lib/ids";
@@ -72,6 +73,7 @@ export async function queueCall(rt: Runtime, lead: Lead, kind: Exclude<CallKind,
   const now = rt.now();
   const block = blockReason(lead, kind, now);
   if (block) return { queued: false, reason: block };
+  if (await isTestLead(rt, lead.id)) return { queued: false, reason: "test lead" };
   if (await numberOnDnc(rt, lead.phone)) return { queued: false, reason: "number on do-not-call" };
   if (!/^\+\d{8,15}$/.test(s.get("AI_CALL_CALLBACK_NUMBER"))) return { queued: false, reason: "no callback number set" };
   const db = rt.env.DB;
@@ -184,6 +186,7 @@ export async function processCallQueue(rt: Runtime): Promise<number> {
       await db.prepare("UPDATE outbound_calls SET status=?, outcome=?, updated_at=? WHERE id=?").bind(status, outcome, rt.now(), c.id).run();
     };
     if (!lead) { await fail("cancelled", "lead gone"); continue; }
+    if (await isTestLead(rt, lead.id)) { await fail("cancelled", "test lead"); continue; }
     // Re-check everything at dial time, including retries.
     if (!rt.settings.bool(KIND_SETTING[c.kind as Exclude<CallKind, "test">] || "AI_CALL_CONFIRM")) { await fail("cancelled", "disabled"); continue; }
     const block = blockReason(lead, c.kind, now);

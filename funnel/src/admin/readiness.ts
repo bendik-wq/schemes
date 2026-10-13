@@ -4,6 +4,8 @@
 // real lead does not trigger a burst of stale sends.
 
 import type { Runtime } from "../app";
+import { skipBacklog } from "../integrations/email";
+export { skipBacklog };
 import { RESOURCES, VIDEOS } from "../config";
 import { kvGetJson, kvSet } from "../lib/kv";
 import type { DnsCheck } from "../integrations/email-dns";
@@ -87,16 +89,6 @@ export async function readiness(rt: Runtime) {
     checks, passed: checks.filter((c) => c.ok).length, total: checks.length, required_failing: failing.length,
     spend_7d: spend7, red: spend7 > 0 && failing.length > 0, dns_checked_at: dns?.at ?? null, go_live: goLive,
   };
-}
-
-/**
- * Skip emails that queued up before launch: pending and due more than `olderThanMs` ago. Local stand-in for
- * skipBacklog() in src/integrations/sequences.ts (owned by the messaging work): swap the call when it lands.
- */
-export async function skipBacklog(rt: Runtime, olderThanMs = 3_600_000): Promise<number> {
-  const r = await rt.env.DB.prepare("UPDATE emails SET status = 'skipped', error = 'go-live: skipped backlog' WHERE status = 'pending' AND send_at < ?")
-    .bind(rt.now() - olderThanMs).run();
-  return r.meta?.changes ?? 0;
 }
 
 export async function goLive(rt: Runtime): Promise<{ skipped: number }> {

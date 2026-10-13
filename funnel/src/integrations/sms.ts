@@ -9,6 +9,7 @@
 // reminders go by SMS only.
 
 import type { Runtime } from "../app";
+import { isTestLead } from "../admin/testdata";
 import { BRAND, SMS_CONSENT } from "../config";
 import { getLead, type Lead } from "../funnel/leads";
 import { hmacHex, safeEqual } from "../lib/crypto";
@@ -169,6 +170,11 @@ export async function processSmsQueue(rt: Runtime, limit = 30): Promise<{ sent: 
   for (const row of due.results || []) {
     const claim = await rt.env.DB.prepare("UPDATE sms_messages SET status = 'sending' WHERE id = ? AND status = 'pending'").bind(row.id).run();
     if (!claim.meta?.changes) continue;
+    if (row.lead_id && (await isTestLead(rt, row.lead_id))) {
+      await rt.env.DB.prepare("UPDATE sms_messages SET status = 'skipped', error = 'test lead' WHERE id = ?").bind(row.id).run();
+      out.skipped++;
+      continue;
+    }
     const r: SendResult = await sendOne(rt, row).catch((e): SendResult => ({ status: "failed", error: e instanceof Error ? e.message : String(e) }));
     const set = (status: string, extra: Record<string, unknown> = {}) => {
       const keys = Object.keys(extra);

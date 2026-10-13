@@ -3,6 +3,7 @@
 // (RFC 8058) and the postal address in both parts.
 
 import type { Runtime } from "../app";
+import { isTestLead } from "../admin/testdata";
 import { BRAND } from "../config";
 import { escHtml, unescHtml } from "../lib/text";
 import { signShort } from "../lib/crypto";
@@ -86,6 +87,9 @@ export async function buildCtx(rt: Runtime, lead: Lead, emailId: string): Promis
   for (const p of ["/", "/apply", "/book", "/breakout", "/resources", "/go/join", "/go/reschedule", "/go/confirm", "/go/requalify", "/refer", "/proof/submit"]) {
     links.set(p, `${rt.origin}/r/${emailId}/${await signShort(secret, `r|${emailId}|${p}`)}?u=${encodeURIComponent(p)}`);
   }
+  // The lead's own written call plan (served only once a plan exists).
+  const planPath = `/plan/for/${lead.id}`;
+  links.set(planPath, `${rt.origin}/r/${emailId}/${await signShort(secret, `r|${emailId}|${planPath}`)}?u=${encodeURIComponent(planPath)}`);
   const link = (path: string) => {
     const p = isSafePath(path) ? path : "/";
     return links.get(p) || links.get("/") as string;
@@ -349,6 +353,8 @@ async function processOne(rt: Runtime, row: EmailRow): Promise<Outcome> {
   const attempts = row.attempts + 1;
   const lead = await getLead(rt, row.lead_id);
   if (!lead) { await setStatus(rt, row.id, "cancelled", { error: "lead gone" }); return "cancelled"; }
+  // Test data (example.com, ?test=1, the team's own browsers) never gets real email.
+  if (await isTestLead(rt, lead.id)) { await setStatus(rt, row.id, "skipped", { error: "test lead" }); return "skipped"; }
   if (lead.unsubscribed_at) { await setStatus(rt, row.id, "cancelled", { error: "unsubscribed" }); return "cancelled"; }
   // Hard bounce or spam complaint (Resend webhook): never send to this address again.
   const bad = await leadEmailStatus(rt, lead.id);
