@@ -1,0 +1,68 @@
+/* Application form: native radios/checkboxes as cards, phone row, hints, slot picker. Loaded after site.css. */
+
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* Questions as fieldsets: the heading sits in the legend. */
+.apply fieldset.choice { border: 0; margin: 0; padding: 0; min-width: 0; }
+.apply fieldset.choice > legend { display: block; width: 100%; padding: 0; float: none; }
+.step-n { display: block; }
+.step .q-title:focus { outline: none; }
+.step .q-title:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; border-radius: 6px; }
+
+/* Option cards: the input is visually hidden but stays focusable and native. */
+.opt .opt-input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.opt.is-on { border-color: var(--blue); background: #f3f6ff; box-shadow: 0 0 0 1px var(--blue) inset; }
+.opt.is-on kbd { background: var(--btn); border-color: transparent; color: #fff; }
+.opt:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+.opt:has(.opt-input:focus:not(:focus-visible)) { outline: none; }
+.options[aria-busy="true"] .opt { cursor: progress; }
+.options[aria-busy="true"] .opt:not(.is-on) { opacity: .6; }
+@media (hover: none) { .opt kbd { display: none; } }
+
+/* Footer: Back is a real button that looks like the old link. */
+.step-foot .foot-right { display: flex; align-items: center; gap: 14px; }
+.step-foot .back { background: none; border: 0; padding: 10px 4px; margin-left: -4px; font: inherit; font-size: 15px; color: var(--grey); cursor: pointer; }
+.step-foot .back:hover { text-decoration: underline; text-underline-offset: 3px; }
+.step-foot .back:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+
+/* Fields */
+.field input[aria-invalid="true"], .field textarea[aria-invalid="true"] { border-color: var(--red); }
+.field .msg.ok { color: var(--green); }
+.field .hint-line { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
+.field .hint-line:empty { display: none; }
+.field .suggest { color: var(--blue); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.phone-row { display: flex; gap: 8px; min-width: 0; }
+.phone-row input { flex: 1 1 auto; min-width: 0; }
+.phone-row select.cc { flex: none; width: auto; max-width: 9.5em; height: 50px; padding: 0 30px 0 12px; border-radius: 12px; border: 1px solid var(--hair);
+  background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%233e4463' stroke-width='1.6'/%3E%3C/svg%3E") right 11px center / 11px no-repeat;
+  font: 500 16px var(--text); color: var(--ink); -webkit-appearance: none; appearance: none; cursor: pointer; }
+.phone-row select.cc:focus { outline: 0; border-color: var(--blue); box-shadow: 0 0 0 4px rgba(47,91,255,.14); }
+.field textarea { field-sizing: content; min-height: 140px; max-height: 50vh; }
+
+/* After submit: slot picker and the optional prep question */
+.slots .help { margin-top: 10px; }
+.day-tabs { display: flex; gap: 8px; margin-top: 26px; overflow-x: auto; padding: 3px; scrollbar-width: none; }
+.day-tabs::-webkit-scrollbar { display: none; }
+.day-tabs [role="tab"] { flex: none; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--hair); background: var(--white); font: 600 15px var(--text); color: var(--ink-2); cursor: pointer; }
+.day-tabs [role="tab"][aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.day-tabs [role="tab"]:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.day-panel { margin-top: 16px; }
+.day-panel:focus { outline: none; }
+.times { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.opt.time { justify-content: center; min-height: 52px; padding: 10px; font-variant-numeric: tabular-nums; }
+.slot-foot { flex-wrap: wrap; }
+.slot-foot .btn { margin-left: auto; }
+.full-cal { font-size: 15px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.apply fieldset.prep { margin-top: 36px; padding-top: 26px; border-top: 1px solid var(--hair); }
+.prep .prep-title { font-size: 17px; font-weight: 650; color: var(--ink); }
+.prep .help { margin-top: 6px; font-size: 15px; }
+.options.compact { margin-top: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.options.compact .opt { min-height: 52px; font-size: 15px; padding: 10px 14px; }
+
+@media (max-width: 560px) {
+  .times { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .options.compact { grid-template-columns: 1fr; }
+  .slot-foot { flex-direction: column-reverse; align-items: stretch; }
+  .slot-foot .btn { width: 100%; margin-left: 0; }
+  .full-cal { text-align: center; padding: 8px 0; }
+}
