@@ -109,6 +109,14 @@ function whyNowLine(c: C): string {
   return c.d.whyNow ? `You wrote that this matters now because &ldquo;${c.d.whyNow}&rdquo;. I'll keep that in mind.` : "";
 }
 
+/**
+ * One-click links (/go/confirm, /go/requalify) only work once email.ts pre-signs the path; until then ctx.link()
+ * falls back to the home page, so use a page that carries the same button instead.
+ */
+function oneClick(c: C, path: string, fallback: string): string {
+  return c.link(path) !== c.link("/") ? path : fallback;
+}
+
 const prepList = BREAKOUT.prep.map((p) => escHtml(p.charAt(0).toLowerCase() + p.slice(1).replace(/\.$/, "")));
 const resourceTitle = (i: number) => escHtml(RESOURCES[i]?.title || "the resources page");
 
@@ -419,6 +427,7 @@ const tc: Record<string, Template> = {
       "This is the last note in this series.",
       "If " + yours(c) + " grows past $1M a year, or you start spending real money on agencies and software, Asymmetrical may well make sense then.",
       "When that day comes, apply again. I'll read it with fresh eyes.",
+      `If something has already changed, ${c.a(oneClick(c, "/go/requalify", "/apply"), "update your answers here")}. Everything you told us is kept, so it takes a minute.`,
     ),
     cta: { label: "Apply again later", path: "/apply" },
   }),
@@ -457,8 +466,21 @@ const bk: Record<string, Template> = {
     paragraphs: body(c,
       `Looking forward to ${callOn(c)}.`,
       "If anyone else signs off on decisions like this, a partner or co-founder, it is worth asking them to join.",
+      "If you can, tap the button below so I know to expect you. It takes one second.",
       joinLine(c),
     ),
+    cta: { label: "I'll be there", path: oneClick(c, "/go/confirm", "/breakout") },
+  }),
+  // Two hours before, only for people who have not confirmed (see SEQUENCES.booked).
+  bk_2h: (c) => ({
+    subject: "Still good for our call today?",
+    preheader: "One tap to confirm, or move it.",
+    paragraphs: body(c,
+      `${c.callTime ? `Our call on ${c.callTime}` : "Our call"} is in about two hours.`,
+      "Could you let me know you're still coming? One tap on the button below is enough.",
+      joinLine(c),
+    ),
+    cta: { label: "I'll be there", path: oneClick(c, "/go/confirm", "/breakout") },
   }),
   bk_3h: (c) => ({
     subject: "Later today: our strategy call",
@@ -950,6 +972,7 @@ export const CORE_TOPICS: Record<string, string[]> = {
   bk_confirm: ["call", "booking"],
   bk_48h: ["call"],
   bk_24h: ["call"],
+  bk_2h: ["call"],
   bk_3h: ["call"],
   bk_1h: ["call"],
   bk_10m: ["call"],

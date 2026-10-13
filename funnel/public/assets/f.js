@@ -10,16 +10,23 @@
   var queue = [], sentCount = 0, MAX_EVENTS = 150, ctxSent = false;
   var path = location.pathname;
 
-  function track(name, props) {
-    if (sentCount >= MAX_EVENTS) return;
+  // force: health signals (cwv, js_error) still go out after the per-page cap.
+  function track(name, props, force) {
+    if (sentCount >= MAX_EVENTS && !force) return;
     sentCount++;
     queue.push({ n: name, p: props || {}, path: path });
     if (queue.length >= 20) flush();
   }
 
+  // The server takes at most 25 events per request, so a long queue goes out in several (never dropped).
   function flush(useBeacon) {
     if (!queue.length && ctxSent) return;
-    var body = { events: queue.splice(0, 25) };
+    var guard = 0;
+    do { send(queue.splice(0, 25), useBeacon); } while (queue.length && ++guard < 10);
+  }
+
+  function send(events, useBeacon) {
+    var body = { events: events };
     if (!ctxSent) {
       ctxSent = true;
       var c = navigator.connection || {};
@@ -40,7 +47,57 @@
   }
 
   w.OP = { track: track, flush: flush, cfg: cfg };
+
+  // Script errors: message only, trimmed and scrubbed of anything that could identify a person.
+  (function () {
+    var n = 0;
+    function scrub(m) {
+      return String(m || "").replace(/\S+@\S+/g, "[email]").replace(/https?:\/\/\S+/g, "[url]").replace(/\d[\d\s().+-]{5,}\d/g, "[n]").slice(0, 120);
+    }
+    function file(u) { try { var x = new URL(u, location.href); return x.origin === location.origin ? x.pathname.slice(0, 60) : x.hostname.slice(0, 60); } catch (e) { return ""; } }
+    w.addEventListener("error", function (e) {
+      if (n >= 5 || !e || !e.message) return;
+      n++;
+      track("js_error", { kind: "error", msg: scrub(e.message), file: file(e.filename || ""), line: e.lineno || 0 }, true);
+    });
+    w.addEventListener("unhandledrejection", function (e) {
+      if (n >= 5) return;
+      n++;
+      var r = e && e.reason;
+      track("js_error", { kind: "rejection", msg: scrub(r && r.message ? r.message : r) }, true);
+    });
+  })();
+
+  // Real-user Core Web Vitals (LCP, CLS, INP), sent once per page as "cwv" when the page is hidden.
+  (function () {
+    if (!("PerformanceObserver" in w)) return;
+    var lcp = 0, cls = 0, inp = 0, sent = false, sessionVal = 0, sessionEntries = [];
+    function obs(type, cb, opts) {
+      try { new PerformanceObserver(function (l) { l.getEntries().forEach(cb); }).observe(Object.assign({ type: type, buffered: true }, opts || {})); } catch (e) {}
+    }
+    obs("largest-contentful-paint", function (e) { lcp = e.startTime; });
+    obs("layout-shift", function (e) {
+      if (e.hadRecentInput) return;
+      var first = sessionEntries[0], last = sessionEntries[sessionEntries.length - 1];
+      if (first && e.startTime - last.startTime < 1000 && e.startTime - first.startTime < 5000) { sessionVal += e.value; sessionEntries.push(e); }
+      else { sessionVal = e.value; sessionEntries = [e]; }
+      if (sessionVal > cls) cls = sessionVal;
+    });
+    // INP approximated by the slowest interaction (exact for pages with fewer than 50 interactions).
+    obs("event", function (e) { if (e.interactionId && e.duration > inp) inp = e.duration; }, { durationThreshold: 40 });
+    obs("first-input", function (e) { var dur = e.processingEnd ? e.duration : 0; if (dur > inp) inp = dur; });
+    function report() {
+      if (sent) return;
+      sent = true;
+      var nav = (performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || {};
+      track("cwv", { lcp: Math.round(lcp), cls: Math.round(cls * 1000) / 1000, inp: Math.round(inp), ttfb: Math.round(nav.responseStart || 0), nav: nav.type || "" }, true);
+    }
+    d.addEventListener("visibilitychange", function () { if (d.visibilityState === "hidden") report(); });
+    w.addEventListener("pagehide", report);
+  })();
   setInterval(function () { if (queue.length) flush(); }, 5000);
+  // Back/forward cache restore: the page is live again; anything queued at pagehide goes out now.
+  w.addEventListener("pageshow", function (e) { if (e.persisted && queue.length) flush(); });
   setTimeout(function () { flush(); }, 1500);
 
   // Which section is on screen.
@@ -288,27 +345,51 @@
     }
     var banner = null;
     function show() {
-      if (banner) { banner.hidden = false; return; }
-      banner = d.createElement("div");
+      if (banner) { banner.hidden = false; pad(); return; }
+      banner = d.createElement("section");
       banner.className = "consent";
-      banner.setAttribute("role", "dialog");
+      // A labelled region, not a dialog: it never traps or steals focus, and it is reachable in reading order.
+      banner.setAttribute("role", "region");
       banner.setAttribute("aria-label", "Cookie choices");
       var p = d.createElement("p");
       p.appendChild(d.createTextNode("We use our own cookies to run this site and to understand how it is used. With your permission we also remember your visit across days and use advertising cookies to measure our ads. "));
       var a = d.createElement("a"); a.href = "/privacy"; a.textContent = "Privacy policy"; p.appendChild(a);
       var row = d.createElement("div"); row.className = "row";
+      // Equal weight: the same style and size for both choices.
       var no = d.createElement("button"); no.type = "button"; no.className = "btn ghost"; no.textContent = "Decline";
-      var yes = d.createElement("button"); yes.type = "button"; yes.className = "btn"; yes.textContent = "Accept";
-      no.onclick = function () { banner.hidden = true; send("denied"); };
-      yes.onclick = function () { banner.hidden = true; send("granted"); };
+      var yes = d.createElement("button"); yes.type = "button"; yes.className = "btn ghost"; yes.textContent = "Accept";
+      no.onclick = function () { hide(); send("denied"); };
+      yes.onclick = function () { hide(); send("granted"); };
       row.appendChild(no); row.appendChild(yes);
       banner.appendChild(p); banner.appendChild(row);
       d.body.appendChild(banner);
+      pad();
+      track("consent_banner_shown", {});
     }
+    // While the banner shows, the page gets room underneath it so it never covers the field in focus.
+    function pad() {
+      if (!banner || banner.hidden) return;
+      var h = banner.offsetHeight + 16;
+      d.documentElement.style.setProperty("--consent-h", h + "px");
+      d.documentElement.classList.add("consent-open");
+      d.body.classList.add("consent-open");
+    }
+    function hide() {
+      if (!banner) return;
+      banner.hidden = true;
+      d.documentElement.classList.remove("consent-open");
+      d.body.classList.remove("consent-open");
+    }
+    w.addEventListener("resize", function () { pad(); });
     function boot() {
       if (cfg.consentRequired && readConsent() === "unknown") show();
       else loadThirdParty();
       d.querySelectorAll("[data-cookie-settings]").forEach(function (b) { b.addEventListener("click", show); });
+      // Restored from the back/forward cache: a choice made in another tab since then wins.
+      w.addEventListener("pageshow", function (e) {
+        if (!e.persisted) return;
+        if (readConsent() !== "unknown") { hide(); loadThirdParty(); }
+      });
     }
     if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", boot); else boot();
   })();

@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
-<link rel="preload" href="/assets/fonts/Inter-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/assets/fonts/Inter-Latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <script id="op-cfg" type="application/json">{}</script>
 <script src="/assets/f.js" defer></script>
@@ -17,7 +19,7 @@
 </head>
 <body class="page-landing">
 <header class="nav"><div class="wide">
-  <a class="brand" href="/" aria-label="Asymmetrical AI Solutions home"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor"/><path d="M6.8 17.2 10.4 6.8l6.8 10.4M8.6 13.4h5.6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><strong>Asymmetrical</strong><span class="brand-sub">AI Solutions</span></a>
+  <a class="brand" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor"/><path d="M6.8 17.2 10.4 6.8l6.8 10.4M8.6 13.4h5.6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><strong>Asymmetrical</strong> <span class="brand-sub">AI Solutions</span></a>
   <a class="btn sm gated-show" data-apply href="#apply">Apply</a>
 </div></header>
 
@@ -32,17 +34,25 @@
 
   <section class="film" data-section="video">
     <div class="wide">
-      <div class="player" data-player>
+      <div class="player" data-player tabindex="0" role="group" aria-roledescription="video player" aria-label="The film">
         <video playsinline muted preload="metadata" aria-label="The film"></video>
         <div class="poster" aria-hidden="true">
           <div class="poster-play"><svg viewBox="0 0 24 24"><path d="M8.5 5.8v12.4a.8.8 0 0 0 1.2.7l10-6.2a.8.8 0 0 0 0-1.4l-10-6.2a.8.8 0 0 0-1.2.7Z" fill="currentColor"/></svg></div>
           <p class="poster-title">The film</p>
           <p class="poster-sub">Nine minutes on how founders stop renting their growth.</p>
         </div>
-        <button class="listen" type="button" hidden><span class="listen-icon" aria-hidden="true"></span><span>Click to listen</span></button>
+        <button class="listen" type="button" hidden><span class="listen-icon" aria-hidden="true"></span><span class="listen-label">Click to listen</span></button>
+        <button class="pp" type="button" hidden aria-label="Pause the film"><span class="pp-icon" aria-hidden="true"></span></button>
         <div class="bar" aria-hidden="true"><i></i></div>
       </div>
-      <p class="locked" data-slot="locked">The application opens as the film reaches the offer.</p>
+      <div class="film-card" data-when="nofilm">
+        <h2 class="fc-title" data-slot="nofilmTitle">What we build with you in eight weeks</h2>
+        <p class="fc-sub" data-slot="nofilmSub"></p>
+        <ol class="fc-list" data-slot="system"></ol>
+        <p class="fc-foot" data-slot="nofilmFoot"></p>
+      </div>
+      <p class="locked" data-slot="locked" data-when="film">The application opens as the film reaches the offer.</p>
+      <p class="soft-cta" data-soft-cta hidden><a href="#apply" data-track="soft_cta">Ready already? Start your application</a></p>
       <div class="cta-block reveal" data-section="book_cta">
         <a class="btn lg" data-apply href="#apply">Apply for a strategy call</a>
         <p class="assure" data-slot="ctaSub">Takes about three minutes. We read every application.</p>
@@ -61,6 +71,30 @@
       </div>
       <p class="assure apply-assure" data-slot="applyAssure"></p>
       <p class="wa-line" data-section="whatsapp">Rather ask a question first? <a data-wa href="/go/wa">Message Bendik on WhatsApp</a></p>
+    </div>
+  </section>
+
+  <section class="below reveal" data-section="guarantee_band" aria-labelledby="g-band-title">
+    <div class="wrap">
+      <div class="g-band">
+        <h2 class="sr-only" id="g-band-title">Our guarantees</h2>
+        <div><p class="kicker">Money back</p><p class="g-text" data-slot="guarantee"></p></div>
+        <div><p class="kicker">Live by week eight</p><p class="g-text" data-slot="deliveryGuarantee"></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="below reveal" data-section="weeks">
+    <div class="wrap">
+      <header class="sec-head"><p class="kicker" data-slot="weeksKicker">How the eight weeks work</p><h2 class="h3" data-slot="weeksTitle"></h2></header>
+      <ol class="weeks-row" data-slot="weeks"></ol>
+    </div>
+  </section>
+
+  <section class="below reveal" data-section="faq">
+    <div class="wrap narrow">
+      <header class="sec-head"><p class="kicker" data-slot="faqKicker">Questions</p><h2 class="h3" data-slot="faqTitle"></h2></header>
+      <div class="faqs" data-slot="faq"></div>
     </div>
   </section>
 </main>

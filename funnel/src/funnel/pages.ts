@@ -1,24 +1,29 @@
 // Server-rendered funnel pages: static templates in public/ filled with HTMLRewriter.
-// The page view is written server-side before the HTML is returned.
+// The page view id is minted up front (the Pixel dedupes on it); the D1 writes run after the response
+// has started (waitUntil), so the HTML never waits on them. Independent reads run in parallel.
 
 import type { Ctx, Runtime } from "../app";
 import {
-  APPLICATION, BRAND, BREAKOUT, CALL_CONSENT, FAQS, HEADLINES, LANDING, RESOURCES, VIDEOS, type Faq, type VideoId,
+  APPLICATION, BRAND, BREAKOUT, CALL_CONSENT, FAQS, HEADLINES, LANDING, OFFER, RESOURCES, VIDEOS,
+  type Faq, type GateMode, type Resource, type VideoId,
 } from "../config";
 import { resolveIdentity, setLanderCookie, setVariantCookie, type Identity } from "../lib/identity";
+import { newId } from "../lib/ids";
 import { escHtml } from "../lib/text";
 import { track, whoFromIdentity } from "../tracking/track";
 import { hasRevealed, resumePosition } from "../tracking/vsl";
-import { getLead, effectiveTier, type Lead } from "./leads";
+import { getLead, effectiveTier, parseAnswers, type Lead } from "./leads";
 import { bookingUrlFor } from "./routing";
-import { getRep } from "../sales/reps";
+import { getRep, type Rep } from "../sales/reps";
 import { formatCallTime, leadTimezone } from "../integrations/email";
 import { waLink } from "../integrations/whatsapp";
 import { getAngle, getIndustry, inferIndustry, type Angle, type Industry } from "../landers/catalog";
-import { armStats, chooseAngle } from "../landers/bandit";
+import { armStats, chooseAngle, type ArmStats } from "../landers/bandit";
 
 export interface Fill {
   title?: string;
+  /** Meta description and link-preview text (Open Graph / Twitter). */
+  description?: string;
   text?: Record<string, string>;
   html?: Record<string, string>;
   attrs?: Array<{ sel: string; attr: string; value: string }>;
@@ -53,11 +58,65 @@ export function nowrapHyphens(text: string): string {
   return escHtml(text).replace(/(\S+-\S+)/g, '<span class="nw">$1</span>');
 }
 
+// ── Asset versions ────────────────────────────────────────────────────────────
+
+/** Fallback when the version-metadata binding is missing (tests, older wrangler). Bump on asset changes. */
+export const BUILD_VERSION = "r1-20261013";
+
+/** Short, URL-safe version id of the deployed Worker (CF_VERSION_METADATA), or the build constant. */
+export function assetVersion(env: unknown): string {
+  const meta = (env as { CF_VERSION_METADATA?: { id?: unknown } } | null)?.CF_VERSION_METADATA;
+  const id = typeof meta?.id === "string" ? meta.id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) : "";
+  return id || BUILD_VERSION;
+}
+
+/** "/assets/site.css" → "/assets/site.css?v=abc". Only same-site /assets/ URLs without a query are touched. */
+export function versioned(url: string, v: string): string {
+  return /^\/assets\/[^?#]+$/.test(url) ? `${url}?v=${encodeURIComponent(v)}` : url;
+}
+
+/** Meta description, Open Graph and Twitter tags for link previews. All values escaped. */
+export function previewMeta(o: { title: string; description: string; url: string; image: string; siteName: string }): string {
+  const m = (attr: "name" | "property", k: string, v: string) => `<meta ${attr}="${k}" content="${escHtml(v)}">`;
+  return [
+    m("name", "description", o.description),
+    m("property", "og:type", "website"),
+    m("property", "og:site_name", o.siteName),
+    m("property", "og:title", o.title),
+    m("property", "og:description", o.description),
+    m("property", "og:url", o.url),
+    m("property", "og:image", o.image),
+    m("property", "og:image:width", "1200"),
+    m("property", "og:image:height", "630"),
+    m("property", "og:image:alt", o.siteName),
+    m("name", "twitter:card", "summary_large_image"),
+    m("name", "twitter:title", o.title),
+    m("name", "twitter:description", o.description),
+    m("name", "twitter:image", o.image),
+  ].join("\n");
+}
+
 export async function renderTemplate(c: Ctx, file: string, fill: Fill, status = 200): Promise<Response> {
   const res = await c.env.ASSETS.fetch(new Request(new URL(`/${file}`, c.req.url).toString()));
   if (!res.ok) return c.text("Template missing", 500);
+  const rt = c.get("rt");
+  const v = assetVersion(c.env);
   const rw = new HTMLRewriter();
   if (fill.title) rw.on("title", { element(el) { el.setInnerContent(fill.title as string); } });
+  if (fill.title || fill.description) {
+    const url = new URL(c.req.url);
+    const meta = previewMeta({
+      title: fill.title || BRAND.name,
+      description: fill.description || BRAND.promiseShort,
+      url: `${rt.origin}${url.pathname}`,
+      image: `${rt.origin}/assets/og.png`,
+      siteName: BRAND.name,
+    });
+    rw.on("head", { element(el) { el.append(meta, { html: true }); } });
+  }
+  // Cache-busting: css/js get ?v=<deployed version>, so they can be cached for a year (see public/_headers).
+  rw.on('link[rel="stylesheet"][href^="/assets/"]', { element(el) { el.setAttribute("href", versioned(el.getAttribute("href") || "", v)); } });
+  rw.on('script[src^="/assets/"]', { element(el) { el.setAttribute("src", versioned(el.getAttribute("src") || "", v)); } });
   if (fill.bodyClass) rw.on("body", { element(el) { el.setAttribute("class", `${el.getAttribute("class") || ""} ${fill.bodyClass}`.trim()); } });
   rw.on("[data-slot]", {
     element(el) {
@@ -72,25 +131,40 @@ export async function renderTemplate(c: Ctx, file: string, fill: Fill, status = 
   });
   for (const a of fill.attrs || []) rw.on(a.sel, { element(el) { el.setAttribute(a.attr, a.value); } });
   for (const sel of fill.remove || []) rw.on(sel, { element(el) { el.remove(); } });
-  if (fill.cfg) rw.on("script#op-cfg", { element(el) { el.setInnerContent(safeJson(fill.cfg), { html: true }); } });
+  if (fill.cfg) {
+    const cfg = { ...fill.cfg, v };
+    rw.on("script#op-cfg", { element(el) { el.setInnerContent(safeJson(cfg), { html: true }); } });
+  }
   const out = rw.transform(new Response(res.body, { status, headers: { "content-type": "text/html; charset=utf-8" } }));
   // c.newResponse keeps the cookies queued on the context (visitor, session, variant, lander, fbp/fbc).
-  return c.newResponse(out.body, status as 200, { "content-type": "text/html; charset=utf-8", "cache-control": "private, no-store" });
+  // private, no-cache: never stored by shared caches, always revalidated, but the back/forward cache still works.
+  return c.newResponse(out.body, status as 200, { "content-type": "text/html; charset=utf-8", "cache-control": "private, no-cache" });
 }
 
 // ── Shared pieces ─────────────────────────────────────────────────────────────
 
-function faqHtml(faqs: Faq[]): string {
+export function faqHtml(faqs: Faq[]): string {
   return faqs.map((f) => `<details class="faq" data-faq="${escHtml(f.id)}"><summary>${escHtml(f.q)}</summary><p>${escHtml(f.a)}</p></details>`).join("");
 }
 
-function videoCfg(rt: Runtime, id: VideoId, resume: number) {
+const safeUrl = (u: string) => (/^(https:\/\/|\/(?!\/))[^\s"'<>]*$/.test(u) ? u : "");
+
+export function videoCfg(rt: Runtime, id: VideoId, resume: number) {
   const key = id === "main" ? "VSL_MAIN" : id === "breakout" ? "VSL_BREAKOUT" : "VSL_PRECALL";
-  const src = rt.settings.get(`${key}_SRC`);
-  const poster = rt.settings.get(`${key}_POSTER`);
-  const safe = (u: string) => (/^(https:\/\/|\/)[^\s"'<>]*$/.test(u) ? u : "");
   const v = VIDEOS[id];
-  return { id, src: safe(src), poster: safe(poster), ctaRevealAt: v.ctaRevealAt, duration: v.duration, resume, chapters: v.chapters.map((c) => ({ at: c.at, label: c.label })) };
+  const src = safeUrl(rt.settings.get(`${key}_SRC`));
+  return {
+    id,
+    src,
+    hls: /\.m3u8(\?|$)/i.test(src),
+    poster: safeUrl(rt.settings.get(`${key}_POSTER`)),
+    captions: safeUrl(rt.settings.get(`${key}_CAPTIONS`) || v.captions),
+    label: v.label,
+    ctaRevealAt: v.ctaRevealAt,
+    duration: v.duration,
+    resume,
+    chapters: v.chapters.map((c) => ({ at: c.at, label: c.label })),
+  };
 }
 
 function commonCfg(rt: Runtime, id: Identity, page: string, pv: string | null) {
@@ -99,6 +173,7 @@ function commonCfg(rt: Runtime, id: Identity, page: string, pv: string | null) {
     page,
     pv,
     consentRequired: id.consentRequired,
+    // Banner consent ("granted" | "denied" | "unknown"). Always a string; the AI-call consent is `callConsent`.
     consent: id.consent,
     // Ids only; f.js loads nothing until consent allows it (replay always needs an explicit yes).
     pixel: s.has("META_PIXEL_ID") ? s.get("META_PIXEL_ID") : null,
@@ -106,15 +181,26 @@ function commonCfg(rt: Runtime, id: Identity, page: string, pv: string | null) {
   };
 }
 
-async function pageView(c: Ctx, id: Identity, path: string, props: Record<string, unknown> = {}, preview = false): Promise<string | null> {
+/**
+ * Records the page view without holding up the response: the event id is minted here (and handed to the
+ * Pixel for deduplication), the insert and the visitor/session counters run in waitUntil, after the
+ * identity rows they update.
+ */
+function pageView(c: Ctx, id: Identity, path: string, props: Record<string, unknown> = {}, preview = false): string | null {
   if (id.isPrefetch || preview) return null;
   const rt = c.get("rt");
-  const pv = await track(rt, whoFromIdentity(id, path, c.req.url), { name: "page_view", props });
-  await rt.env.DB.batch([
-    rt.env.DB.prepare("UPDATE sessions SET pageviews = pageviews + 1, last_seen_at = ?, variant = COALESCE(variant, ?), lander = COALESCE(lander, ?) WHERE id = ?")
-      .bind(rt.now(), id.variant, id.lander, id.sessionId),
-    rt.env.DB.prepare("UPDATE visitors SET pageviews = pageviews + 1, last_seen_at = ? WHERE id = ?").bind(rt.now(), id.visitorId),
-  ]);
+  const pv = newId("e");
+  const who = whoFromIdentity(id, path, c.req.url);
+  const write = async () => {
+    if (id.pending) await id.pending;
+    await track(rt, who, { name: "page_view", props, eventId: pv });
+    await rt.env.DB.batch([
+      rt.env.DB.prepare("UPDATE sessions SET pageviews = pageviews + 1, last_seen_at = ?, variant = COALESCE(variant, ?), lander = COALESCE(lander, ?) WHERE id = ?")
+        .bind(rt.now(), id.variant, id.lander, id.sessionId),
+      rt.env.DB.prepare("UPDATE visitors SET pageviews = pageviews + 1, last_seen_at = ? WHERE id = ?").bind(rt.now(), id.visitorId),
+    ]);
+  };
+  rt.waitUntil(write());
   return pv;
 }
 
@@ -132,7 +218,51 @@ async function leadView(rt: Runtime, lead: Lead | null) {
   };
 }
 
+// Bandit arm stats: two aggregate queries per industry, cached per isolate for a minute.
+const ARM_TTL = 60_000;
+const armCache = new Map<string, { at: number; stats: ArmStats[] }>();
+async function cachedArmStats(rt: Runtime, industry: string): Promise<ArmStats[]> {
+  const hit = armCache.get(industry);
+  if (hit && rt.now() - hit.at < ARM_TTL) return hit.stats;
+  const stats = await armStats(rt, industry);
+  armCache.set(industry, { at: rt.now(), stats });
+  if (armCache.size > 64) armCache.delete(armCache.keys().next().value as string);
+  return stats;
+}
+
+/** Attendance confirmed for the call that is booked now (a reschedule needs a fresh confirmation). */
+export function attendanceConfirmed(lead: Pick<Lead, "call_at"> & { attendance_confirmed_at?: number | null; attendance_call_at?: number | null } | null): boolean {
+  return !!lead?.attendance_confirmed_at && !!lead.call_at && lead.attendance_call_at === lead.call_at;
+}
+
+/** The label the lead picked for an application question, e.g. spend → "$100k – $300k". */
+export function answerLabel(lead: Pick<Lead, "answers"> | null, questionId: string): string | null {
+  const a = parseAnswers(lead)[questionId];
+  if (typeof a !== "string") return null;
+  return APPLICATION.find((q) => q.id === questionId)?.options?.find((o) => o.value === a)?.label || null;
+}
+
 // ── Landing (main + landers) ─────────────────────────────────────────────────
+
+/**
+ * Is the application gated behind the film for this visit? Never when there is no film, the gate is open,
+ * the visitor already reached the pitch or applied, is a known lead, came from a retargeting ad
+ * (utm_content "rt_…") or a referral link (?r=).
+ */
+export function gateState(o: { mode: GateMode; hasFilm: boolean; revealedBefore: boolean; knownLead: boolean; url: URL }): boolean {
+  if (!o.hasFilm || o.mode === "open" || o.revealedBefore || o.knownLead) return false;
+  const content = (o.url.searchParams.get("utm_content") || "").toLowerCase();
+  if (content.startsWith("rt_") || o.url.searchParams.has("r")) return false;
+  return true;
+}
+
+function weeksHtml(): string {
+  return LANDING.weeks.map((w) => `<li><span class="wk">${escHtml(w.label)}</span><h3>${escHtml(w.title)}</h3><p>${escHtml(w.body)}</p></li>`).join("");
+}
+
+function systemHtml(): string {
+  return LANDING.system.map((s) => `<li><h3>${escHtml(s.title)}</h3><p>${escHtml(s.body)}</p></li>`).join("");
+}
 
 export async function landingPage(c: Ctx, opts: { industry?: Industry | null; angle?: Angle | null; smart?: boolean } = {}): Promise<Response> {
   const rt = c.get("rt");
@@ -140,13 +270,22 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
   const preview = url.searchParams.get("preview") === "1";
   const id = await resolveIdentity(c, { page: true });
   let path = url.pathname;
+  const videoSrc = videoCfg(rt, "main", 0).src;
+
+  // Independent reads in parallel: the lead, the bandit stats (cached), the film position and the gate.
+  const [lead, stats, resume, revealedBefore] = await Promise.all([
+    getLead(rt, id.leadId),
+    opts.industry && !opts.angle && !id.lander?.startsWith(opts.industry.id + "/") ? cachedArmStats(rt, opts.industry.id) : Promise.resolve(null),
+    id.isBot || !videoSrc ? Promise.resolve(0) : resumePosition(rt, id.visitorId, "main"),
+    videoSrc ? hasRevealed(rt, id.visitorId) : Promise.resolve(true),
+  ]);
 
   let eyebrow: string, h1: string, h1b: string, sub: string;
   if (opts.industry) {
     let angle = opts.angle;
     if (!angle) {
       const sticky = id.lander?.startsWith(opts.industry.id + "/") ? getAngle(id.lander.split("/")[1]) : null;
-      angle = sticky || getAngle(chooseAngle(await armStats(rt, opts.industry.id))) || null;
+      angle = sticky || (stats ? getAngle(chooseAngle(stats)) : null) || null;
     }
     if (!angle) angle = getAngle("agency");
     const key = `${opts.industry.id}/${angle!.id}`;
@@ -168,35 +307,57 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
     path = "/";
   }
 
-  const pv = await pageView(c, id, path, { variant: id.variant, lander: id.lander }, preview);
-  const lead = await getLead(rt, id.leadId);
-  const video = videoCfg(rt, "main", id.isBot ? 0 : await resumePosition(rt, id.visitorId, "main"));
-  const revealed = !video.src || (await hasRevealed(rt, id.visitorId)) || !!lead?.app_completed_at;
+  const pv = pageView(c, id, path, { variant: id.variant, lander: id.lander }, preview);
+  const video = videoCfg(rt, "main", resume);
+  const gate = VIDEOS.main.gate;
+  const gated = gateState({ mode: gate.mode, hasFilm: !!video.src, revealedBefore: !!revealedBefore || !!lead?.app_completed_at, knownLead: !!lead, url });
   const wa = waLink(rt, lead, "question");
   const remove: string[] = [];
   if (!wa) remove.push("[data-section=whatsapp]");
   remove.push("[data-section=testimonials]"); // hidden until real testimonials exist
   if (!h1b) remove.push("[data-slot=h1b]");
+  // No film yet: a calm summary of what gets built stands in the film's place, and nothing is gated.
+  if (video.src) remove.push("[data-when=nofilm]");
+  else remove.push("[data-player]", "[data-when=film]");
+  if (gate.mode !== "soft" || !gated) remove.push("[data-soft-cta]");
+  const faqs = LANDING.below.faqIds.map((fid) => FAQS.find((f) => f.id === fid)).filter((f): f is Faq => !!f);
+  const fullHeadline = [h1, h1b].filter(Boolean).join(" ");
 
   return renderTemplate(c, "index.html", {
     title: `${BRAND.name} · ${h1.replace(/[.:]$/, "")}`,
-    bodyClass: [revealed ? "" : "gated", h1.length + h1b.length > 48 ? "long-h1" : ""].filter(Boolean).join(" "),
+    description: `${fullHeadline} ${sub}`.slice(0, 300),
+    bodyClass: [gated ? "gated" : "", h1.length + h1b.length > 48 ? "long-h1" : "", video.src ? "" : "no-film"].filter(Boolean).join(" "),
     text: {
       eyebrow, h1, h1b, sub,
       ctaSub: LANDING.ctaSub,
       locked: LANDING.lockedNote,
+      softCta: LANDING.softCta,
       applyAssure: `${BRAND.guarantee} Price is covered on the call, once we know the scope.`,
+      nofilmTitle: LANDING.noFilm.title,
+      nofilmSub: LANDING.noFilm.sub,
+      nofilmFoot: LANDING.noFilm.foot,
+      guarantee: BRAND.guarantee,
+      deliveryGuarantee: BRAND.deliveryGuarantee,
+      weeksKicker: LANDING.below.weeksKicker,
+      weeksTitle: LANDING.below.weeksTitle,
+      faqKicker: LANDING.below.faqKicker,
+      faqTitle: LANDING.below.faqTitle,
       disclaimer: BRAND.disclaimer,
       year: String(new Date().getFullYear()),
       company: BRAND.company,
     },
+    html: { weeks: weeksHtml(), system: systemHtml(), faq: faqHtml(faqs) },
     attrs: [
       ...(wa ? [{ sel: "a[data-wa]", attr: "href", value: "/go/wa?c=question" }] : []),
       ...(lead?.app_completed_at && lead.route ? [{ sel: "a[data-apply]", attr: "href", value: lead.route }] : []),
+      { sel: "[data-player] video", attr: "aria-label", value: video.label },
     ],
     remove,
     // The application lives on this page, under the film.
-    cfg: { ...commonCfg(rt, id, "landing", pv), ...applicationCfg(rt, id, lead), embedded: true, video, revealed, variant: id.variant, lander: id.lander },
+    cfg: {
+      ...commonCfg(rt, id, "landing", pv), ...applicationCfg(rt, id, lead), embedded: true, video, revealed: !gated,
+      gate: { mode: gate.mode, softAt: gate.softAt }, variant: id.variant, lander: id.lander,
+    },
   });
 }
 
@@ -231,11 +392,12 @@ export function applicationCfg(rt: Runtime, id: Identity, lead: Lead | null) {
 export async function applyPage(c: Ctx): Promise<Response> {
   const rt = c.get("rt");
   const id = await resolveIdentity(c, { page: true });
-  const pv = await pageView(c, id, "/apply");
+  const pv = pageView(c, id, "/apply");
   const lead = await getLead(rt, id.leadId);
   if (lead?.app_completed_at && lead.route) return c.redirect(lead.route, 302);
   return renderTemplate(c, "apply.html", {
     title: `Apply · ${BRAND.name}`,
+    description: `${BRAND.promiseShort} Apply in about three minutes.`,
     cfg: { ...commonCfg(rt, id, "apply", pv), ...applicationCfg(rt, id, lead) },
   });
 }
@@ -258,6 +420,29 @@ export function calendlyEmbedUrl(base: string, lead: Lead, host: string, consent
   return u.toString();
 }
 
+/** The closer card: name always; photo and a short bio only when the reps data carries them. */
+export function closerHtml(rep: (Rep & { photo_url?: string | null; bio?: string | null }) | null): string {
+  const name = rep?.name || BRAND.founder;
+  const photo = safeUrl(String(rep?.photo_url || ""));
+  const bio = typeof rep?.bio === "string" ? rep.bio.trim().slice(0, 240) : "";
+  const role = name === BRAND.founder ? `Founder, ${BRAND.company}` : BRAND.name;
+  const avatar = photo
+    ? `<img class="closer-photo" src="${escHtml(photo)}" alt="" width="56" height="56" loading="lazy">`
+    : `<span class="closer-initial" aria-hidden="true">${escHtml(name.charAt(0).toUpperCase())}</span>`;
+  return `${avatar}<div><p class="closer-name">${escHtml(name)}</p><p class="closer-role">${escHtml(role)}</p>${bio ? `<p class="closer-bio">${escHtml(bio)}</p>` : ""}</div>`;
+}
+
+function agendaHtml(): string {
+  return OFFER.agenda.map((a) => `<li><h3>${escHtml(a.title)}</h3><p>${escHtml(a.body)}</p></li>`).join("");
+}
+
+/** "You told us you spend $100k – $300k a year on …" from the lead's own answer, or empty. */
+export function spendLine(lead: Pick<Lead, "answers"> | null): string {
+  const label = answerLabel(lead, "spend");
+  if (!label) return "";
+  return `You told us you spend ${label} a year on agencies, freelancers and software. On the call we look at which part of that you could own instead.`;
+}
+
 export async function bookPage(c: Ctx): Promise<Response> {
   const rt = c.get("rt");
   const id = await resolveIdentity(c, { page: true });
@@ -266,17 +451,31 @@ export async function bookPage(c: Ctx): Promise<Response> {
   const tier = effectiveTier(lead);
   if (tier === "C") return c.redirect("/resources", 302);
   if (lead.status === "booked" && lead.call_at && !lead.booking_cancelled_at) return c.redirect("/breakout", 302);
-  const pv = await pageView(c, id, "/book");
-  const rep = await getRep(rt, lead.closer_id);
+  const pv = pageView(c, id, "/book");
+  const [rep, lv] = await Promise.all([getRep(rt, lead.closer_id), leadView(rt, lead)]);
   const base = bookingUrlFor(rt, tier, rep);
   const embed = base ? calendlyEmbedUrl(base, lead, new URL(c.req.url).host, id.consentRequired) : null;
   const wa = waLink(rt, lead, "question");
+  const spend = spendLine(lead);
+  const remove = [...(embed ? ["[data-when=nocal]"] : ["[data-when=cal]"]), ...(wa ? [] : ["[data-section=whatsapp]", "[data-wa]"])];
+  if (!spend) remove.push("[data-slot=spendLine]");
   return renderTemplate(c, "book.html", {
     title: `Pick a time · ${BRAND.name}`,
-    text: { first: lead.first_name || "", closer: rep?.name || BRAND.founder },
-    remove: [...(embed ? ["[data-when=nocal]"] : ["[data-when=cal]"]), ...(wa ? [] : ["[data-section=whatsapp]"])],
+    text: {
+      first: lead.first_name || "",
+      closer: rep?.name || BRAND.founder,
+      spendLine: spend,
+      minutes: `In ${OFFER.callMinutes} minutes`,
+      takeaway: OFFER.takeaway,
+      guarantee: `${BRAND.guarantee} ${BRAND.deliveryGuarantee}`,
+      disclaimer: BRAND.disclaimer,
+      year: String(new Date().getFullYear()),
+      company: BRAND.company,
+    },
+    html: { closerCard: closerHtml(rep), agenda: agendaHtml(), faq: faqHtml(OFFER.faqs) },
+    remove,
     attrs: wa ? [{ sel: "a[data-wa]", attr: "href", value: "/go/wa?c=question" }] : [],
-    cfg: { ...commonCfg(rt, id, "book", pv), embed, lead: await leadView(rt, lead) },
+    cfg: { ...commonCfg(rt, id, "book", pv), embed, wa: wa ? "/go/wa?c=question" : null, lead: lv },
   });
 }
 
@@ -286,18 +485,25 @@ export async function breakoutPage(c: Ctx): Promise<Response> {
   const rt = c.get("rt");
   const id = await resolveIdentity(c, { page: true });
   const lead = await getLead(rt, id.leadId);
-  const pv = await pageView(c, id, "/breakout");
-  const lv = await leadView(rt, lead);
+  const pv = pageView(c, id, "/breakout");
+  const [lv, rep] = await Promise.all([leadView(rt, lead), lead ? getRep(rt, lead.closer_id) : Promise.resolve(null)]);
   const booked = !!lv?.booked;
+  const confirmed = booked && attendanceConfirmed(lead as Lead & { attendance_confirmed_at?: number | null; attendance_call_at?: number | null });
   const video = videoCfg(rt, booked ? "precall" : "breakout", 0);
   const wa = waLink(rt, lead, booked ? "booked" : "question");
+  // Open state: the calendar sits under the video, so a B lead books without another hop.
+  const tier = lead ? effectiveTier(lead) : null;
+  const base = !booked && lead?.app_completed_at && tier !== "C" ? bookingUrlFor(rt, tier, rep) : "";
+  const embed = base && lead ? calendlyEmbedUrl(base, lead, new URL(c.req.url).host, id.consentRequired) : null;
   const objections = FAQS.filter((f) => ["cost", "time", "tech", "agency", "guarantee", "results"].includes(f.id));
   const remove: string[] = [booked ? "[data-when=open]" : "[data-when=booked]"];
   if (!wa) remove.push("[data-section=whatsapp]");
   if (!video.src) remove.push("[data-section=video]", ".cta-band h2");
   if (!lead?.booking_join_url) remove.push("[data-when=join]");
+  remove.push(embed ? "[data-cal-fallback]" : "[data-cal-section]");
+  remove.push(confirmed ? "[data-when=unconfirmed]" : "[data-when=confirmed]");
   return renderTemplate(c, "breakout.html", {
-    bodyClass: video.src ? "has-video" : "",
+    bodyClass: [video.src ? "has-video" : "", embed ? "has-cal" : ""].filter(Boolean).join(" "),
     title: `${booked ? "Before your call" : "Next step"} · ${BRAND.name}`,
     text: {
       eyebrow: booked ? BREAKOUT.bookedEyebrow : BREAKOUT.eyebrow,
@@ -306,29 +512,54 @@ export async function breakoutPage(c: Ctx): Promise<Response> {
       first: lead?.first_name || "",
       disclaimer: BRAND.disclaimer,
       guarantee: BRAND.guarantee,
+      takeaway: OFFER.takeaway,
+      year: String(new Date().getFullYear()),
+      company: BRAND.company,
     },
     html: {
       prep: BREAKOUT.prep.map((p) => `<li>${escHtml(p)}</li>`).join(""),
       faq: faqHtml(booked ? FAQS : objections),
     },
-    attrs: wa ? [{ sel: "a[data-wa]", attr: "href", value: `/go/wa?c=${booked ? "booked" : "question"}` }] : [],
+    attrs: [
+      ...(wa ? [{ sel: "a[data-wa]", attr: "href", value: `/go/wa?c=${booked ? "booked" : "question"}` }] : []),
+      ...(embed ? [{ sel: "a[data-book-link]", attr: "href", value: "#book" }] : []),
+      { sel: "[data-player] video", attr: "aria-label", value: video.label },
+    ],
     remove,
-    cfg: { ...commonCfg(rt, id, "breakout", pv), video, lead: lv, revealed: true },
+    cfg: { ...commonCfg(rt, id, "breakout", pv), video, lead: lv, revealed: true, embed, wa: wa ? `/go/wa?c=${booked ? "booked" : "question"}` : null },
   });
+}
+
+/** One resource row: a real link when the item has a URL, otherwise a quiet "Coming soon". */
+export function resourceHtml(r: Resource, i: number): string {
+  const url = safeUrl(r.url || "");
+  const ext = url.startsWith("https://");
+  const title = url
+    ? `<h3><a href="${escHtml(url)}"${ext ? ' rel="noopener" target="_blank"' : ""} data-track="resource_${i + 1}">${escHtml(r.title)}${ext ? '<span class="sr-only"> (opens in a new tab)</span>' : ""}</a></h3>`
+    : `<h3>${escHtml(r.title)} <span class="soon">Coming soon</span></h3>`;
+  return `<li><span class="num" aria-hidden="true">${i + 1}</span><div>${title}<p>${escHtml(r.body)}</p></div></li>`;
 }
 
 export async function resourcesPage(c: Ctx): Promise<Response> {
   const rt = c.get("rt");
   const id = await resolveIdentity(c, { page: true });
   const lead = await getLead(rt, id.leadId);
-  const pv = await pageView(c, id, "/resources");
+  const pv = pageView(c, id, "/resources");
   const wa = waLink(rt, lead, "resources");
+  const role = parseAnswers(lead).role;
+  const notOwner = role === "exec";
+  const forwardHref = `mailto:?subject=${encodeURIComponent(OFFER.forwardSubject)}&body=${encodeURIComponent(`${OFFER.forwardBody} ${rt.origin}/`)}`;
+  const remove: string[] = wa ? [] : ["[data-section=whatsapp]"];
+  if (!notOwner) remove.push("[data-section=forward]");
   return renderTemplate(c, "resources.html", {
     title: `Resources · ${BRAND.name}`,
-    text: { first: lead?.first_name ? `${lead.first_name}, thank you for applying.` : "Thank you for applying.", disclaimer: BRAND.disclaimer },
-    html: { resources: RESOURCES.map((r, i) => `<li><span class="num">${i + 1}</span><div><h3>${escHtml(r.title)}</h3><p>${escHtml(r.body)}</p></div></li>`).join("") },
-    attrs: wa ? [{ sel: "a[data-wa]", attr: "href", value: "/go/wa?c=resources" }] : [],
-    remove: wa ? [] : ["[data-section=whatsapp]"],
+    text: { first: lead?.first_name ? `${lead.first_name}, thank you for applying.` : "Thank you for applying.", disclaimer: BRAND.disclaimer, year: String(new Date().getFullYear()), company: BRAND.company },
+    html: { resources: RESOURCES.map(resourceHtml).join("") },
+    attrs: [
+      ...(wa ? [{ sel: "a[data-wa]", attr: "href", value: "/go/wa?c=resources" }] : []),
+      ...(notOwner ? [{ sel: "a[data-forward]", attr: "href", value: forwardHref }] : []),
+    ],
+    remove,
     cfg: { ...commonCfg(rt, id, "resources", pv) },
   });
 }
@@ -336,9 +567,10 @@ export async function resourcesPage(c: Ctx): Promise<Response> {
 export async function privacyPage(c: Ctx): Promise<Response> {
   const rt = c.get("rt");
   const id = await resolveIdentity(c, { page: true });
-  const pv = await pageView(c, id, "/privacy");
+  const pv = pageView(c, id, "/privacy");
   return renderTemplate(c, "privacy.html", {
     title: `Privacy · ${BRAND.name}`,
+    description: `How ${BRAND.name} handles your data.`,
     text: {
       company: `${BRAND.company}`,
       address: rt.settings.get("BUSINESS_ADDRESS") || "[postal address]",

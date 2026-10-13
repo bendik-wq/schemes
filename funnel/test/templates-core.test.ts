@@ -10,7 +10,7 @@ const TOPICS = new Set([
   "offer", "price", "time", "tech", "agency", "guarantee", "results", "trust", "ownership", "after", "tracking", "pages",
   "dashboard", "followup", "tools", "booking", "application", "resources", "call", "industry", "goal", "blocker", "why_now", "numbers",
 ]);
-const ALLOWED_PATHS = new Set(["/apply", "/book", "/breakout", "/resources", "/", "/go/join", "/go/reschedule"]);
+const ALLOWED_PATHS = new Set(["/apply", "/book", "/breakout", "/resources", "/", "/go/join", "/go/reschedule", "/go/confirm", "/go/requalify"]);
 
 function fullAnswers(): string {
   const a: Record<string, string | string[]> = {};
@@ -136,7 +136,7 @@ describe("core email templates", () => {
       ...Array.from({ length: 8 }, (_, i) => `ta_${i + 1}`),
       ...Array.from({ length: 8 }, (_, i) => `tb_${i + 1}`),
       ...Array.from({ length: 6 }, (_, i) => `tc_${i + 1}`),
-      "bk_confirm", "bk_48h", "bk_24h", "bk_3h", "bk_1h", "bk_10m",
+      "bk_confirm", "bk_48h", "bk_24h", "bk_2h", "bk_3h", "bk_1h", "bk_10m",
       "continue_link", "voice_link_book", "voice_link_reschedule", "test_email",
       "t_vsl_no_apply", "t_stalled", "t_finish_booking", "t_came_back", "t_still_thinking", "t_guarantee", "t_cost",
       "t_book_nudge", "t_breakout_done", "t_watch_prep",
@@ -146,7 +146,7 @@ describe("core email templates", () => {
   });
 
   it("booking reminders carry the call time and the join and reschedule links", () => {
-    for (const id of ["bk_48h", "bk_24h", "bk_3h", "bk_1h", "bk_10m"]) {
+    for (const id of ["bk_48h", "bk_24h", "bk_2h", "bk_3h", "bk_1h", "bk_10m"]) {
       const all = CORE_TEMPLATES[id](full).paragraphs.join(" ");
       expect(all).toContain(full.callTime as string);
       expect(all).toContain("/go/join");

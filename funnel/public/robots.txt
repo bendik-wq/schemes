@@ -1,0 +1,19 @@
+# Link previews only: chat and social unfurlers may read the pages (they stay noindex via meta and
+# X-Robots-Tag); every other crawler is asked to stay out.
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Slackbot
+Allow: /
+
+User-agent: Slackbot-LinkExpanding
+Allow: /
+
+User-agent: *
+Disallow: /

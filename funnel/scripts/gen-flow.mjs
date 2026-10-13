@@ -2,10 +2,12 @@
 // Usage: node scripts/gen-flow.mjs public/assets/flow
 import { writeFileSync } from "node:fs";
 const out = process.argv[2] || "public/assets/flow";
-const r = (n) => Math.round(n * 10) / 10;
+// Whole-pixel coordinates and 24 Bézier segments per line: indistinguishable at the size the ribbon is shown
+// (blurred by a mask, at 30% opacity), at about a fifth of the bytes of the first version.
+const r = (n) => Math.round(n);
 
 function ribbon({ w, h, lines, amp, twist, stops, opacity }) {
-  const steps = 64;
+  const steps = 24;
   let paths = "";
   for (let i = 0; i < lines; i++) {
     const t = i / (lines - 1);
@@ -20,11 +22,19 @@ function ribbon({ w, h, lines, amp, twist, stops, opacity }) {
       pts.push([x, y]);
     }
     // Catmull-Rom to cubic Bézier for a smooth curve.
-    let d = `M${r(pts[0][0])} ${r(pts[0][1])}`;
+    // Relative cubic commands with whole numbers keep each line short.
+    let d = `M${r(pts[0][0])} ${r(pts[0][1])}c`;
+    let cx = r(pts[0][0]), cy = r(pts[0][1]);
+    const segs = [];
     for (let k = 0; k < pts.length - 1; k++) {
       const p0 = pts[k - 1] || pts[k], p1 = pts[k], p2 = pts[k + 1], p3 = pts[k + 2] || p2;
-      d += `C${r(p1[0] + (p2[0] - p0[0]) / 6)} ${r(p1[1] + (p2[1] - p0[1]) / 6)} ${r(p2[0] - (p3[0] - p1[0]) / 6)} ${r(p2[1] - (p3[1] - p1[1]) / 6)} ${r(p2[0])} ${r(p2[1])}`;
+      const c1x = r(p1[0] + (p2[0] - p0[0]) / 6), c1y = r(p1[1] + (p2[1] - p0[1]) / 6);
+      const c2x = r(p2[0] - (p3[0] - p1[0]) / 6), c2y = r(p2[1] - (p3[1] - p1[1]) / 6);
+      const ex = r(p2[0]), ey = r(p2[1]);
+      segs.push([c1x - cx, c1y - cy, c2x - cx, c2y - cy, ex - cx, ey - cy].map((n, j) => (j === 0 || n < 0 ? String(n) : " " + n)).join(""));
+      cx = ex; cy = ey;
     }
+    d += segs.join(" ");
     const o = (opacity * (0.35 + 0.65 * Math.sin(Math.PI * t))).toFixed(3);
     paths += `<path d="${d}" stroke-opacity="${o}"/>`;
   }

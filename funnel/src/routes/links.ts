@@ -1,14 +1,18 @@
 // Redirects and email endpoints: /l (tracked links), /r (signed email clicks), /o (open pixel),
-// /u (one-click unsubscribe), /go/wa, /go/join, /go/reschedule.
+// /u (one-click unsubscribe), /go/wa, /go/join, /go/reschedule, /go/confirm (attendance), /go/requalify (C tier).
 
 import { Hono } from "hono";
 import type { AppEnv } from "../app";
 import { BRAND } from "../config";
 import { linkVisitorToLead, resolveIdentity } from "../lib/identity";
 import { escHtml } from "../lib/text";
-import { verifyShort } from "../lib/crypto";
+import { signShort, verifyShort } from "../lib/crypto";
 import { signingSecret } from "../lib/secret";
-import { getLead, updateLead } from "../funnel/leads";
+import { getLead, updateLead, effectiveTier, type Lead } from "../funnel/leads";
+import { sameOrigin } from "../admin/auth";
+import { assetVersion, attendanceConfirmed } from "../funnel/pages";
+import { formatCallTime, leadTimezone } from "../integrations/email";
+import type { Runtime } from "../app";
 import { buildDestination, getLink } from "../funnel/tracked-links";
 import { track, whoFromIdentity } from "../tracking/track";
 import { cancelAllEmails, isSafePath, unsubSig } from "../integrations/email";
@@ -18,6 +22,9 @@ import { waLink } from "../integrations/whatsapp";
 import { suppress } from "../lib/suppress";
 
 export const links = new Hono<AppEnv>();
+
+// site.css is cached for a year by version (public/_headers): plain pages reference the deployed version too.
+links.use("*", async (c, next) => { cssVersion = assetVersion(c.env); await next(); });
 
 const EMAIL_ID = /^m[0-9a-z]{19}$/;
 const LEAD_ID = /^l[0-9a-z]{19}$/;
@@ -62,9 +69,10 @@ links.get("/o/:file", async (c) => {
   return new Response(GIF, { headers: { "content-type": "image/gif", "cache-control": "no-store, max-age=0" } });
 });
 
+let cssVersion = "";
 function unsubPage(title: string, body: string, form: string | null): string {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escHtml(title)}</title>
-<link rel="stylesheet" href="/assets/site.css"></head><body class="plain"><main class="plain-card"><p class="brand-mark">${escHtml(BRAND.name)}</p><h1>${escHtml(title)}</h1><p>${body}</p>${form || ""}</main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>${escHtml(title)}</title>
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css${cssVersion ? `?v=${encodeURIComponent(cssVersion)}` : ""}"></head><body class="plain"><main class="plain-card"><p class="brand-mark">${escHtml(BRAND.name)}</p><h1>${escHtml(title)}</h1><p>${body}</p>${form || ""}</main></body></html>`;
 }
 
 async function unsubValid(c: { get: (k: "rt") => import("../app").Runtime }, leadId: string, sig: string): Promise<boolean> {
@@ -122,3 +130,116 @@ for (const [path, field] of [["/go/join", "booking_join_url"], ["/go/reschedule"
     return c.redirect(url || "/breakout", 302);
   });
 }
+
+// ── Attendance: "I'll be there" ──────────────────────────────────────────────
+// Email security scanners open links before people do, so a GET only records the confirmation when the browser
+// says a person started the navigation (Sec-Fetch-User: ?1); otherwise it shows the same one-tap button (POST).
+
+type ConfirmLead = Lead & { attendance_confirmed_at?: number | null; attendance_call_at?: number | null };
+
+export async function confirmSig(rt: Runtime, leadId: string): Promise<string> {
+  return signShort(await signingSecret(rt.env), `c|${leadId}`);
+}
+
+function isBooked(lead: Lead | null): lead is Lead {
+  return !!lead && lead.status === "booked" && !!lead.call_at && !lead.booking_cancelled_at;
+}
+
+function userNavigation(c: { req: { header(k: string): string | undefined } }): boolean {
+  return c.req.header("sec-fetch-user") === "?1" && (c.req.header("sec-fetch-dest") || "document") === "document";
+}
+
+async function markAttendance(rt: Runtime, lead: Lead): Promise<void> {
+  if (attendanceConfirmed(lead as ConfirmLead)) return;
+  await rt.env.DB.prepare("UPDATE leads SET attendance_confirmed_at = ?, attendance_call_at = ?, updated_at = ? WHERE id = ?")
+    .bind(rt.now(), lead.call_at, rt.now(), lead.id).run();
+  await track(rt, { leadId: lead.id }, { name: "attendance_confirmed", source: "server", localOnly: true, props: { call_at: lead.call_at } });
+}
+
+async function confirmedPage(rt: Runtime, lead: Lead): Promise<string> {
+  const when = lead.call_at ? formatCallTime(lead.call_at, await leadTimezone(rt, lead)) : "";
+  const first = lead.first_name ? `, ${escHtml(lead.first_name)}` : "";
+  return unsubPage("You're confirmed", `Thank you${first}. We'll see you${when ? ` on ${escHtml(when)}` : ""}. If anything changes, you can <a href="/go/reschedule">reschedule here</a>.</p><p><a class="btn" href="/breakout">Open the pre-call page</a>`, null);
+}
+
+function confirmForm(action: string, lead: Lead, when: string): string {
+  return unsubPage("Will you be there?", `Tap below so ${escHtml(BRAND.founder)} knows to expect you${when ? ` on ${escHtml(when)}` : ""}.`,
+    `<form method="post" action="${escHtml(action)}"><button class="btn" type="submit">I'll be there</button></form><p class="muted"><a href="/go/reschedule">Need another time?</a></p>`);
+}
+
+links.get("/go/confirm", async (c) => {
+  const rt = c.get("rt");
+  const id = await resolveIdentity(c, { page: false });
+  const lead = await getLead(rt, id.leadId);
+  if (!isBooked(lead)) return c.redirect("/breakout", 302);
+  if (attendanceConfirmed(lead as ConfirmLead)) return c.html(await confirmedPage(rt, lead));
+  if (userNavigation(c)) { await markAttendance(rt, lead); return c.html(await confirmedPage(rt, lead)); }
+  return c.html(confirmForm("/go/confirm", lead, formatCallTime(lead.call_at as number, await leadTimezone(rt, lead))));
+});
+
+links.post("/go/confirm", async (c) => {
+  if (!sameOrigin(c)) return c.text("Cross-site request refused", 403);
+  const rt = c.get("rt");
+  const id = await resolveIdentity(c, { page: false });
+  const lead = await getLead(rt, id.leadId);
+  if (!isBooked(lead)) return c.redirect("/breakout", 303);
+  await markAttendance(rt, lead);
+  return c.redirect("/breakout", 303);
+});
+
+// Signed variant for channels without our cookie (SMS, WhatsApp, a forwarded email): /go/confirm/<lead>/<sig>.
+links.get("/go/confirm/:lead/:sig", async (c) => {
+  const rt = c.get("rt");
+  const leadId = c.req.param("lead");
+  if (!LEAD_ID.test(leadId) || !(await verifyShort(await signingSecret(rt.env), `c|${leadId}`, c.req.param("sig")))) return c.redirect("/", 302);
+  const lead = await getLead(rt, leadId);
+  if (!isBooked(lead)) return c.html(unsubPage("No call booked", "We can't find an upcoming call for this link. The latest email from us has the current details.", null), 404);
+  if (attendanceConfirmed(lead as ConfirmLead)) return c.html(await confirmedPage(rt, lead));
+  if (userNavigation(c)) { await markAttendance(rt, lead); return c.html(await confirmedPage(rt, lead)); }
+  return c.html(confirmForm(`/go/confirm/${leadId}/${c.req.param("sig")}`, lead, formatCallTime(lead.call_at as number, await leadTimezone(rt, lead))));
+});
+
+links.post("/go/confirm/:lead/:sig", async (c) => {
+  if (!sameOrigin(c)) return c.text("Cross-site request refused", 403);
+  const rt = c.get("rt");
+  const leadId = c.req.param("lead");
+  if (!LEAD_ID.test(leadId) || !(await verifyShort(await signingSecret(rt.env), `c|${leadId}`, c.req.param("sig")))) return c.text("Invalid link", 400);
+  const lead = await getLead(rt, leadId);
+  if (!isBooked(lead)) return c.redirect("/breakout", 303);
+  await markAttendance(rt, lead);
+  return c.html(await confirmedPage(rt, lead));
+});
+
+// ── Requalify: a C-tier lead whose business has changed reopens the application with every answer kept ──
+// Reached through the signed email redirect (/r/…?u=/go/requalify), which ties this browser to the lead.
+
+function canRequalify(lead: Lead | null): lead is Lead {
+  return !!lead && !!lead.app_completed_at && effectiveTier(lead) === "C" && !lead.unsubscribed_at
+    && !["booked", "showed", "won", "lost", "disqualified"].includes(lead.status);
+}
+
+async function reopen(rt: Runtime, lead: Lead): Promise<void> {
+  // Clearing the completion lets /apply show the saved answers; submitting re-scores (and re-routes) as usual.
+  await rt.env.DB.prepare("UPDATE leads SET app_completed_at = NULL, route = NULL, updated_at = ? WHERE id = ?").bind(rt.now(), lead.id).run();
+  await track(rt, { leadId: lead.id }, { name: "requalify_started", source: "server", localOnly: true, props: { from_tier: effectiveTier(lead) } });
+}
+
+links.get("/go/requalify", async (c) => {
+  const rt = c.get("rt");
+  const id = await resolveIdentity(c, { page: false });
+  const lead = await getLead(rt, id.leadId);
+  if (!canRequalify(lead)) return c.redirect((lead as Lead | null)?.route || "/apply", 302);
+  if (userNavigation(c)) { await reopen(rt, lead); return c.redirect("/apply", 302); }
+  return c.html(unsubPage("Update your application", "Your earlier answers are kept. Change what is different now and send it again.",
+    `<form method="post" action="/go/requalify"><button class="btn" type="submit">Update my answers</button></form>`));
+});
+
+links.post("/go/requalify", async (c) => {
+  if (!sameOrigin(c)) return c.text("Cross-site request refused", 403);
+  const rt = c.get("rt");
+  const id = await resolveIdentity(c, { page: false });
+  const lead = await getLead(rt, id.leadId);
+  if (!canRequalify(lead)) return c.redirect((lead as Lead | null)?.route || "/apply", 303);
+  await reopen(rt, lead);
+  return c.redirect("/apply", 303);
+});
