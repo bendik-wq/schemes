@@ -18,6 +18,10 @@ export const COOKIE = {
   lander: "_ld",
   fbp: "_fbp",
   fbc: "_fbc",
+  /** First referral link this browser arrived through (functional, first-party). */
+  referral: "_rf",
+  /** Sticky experiment variants, "expId.variant~…" (functional, first-party). */
+  experiments: "_ex",
 } as const;
 
 const SESSION_IDLE = 30 * 60_000;
@@ -324,6 +328,15 @@ async function sessionTouchDiffers(rt: Runtime, sessionId: string, t: Touch): Pr
   if (t.click_id && t.click_id !== s.click_id) return true;
   if ((t.utm_source || "") !== (s.utm_source || "") || (t.utm_campaign || "") !== (s.utm_campaign || "") || (t.utm_content || "") !== (s.utm_content || "")) return true;
   return false;
+}
+
+/**
+ * Functional first-party cookie (referral, experiment variants). Same rule as the visitor id: kept for 90 days
+ * only when ad/analytics storage is allowed for this visitor, otherwise it lasts until the browser closes.
+ */
+export function functionalCookie(c: Ctx, name: string, value: string, persistent: boolean) {
+  if (persistent) setCookie(c, name, value, cookieOpts(c, 90 * 86_400));
+  else setCookie(c, name, value, { path: "/", httpOnly: true, secure: new URL(c.req.url).protocol === "https:", sameSite: "Lax" });
 }
 
 export function setVariantCookie(c: Ctx, v: string) {

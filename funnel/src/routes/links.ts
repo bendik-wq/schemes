@@ -2,7 +2,7 @@
 // /u (one-click unsubscribe), /go/wa, /go/join, /go/reschedule, /go/confirm (attendance), /go/requalify (C tier).
 
 import { Hono } from "hono";
-import type { AppEnv } from "../app";
+import type { AppEnv, Ctx } from "../app";
 import { BRAND } from "../config";
 import { linkVisitorToLead, resolveIdentity } from "../lib/identity";
 import { escHtml } from "../lib/text";
@@ -20,6 +20,16 @@ import { cancelCalls } from "../integrations/elevenlabs";
 import { safeExternalUrl } from "../integrations/booking";
 import { waLink } from "../integrations/whatsapp";
 import { suppress } from "../lib/suppress";
+import { kvGate } from "../lib/kv";
+import { parseAnswers } from "../funnel/leads";
+import { inferIndustry } from "../landers/catalog";
+import { referralLink, referralReward } from "../growth/referrals";
+import { CONSENT_SCOPES, parseScope, saveProof } from "../growth/proof";
+
+/** Signature for a client's proof link: /proof/submit?ref=<lead id>&sig=<this>. */
+export async function proofSig(rt: Runtime, leadId: string): Promise<string> {
+  return signShort(await signingSecret(rt.env), `p|${leadId}`);
+}
 
 export const links = new Hono<AppEnv>();
 
@@ -232,6 +242,82 @@ links.get("/go/requalify", async (c) => {
   if (userNavigation(c)) { await reopen(rt, lead); return c.redirect("/apply", 302); }
   return c.html(unsubPage("Update your application", "Your earlier answers are kept. Change what is different now and send it again.",
     `<form method="post" action="/go/requalify"><button class="btn" type="submit">Update my answers</button></form>`));
+});
+
+// ── Growth: personal referral link and the client proof form ─────────────────
+
+function plainPage(title: string, inner: string, wide = false): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>${escHtml(title)} · ${escHtml(BRAND.name)}</title>
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css${cssVersion ? `?v=${encodeURIComponent(cssVersion)}` : ""}"></head><body class="plain"><main class="plain-card${wide ? " wide-card" : ""}"><p class="brand-mark">${escHtml(BRAND.name)}</p><h1>${escHtml(title)}</h1>${inner}</main></body></html>`;
+}
+
+// The lead's own browser only (cookie from a signed email link or the funnel). Never shows anyone else's link.
+links.get("/refer", async (c) => {
+  const rt = c.get("rt");
+  const id = await resolveIdentity(c, { page: false });
+  const lead = await getLead(rt, id.leadId);
+  if (!lead) return c.redirect("/", 302);
+  const url = referralLink(rt, lead.ref_code);
+  const reward = referralReward(rt);
+  const subject = "Worth a look: owning your growth setup";
+  const bodyText = `I thought of you. ${BRAND.name} builds a VSL page, Meta tracking and a sales dashboard with your own team on Claude Code over eight weeks. It is for owners of businesses doing $1M+ a year: ${url}`;
+  const mail = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+  return c.html(plainPage("Know a founder it would suit?", `<p>If you know an owner doing $1M+ a year who rents their growth, send them your personal link. The page tells them you sent them, using your first name only, and their application opens straight away.</p>
+<label class="sr-only" for="ref-link">Your personal link</label><input class="ref-link" id="ref-link" type="text" readonly value="${escHtml(url)}">
+${reward ? `<p class="takeaway">${escHtml(reward)}</p>` : ""}
+<p><a class="btn" href="${escHtml(mail)}">Email it to someone</a></p>
+<p class="fine">We never share anything about your application or your call with the people you refer.</p>`));
+});
+
+async function proofLead(c: Ctx, ref: string | undefined, sig: string | undefined): Promise<Lead | null> {
+  const rt = c.get("rt");
+  if (ref && sig && LEAD_ID.test(ref) && (await verifyShort(await signingSecret(rt.env), `p|${ref}`, sig))) return getLead(rt, ref);
+  const id = await resolveIdentity(c, { page: false });
+  return getLead(rt, id.leadId);
+}
+
+function proofForm(lead: Lead, ref: string, sig: string, error = "", values: Record<string, string> = {}, scopes: Set<string> = new Set(["site", "name"])): string {
+  const v = (k: string, fb = "") => escHtml(values[k] ?? fb);
+  const boxes = CONSENT_SCOPES.map((s) => `<label class="check"><input type="checkbox" name="scope" value="${s.id}"${scopes.has(s.id) ? " checked" : ""}> <span>${escHtml(s.label)}</span></label>`).join("");
+  return plainPage("A few words about the build?", `<p>If the last eight weeks were useful, a sentence or two in your own words helps other founders decide. Only what you tick below is allowed, and nothing is published until we have checked the wording with you.</p>
+${error ? `<p class="notice err" role="alert">${escHtml(error)}</p>` : ""}
+<form class="plain-form" method="post" action="/proof/submit">
+<input type="hidden" name="ref" value="${escHtml(ref)}"><input type="hidden" name="sig" value="${escHtml(sig)}">
+<label>What would you tell a founder in your position? <textarea name="body" required minlength="20" maxlength="600">${v("body")}</textarea></label>
+<div class="row2"><label>Name <input type="text" name="name" maxlength="60" autocomplete="name" value="${v("name", lead.first_name || "")}"></label>
+<label>Role <input type="text" name="role" maxlength="60" autocomplete="organization-title" value="${v("role")}"></label></div>
+<label>Company (optional) <input type="text" name="company" maxlength="80" autocomplete="organization" value="${v("company")}"></label>
+<fieldset><legend>You agree that we may:</legend>${boxes}</fieldset>
+<p class="fine">You can withdraw this at any time by replying to any of our emails, and we will take it down.</p>
+<button class="btn" type="submit">Send</button></form>`, true);
+}
+
+links.get("/proof/submit", async (c) => {
+  const ref = c.req.query("ref"), sig = c.req.query("sig");
+  const lead = await proofLead(c, ref, sig);
+  if (!lead || lead.status !== "won") return c.html(plainPage("This link is for clients", "<p>It asks clients for a few words about their build. If you think you should have access, reply to our last email.</p>"), 404);
+  return c.html(proofForm(lead, ref && sig ? ref : "", ref && sig ? sig : ""));
+});
+
+links.post("/proof/submit", async (c) => {
+  if (!sameOrigin(c)) return c.text("Cross-site request refused", 403);
+  const rt = c.get("rt");
+  const form = await c.req.parseBody({ all: true }).catch(() => ({} as Record<string, unknown>));
+  const one = (k: string) => String((Array.isArray(form[k]) ? (form[k] as unknown[])[0] : form[k]) ?? "");
+  const ref = one("ref"), sig = one("sig");
+  const lead = await proofLead(c, ref || undefined, sig || undefined);
+  if (!lead || lead.status !== "won") return c.html(plainPage("This link is for clients", "<p>Reply to our last email and we will sort it out.</p>"), 404);
+  const body = one("body").replace(/\r\n/g, "\n").trim();
+  const values = { body, name: one("name"), role: one("role"), company: one("company") };
+  const scopes = parseScope((Array.isArray(form.scope) ? (form.scope as unknown[]) : [form.scope]).map(String).join(","));
+  if (body.length < 20 || body.length > 600) return c.html(proofForm(lead, ref, sig, "Please write between 20 and 600 characters.", values, scopes), 400);
+  if (!(await kvGate(rt.env, `proof_submit:${lead.id}`, 10 * 60_000, rt.now()))) return c.html(plainPage("Thank you", "<p>We already have your words from a moment ago. Reply to any of our emails if you want to change them.</p>"));
+  const industry = (lead.ft_lander || lead.lander || "").split("/")[0] || inferIndustry(String(parseAnswers(lead).business || ""))?.id || null;
+  await saveProof(rt, null, {
+    kind: "quote", body, author_name: values.name, author_role: values.role, company: values.company, industry,
+    consent_at: scopes.size ? rt.now() : null, consent_scope: [...scopes].join(","), approved: 0, lead_id: lead.id,
+  }, "form");
+  return c.html(plainPage("Thank you", "<p>Thank you for taking the time. Nothing is published until we have checked the wording with you, and only in the ways you ticked.</p><p><a class=\"btn\" href=\"/\">Done</a></p>"));
 });
 
 links.post("/go/requalify", async (c) => {

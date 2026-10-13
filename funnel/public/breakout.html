@@ -28,6 +28,7 @@
       <p class="eyebrow" data-slot="eyebrow"></p>
       <h1 class="h2" data-slot="h1"></h1>
       <p class="sub" data-slot="sub"></p>
+      <p class="cohort-line" data-section="cohort" data-slot="cohort"></p>
       <div class="ctas" data-when="join"><a class="btn" href="/go/join">Join the call</a><a class="link" href="/go/reschedule">Reschedule</a></div>
       <div class="attend" data-when="booked">
         <form method="post" action="/go/confirm" data-when="unconfirmed"><button class="btn" type="submit">I'll be there</button><span class="assure">One tap tells us to expect you.</span></form>
@@ -50,7 +51,15 @@
     <div class="wrap narrow">
       <header class="sec-head left"><p class="kicker">Before the call</p><h2 class="h3">Three things to prepare.</h2></header>
       <ol class="prep" data-slot="prep"></ol>
+      <div class="bring-card" data-section="bring">
+        <h3>Bring a co-founder or partner to the call.</h3>
+        <p>Decisions like this go better when everyone who signs off hears it first-hand. Forward them the calendar invite so they can join from their own calendar.</p>
+        <p class="bring-ref"><a href="/refer">Know another founder it would suit? Share your link</a></p>
+      </div>
     </div>
+  </section>
+  <section class="offer-sec" data-section="offer" aria-labelledby="offer-title">
+    <div class="wrap" data-slot="offer"></div>
   </section>
   <section data-when="open" class="book-frame bo-cal" id="book" data-cal-section data-section="calendar">
     <div class="wrap narrow"><header class="sec-head"><p class="kicker">Ready when you are</p><h2 class="h3">Pick a time for your call.</h2><p class="takeaway" data-slot="takeaway"></p></header></div>

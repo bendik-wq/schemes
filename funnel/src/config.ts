@@ -369,6 +369,32 @@ export const OFFER = {
   ] as Faq[],
   forwardSubject: "Worth a look: owning our growth stack",
   forwardBody: "I looked into this for us. They build a VSL page, Meta tracking and a sales dashboard with your own team on Claude Code over eight weeks. Built for owners of businesses doing $1M+ a year, so the application should come from you:",
+  /**
+   * The program as one offer, shown under the application (landing) and on /breakout. Week markers and
+   * wording follow LANDING.weeks and LANDING.system; the effort line matches the "time" FAQ and LANDING.fit.
+   * No price here: price is covered on the call.
+   */
+  stack: {
+    kicker: "What you get",
+    name: "The Owned Growth Build",
+    items: [
+      { weeks: "Week 1", title: "Audit and written build plan", body: "Your spend, your funnel and your data, mapped. You keep the plan." },
+      { weeks: "Weeks 2–3", title: "VSL page and application", body: "On your domain, scoring and routing every lead." },
+      { weeks: "Weeks 4–5", title: "Server-side tracking and Meta ads", body: "Conversions API with qualified-lead values and clean campaigns." },
+      { weeks: "Weeks 6–7", title: "Sales dashboard and follow-up", body: "Every lead, call and close in one place; emails that quote the application." },
+      { weeks: "Week 8", title: "Handover", body: "Your team ships a change on its own. We review and hand over." },
+      { weeks: "Every week", title: "Build sessions with your team", body: "Until your people change it themselves. Everything runs on your accounts." },
+    ],
+    effort: "Three to four hours a week from one person on your team.",
+    priceNote: "Price is covered on the call, once we know the scope.",
+    /** Risk reversal, stated exactly as the guarantee (BRAND.guarantee / BRAND.deliveryGuarantee). */
+    risk: [BRAND.guarantee, BRAND.deliveryGuarantee],
+    /**
+     * Bonuses: ONLY real, owner-confirmed bonuses go here, each one something the client actually receives.
+     * Leave it empty otherwise; an empty list renders nothing.
+     */
+    bonuses: [] as Array<{ title: string; body: string }>,
+  },
 };
 
 // Voice prompts. Variables in {{double_braces}} are filled by ElevenLabs from dynamic variables.

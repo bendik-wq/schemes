@@ -19,7 +19,7 @@ const TAGS = new Set([
   "offer", "price", "time", "tech", "agency", "guarantee", "results", "trust", "ownership", "after", "tracking", "pages",
   "dashboard", "followup", "tools", "booking", "application", "resources", "call", "industry", "goal", "blocker", "why_now", "numbers",
 ]);
-const PATHS = new Set(["/book", "/breakout", "/resources", "/apply", "/go/join", "/go/reschedule", "/"]);
+const PATHS = new Set(["/book", "/breakout", "/resources", "/apply", "/go/join", "/go/reschedule", "/", "/refer", "/proof/submit"]);
 
 function ctx(lead: Partial<Lead>, callTime: string | null = null): EmailCtx {
   const d = buildDossier(lead);

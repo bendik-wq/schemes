@@ -1,0 +1,14 @@
+/* Funnel HQ — Growth tabs. Uses admin.css tokens and components; only a few additions here. */
+#growth-view[hidden], #view[hidden] { display: none !important; }
+/* admin.js may re-show its filters after a late fetch; the growth tabs have none. */
+body.growth-on #filters { display: none !important; }
+.gx .gx-clip { max-width: 420px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; }
+.gx .gx-checks { display: grid; gap: 6px; margin-top: 4px; }
+.gx .gx-checks label { align-items: flex-start; }
+.gx .gx-checks input { margin-top: 2px; }
+.gx .card-body > .callout { margin: 12px 16px; }
+.gx .card-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.gx table.t td .select { min-width: 150px; }
+@media (max-width: 860px) {
+  .gx .gx-clip { max-width: 240px; }
+}

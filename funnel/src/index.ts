@@ -4,6 +4,7 @@ import { makeRuntime, quiet } from "./app";
 import type { Env } from "./env";
 import { requireAdmin, login, logoutEverywhere, sameOrigin } from "./admin/auth";
 import { adminApi } from "./routes/admin";
+import { adminGrowth } from "./routes/admin-growth";
 import { api } from "./routes/api";
 import { links } from "./routes/links";
 import { hooks } from "./routes/hooks";
@@ -206,6 +207,7 @@ app.get("/admin/preview", requireAdmin, async (c) => {
   }
 });
 app.use("/admin/api/*", requireAdmin);
+app.route("/admin/api/growth", adminGrowth);
 app.route("/admin/api", adminApi);
 
 // First-party PostHog proxy (session replay). Allowlisted paths, methods and host; no cookies.

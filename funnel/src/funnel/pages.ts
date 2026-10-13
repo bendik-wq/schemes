@@ -19,6 +19,11 @@ import { formatCallTime, leadTimezone } from "../integrations/email";
 import { waLink } from "../integrations/whatsapp";
 import { getAngle, getIndustry, inferIndustry, type Angle, type Industry } from "../landers/catalog";
 import { armStats, chooseAngle, type ArmStats } from "../landers/bandit";
+import { liveProof, renderProof } from "../growth/proof";
+import { cohortLine, nextCohort } from "../growth/cohorts";
+import { captureReferral } from "../growth/referrals";
+import { assignSlots, gateFrom, type Assigned } from "../growth/experiments";
+import { offerStackHtml } from "../growth/offer";
 
 export interface Fill {
   title?: string;
@@ -61,7 +66,7 @@ export function nowrapHyphens(text: string): string {
 // ── Asset versions ────────────────────────────────────────────────────────────
 
 /** Fallback when the version-metadata binding is missing (tests, older wrangler). Bump on asset changes. */
-export const BUILD_VERSION = "r1-20261013";
+export const BUILD_VERSION = "r2-20261013";
 
 /** Short, URL-safe version id of the deployed Worker (CF_VERSION_METADATA), or the build constant. */
 export function assetVersion(env: unknown): string {
@@ -247,10 +252,10 @@ export function answerLabel(lead: Pick<Lead, "answers"> | null, questionId: stri
 /**
  * Is the application gated behind the film for this visit? Never when there is no film, the gate is open,
  * the visitor already reached the pitch or applied, is a known lead, came from a retargeting ad
- * (utm_content "rt_…") or a referral link (?r=).
+ * (utm_content "rt_…") or a referral link (?r=, or an earlier referral remembered for this browser).
  */
-export function gateState(o: { mode: GateMode; hasFilm: boolean; revealedBefore: boolean; knownLead: boolean; url: URL }): boolean {
-  if (!o.hasFilm || o.mode === "open" || o.revealedBefore || o.knownLead) return false;
+export function gateState(o: { mode: GateMode; hasFilm: boolean; revealedBefore: boolean; knownLead: boolean; url: URL; referred?: boolean }): boolean {
+  if (!o.hasFilm || o.mode === "open" || o.revealedBefore || o.knownLead || o.referred) return false;
   const content = (o.url.searchParams.get("utm_content") || "").toLowerCase();
   if (content.startsWith("rt_") || o.url.searchParams.has("r")) return false;
   return true;
@@ -272,12 +277,17 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
   let path = url.pathname;
   const videoSrc = videoCfg(rt, "main", 0).src;
 
-  // Independent reads in parallel: the lead, the bandit stats (cached), the film position and the gate.
-  const [lead, stats, resume, revealedBefore] = await Promise.all([
+  // Independent reads in parallel: the lead, the bandit stats (cached), the film position and the gate,
+  // plus the growth pieces (referral, experiment arms, proof, cohort); each of those fails soft.
+  const [lead, stats, resume, revealedBefore, referral, arms, proofRows, cohort] = await Promise.all([
     getLead(rt, id.leadId),
     opts.industry && !opts.angle && !id.lander?.startsWith(opts.industry.id + "/") ? cachedArmStats(rt, opts.industry.id) : Promise.resolve(null),
     id.isBot || !videoSrc ? Promise.resolve(0) : resumePosition(rt, id.visitorId, "main"),
     videoSrc ? hasRevealed(rt, id.visitorId) : Promise.resolve(true),
+    captureReferral(c, id, { preview }).catch(() => null),
+    assignSlots(c, id, ["cta_label", "gate_mode", "inline_booking"], { preview }).catch((): Assigned => ({})),
+    liveProof(rt).catch(() => []),
+    nextCohort(rt).catch(() => null),
   ]);
 
   let eyebrow: string, h1: string, h1b: string, sub: string;
@@ -309,8 +319,8 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
 
   const pv = pageView(c, id, path, { variant: id.variant, lander: id.lander }, preview);
   const video = videoCfg(rt, "main", resume);
-  const gate = VIDEOS.main.gate;
-  const gated = gateState({ mode: gate.mode, hasFilm: !!video.src, revealedBefore: !!revealedBefore || !!lead?.app_completed_at, knownLead: !!lead, url });
+  const gate = { ...VIDEOS.main.gate, mode: gateFrom(arms, VIDEOS.main.gate.mode) };
+  const gated = gateState({ mode: gate.mode, hasFilm: !!video.src, revealedBefore: !!revealedBefore || !!lead?.app_completed_at, knownLead: !!lead, url, referred: !!referral });
   const wa = waLink(rt, lead, "question");
   const remove: string[] = [];
   if (!wa) remove.push("[data-section=whatsapp]");
@@ -320,6 +330,10 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
   if (video.src) remove.push("[data-when=nofilm]");
   else remove.push("[data-player]", "[data-when=film]");
   if (gate.mode !== "soft" || !gated) remove.push("[data-soft-cta]");
+  const proof = renderProof(proofRows, opts.industry?.id || null, "landing");
+  if (!proof) remove.push("[data-section=proof]");
+  if (!cohort) remove.push("[data-section=cohort]");
+  if (!referral?.first) remove.push("[data-section=referral]");
   const faqs = LANDING.below.faqIds.map((fid) => FAQS.find((f) => f.id === fid)).filter((f): f is Faq => !!f);
   const fullHeadline = [h1, h1b].filter(Boolean).join(" ");
 
@@ -330,6 +344,9 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
     text: {
       eyebrow, h1, h1b, sub,
       ctaSub: LANDING.ctaSub,
+      ctaLabel: arms.cta_label?.value || LANDING.ctaLabel,
+      refBy: referral?.first ? `Referred by ${referral.first}` : "",
+      cohort: cohort ? cohortLine(cohort) : "",
       locked: LANDING.lockedNote,
       softCta: LANDING.softCta,
       applyAssure: `${BRAND.guarantee} Price is covered on the call, once we know the scope.`,
@@ -346,7 +363,7 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
       year: String(new Date().getFullYear()),
       company: BRAND.company,
     },
-    html: { weeks: weeksHtml(), system: systemHtml(), faq: faqHtml(faqs) },
+    html: { weeks: weeksHtml(), system: systemHtml(), faq: faqHtml(faqs), offer: offerStackHtml({ risk: false, price: false }), proof },
     attrs: [
       ...(wa ? [{ sel: "a[data-wa]", attr: "href", value: "/go/wa?c=question" }] : []),
       ...(lead?.app_completed_at && lead.route ? [{ sel: "a[data-apply]", attr: "href", value: lead.route }] : []),
@@ -357,6 +374,8 @@ export async function landingPage(c: Ctx, opts: { industry?: Industry | null; an
     cfg: {
       ...commonCfg(rt, id, "landing", pv), ...applicationCfg(rt, id, lead), embedded: true, video, revealed: !gated,
       gate: { mode: gate.mode, softAt: gate.softAt }, variant: id.variant, lander: id.lander,
+      // Read by the form; the server makes the same check (inlineBookingOn) before offering times.
+      inlineBooking: arms.inline_booking ? arms.inline_booking.value !== "off" : true,
     },
   });
 }
@@ -452,13 +471,22 @@ export async function bookPage(c: Ctx): Promise<Response> {
   if (tier === "C") return c.redirect("/resources", 302);
   if (lead.status === "booked" && lead.call_at && !lead.booking_cancelled_at) return c.redirect("/breakout", 302);
   const pv = pageView(c, id, "/book");
-  const [rep, lv] = await Promise.all([getRep(rt, lead.closer_id), leadView(rt, lead)]);
+  const [rep, lv, arms, proofRows, cohort] = await Promise.all([
+    getRep(rt, lead.closer_id), leadView(rt, lead),
+    assignSlots(c, id, ["book_page_closer_card"]).catch((): Assigned => ({})),
+    liveProof(rt).catch(() => []),
+    nextCohort(rt).catch(() => null),
+  ]);
   const base = bookingUrlFor(rt, tier, rep);
   const embed = base ? calendlyEmbedUrl(base, lead, new URL(c.req.url).host, id.consentRequired) : null;
   const wa = waLink(rt, lead, "question");
   const spend = spendLine(lead);
   const remove = [...(embed ? ["[data-when=nocal]"] : ["[data-when=cal]"]), ...(wa ? [] : ["[data-section=whatsapp]", "[data-wa]"])];
   if (!spend) remove.push("[data-slot=spendLine]");
+  if (arms.book_page_closer_card?.value === "off") remove.push("[data-slot=closerCard]");
+  const proof = renderProof(proofRows, (lead.ft_lander || lead.lander || "").split("/")[0] || null, "book");
+  if (!proof) remove.push("[data-section=proof]");
+  if (!cohort) remove.push("[data-section=cohort]");
   return renderTemplate(c, "book.html", {
     title: `Pick a time · ${BRAND.name}`,
     text: {
@@ -467,12 +495,13 @@ export async function bookPage(c: Ctx): Promise<Response> {
       spendLine: spend,
       minutes: `In ${OFFER.callMinutes} minutes`,
       takeaway: OFFER.takeaway,
+      cohort: cohort ? cohortLine(cohort) : "",
       guarantee: `${BRAND.guarantee} ${BRAND.deliveryGuarantee}`,
       disclaimer: BRAND.disclaimer,
       year: String(new Date().getFullYear()),
       company: BRAND.company,
     },
-    html: { closerCard: closerHtml(rep), agenda: agendaHtml(), faq: faqHtml(OFFER.faqs) },
+    html: { closerCard: closerHtml(rep), agenda: agendaHtml(), faq: faqHtml(OFFER.faqs), proof },
     remove,
     attrs: wa ? [{ sel: "a[data-wa]", attr: "href", value: "/go/wa?c=question" }] : [],
     cfg: { ...commonCfg(rt, id, "book", pv), embed, wa: wa ? "/go/wa?c=question" : null, lead: lv },
@@ -486,7 +515,9 @@ export async function breakoutPage(c: Ctx): Promise<Response> {
   const id = await resolveIdentity(c, { page: true });
   const lead = await getLead(rt, id.leadId);
   const pv = pageView(c, id, "/breakout");
-  const [lv, rep] = await Promise.all([leadView(rt, lead), lead ? getRep(rt, lead.closer_id) : Promise.resolve(null)]);
+  const [lv, rep, cohort] = await Promise.all([
+    leadView(rt, lead), lead ? getRep(rt, lead.closer_id) : Promise.resolve(null), nextCohort(rt).catch(() => null),
+  ]);
   const booked = !!lv?.booked;
   const confirmed = booked && attendanceConfirmed(lead as Lead & { attendance_confirmed_at?: number | null; attendance_call_at?: number | null });
   const video = videoCfg(rt, booked ? "precall" : "breakout", 0);
@@ -502,6 +533,7 @@ export async function breakoutPage(c: Ctx): Promise<Response> {
   if (!lead?.booking_join_url) remove.push("[data-when=join]");
   remove.push(embed ? "[data-cal-fallback]" : "[data-cal-section]");
   remove.push(confirmed ? "[data-when=unconfirmed]" : "[data-when=confirmed]");
+  if (!cohort || booked) remove.push("[data-section=cohort]");
   return renderTemplate(c, "breakout.html", {
     bodyClass: [video.src ? "has-video" : "", embed ? "has-cal" : ""].filter(Boolean).join(" "),
     title: `${booked ? "Before your call" : "Next step"} · ${BRAND.name}`,
@@ -513,10 +545,12 @@ export async function breakoutPage(c: Ctx): Promise<Response> {
       disclaimer: BRAND.disclaimer,
       guarantee: BRAND.guarantee,
       takeaway: OFFER.takeaway,
+      cohort: cohort ? cohortLine(cohort) : "",
       year: String(new Date().getFullYear()),
       company: BRAND.company,
     },
     html: {
+      offer: offerStackHtml({ risk: true, price: !!embed }),
       prep: BREAKOUT.prep.map((p) => `<li>${escHtml(p)}</li>`).join(""),
       faq: faqHtml(booked ? FAQS : objections),
     },

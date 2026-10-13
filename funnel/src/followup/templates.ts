@@ -5,6 +5,7 @@
 
 import type { EmailContent, EmailCtx, Template } from "../integrations/email-types";
 import type { Dossier } from "./dossier";
+import { cohortSnapshot } from "../growth/snapshot";
 
 // ── Copy blocks keyed by answer value ─────────────────────────────────────────
 
@@ -583,7 +584,7 @@ const LOST: Record<string, Template> = {
       hi(c),
       "It has been a few weeks since we spoke, and I wanted to share one thought.",
       ...lostAngle(c.d, 1),
-    ]),
+    ], { ps: "Know someone it fits better? If another owner comes to mind, reply with their name, and I will only reach out once you have told them to expect me." }),
   lo_3: (c) =>
     mk("Something you can use whether or not we work together", [
       hi(c),
@@ -658,6 +659,43 @@ const WON: Record<string, Template> = {
       "What has shipped, what is stuck, and is the person who owns it getting enough time for it?",
       "Reply with anything, good or bad. It helps me shape the next four weeks.",
     ]),
+};
+
+// ── Growth: referral asks, the proof request, the cohort note ─────────────────
+// /refer and /proof/submit are personal pages: they only work as a button once email.ts pre-signs the path
+// (the signed redirect ties the browser to the lead). Until then each email asks for a reply instead.
+
+const signed = (c: EmailCtx, path: string) => c.link(path) !== c.link("/");
+const REFER_LINE = "Your personal link tells them you sent them, using your first name only, and takes them straight to the application.";
+
+const GROWTH: Record<string, Template> = {
+  won_7: (c) =>
+    mk("A small ask, a month in", [
+      hi(c),
+      "We are a little over a month in. If it has been useful so far, here is a small ask.",
+      `If you know another owner doing $1M+ a year who rents their growth, I would be glad to talk to them. ${signed(c, "/refer") ? REFER_LINE : "If someone comes to mind, reply with their name, and I will only reach out once you have told them to expect me."}`,
+      "No pressure either way. Your build comes first.",
+    ], signed(c, "/refer") ? { cta: { label: "Get your personal link", path: "/refer" } } : {}),
+  won_8: (c) =>
+    mk("Would you put the build into a few words", [
+      hi(c),
+      "We are at the end of the eight weeks. Thank you for the work your team put into it.",
+      "If the build was useful, a sentence or two in your own words would help other founders decide whether it fits them. Only what you agree to is used, and nothing is published until we have checked the wording with you.",
+      signed(c, "/proof/submit")
+        ? "The form takes two minutes and lets you choose exactly how it may be used."
+        : "If you are happy to, reply to this email with a few lines. I will send back the exact wording and ask how you would like it used before it goes anywhere.",
+      "If it was not useful, tell me that too. It is just as valuable to hear.",
+    ], signed(c, "/proof/submit") ? { cta: { label: "Write a few words", path: "/proof/submit" } } : {}),
+  co_apply_by: (c) => {
+    const co = cohortSnapshot(c.now);
+    const places = co ? (co.open === 1 ? "1 place is open" : `${co.open} places are open`) : "";
+    return mk("Applications for the next build cohort close soon", [
+      hi(c),
+      co ? `Applications for the next build cohort close on ${co.applyBy}. The cohort starts on ${co.starts}.` : "Applications for the next build cohort close soon.",
+      co ? `We take ${co.capacity} businesses per cohort, and ${places} as I write this.` : "We take a small number of businesses per cohort, so every team gets real time with us.",
+      "You applied and qualified for a call, and we have not spoken yet. If you would like to be considered for this cohort, pick a time that suits you.",
+    ], { cta: book("Pick a time")(c) });
+  },
 };
 
 // ── Nurture ───────────────────────────────────────────────────────────────────
@@ -743,6 +781,7 @@ export const FOLLOWUP_TEMPLATES: Record<string, Template> = {
   ...LOST,
   ...WON,
   ...NURTURE,
+  ...GROWTH,
 };
 
 /** Templates that already quote application answers, so the personaliser does not repeat them. */
@@ -798,6 +837,9 @@ export const FOLLOWUP_TOPICS: Record<string, string[]> = {
   won_4: ["after", "numbers"],
   won_5: ["guarantee"],
   won_6: ["after"],
+  won_7: ["offer"],
+  won_8: ["after", "trust"],
+  co_apply_by: ["booking", "offer"],
   nu_industry: ["industry", "tools"],
   nu_blocker: ["blocker"],
   nu_numbers: ["numbers", "price"],

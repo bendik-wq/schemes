@@ -60,6 +60,10 @@ export function parseTouch(url: URL, referrer: string | null, ownHost: string): 
     referrer: ref,
     referrer_host,
   };
+  // A client's personal referral link (/?r=OP-XXXXXX) with no campaign tags: medium "referral" → Referral channel.
+  if (!click_id && !t.utm_source && !t.utm_medium && !t.utm_campaign && /^OP-[A-Z0-9]{6}$/i.test(url.searchParams.get("r") || "")) {
+    t.utm_medium = "referral";
+  }
   return { ...t, channel: channelFor(t) };
 }
 

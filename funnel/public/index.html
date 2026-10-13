@@ -30,6 +30,7 @@
       <p class="eyebrow" data-slot="eyebrow">For founders doing $1M+ a year</p>
       <h1><span data-slot="h1">Own your growth.</span> <span class="h1b" data-slot="h1b">Stop renting it.</span></h1>
       <p class="sub" data-slot="sub"></p>
+      <p class="ref-chip" data-section="referral"><span class="ref-dot" aria-hidden="true"></span><span data-slot="refBy"></span></p>
     </div>
   </section>
 
@@ -55,7 +56,7 @@
       <p class="locked" data-slot="locked" data-when="film">The application opens as the film reaches the offer.</p>
       <p class="soft-cta" data-soft-cta hidden><a href="#apply" data-track="soft_cta">Ready already? Start your application</a></p>
       <div class="cta-block reveal" data-section="book_cta">
-        <a class="btn lg" data-apply href="#apply">Apply for a strategy call</a>
+        <a class="btn lg" data-apply data-slot="ctaLabel" href="#apply">Apply for a strategy call</a>
         <p class="assure" data-slot="ctaSub">Takes about three minutes. We read every application.</p>
       </div>
     </div>
@@ -79,8 +80,13 @@
         </form></noscript>
       </div>
       <p class="assure apply-assure" data-slot="applyAssure"></p>
+      <p class="cohort-line" data-section="cohort" data-slot="cohort"></p>
       <p class="wa-line" data-section="whatsapp">Rather ask a question first? <a data-wa href="/go/wa">Message Bendik on WhatsApp</a></p>
     </div>
+  </section>
+
+  <section class="below reveal offer-sec" data-section="offer" aria-labelledby="offer-title">
+    <div class="wrap" data-slot="offer"></div>
   </section>
 
   <section class="below reveal" data-section="guarantee_band" aria-labelledby="g-band-title">
@@ -90,6 +96,13 @@
         <div><p class="kicker">Money back</p><p class="g-text" data-slot="guarantee"></p></div>
         <div><p class="kicker">Live by week eight</p><p class="g-text" data-slot="deliveryGuarantee"></p></div>
       </div>
+    </div>
+  </section>
+
+  <section class="below reveal" data-section="proof" aria-labelledby="proof-title">
+    <div class="wrap">
+      <header class="sec-head"><p class="kicker">From clients</p><h2 class="h3" id="proof-title">In their own words.</h2></header>
+      <div class="proof-grid" data-slot="proof"></div>
     </div>
   </section>
 

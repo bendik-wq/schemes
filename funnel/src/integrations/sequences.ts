@@ -111,7 +111,13 @@ export const SEQUENCES: Record<string, Sequence> = {
   },
   won: {
     id: "won", label: "Won: onboarding", trigger: "Won logged",
-    steps: steps(["won_1", "won_2", "won_3", "won_4", "won_5", "won_6"], [10 * M, 1 * D, 3 * D, 7 * D, 14 * D, 30 * D]),
+    steps: [
+      ...steps(["won_1", "won_2", "won_3", "won_4", "won_5", "won_6"], [10 * M, 1 * D, 3 * D, 7 * D, 14 * D, 30 * D]),
+      // Appended (round 2): referral ask just after the 30-day check-in (offsets stay ordered), and the
+      // week 8 request for a few words (proof, only with recorded consent).
+      { template: "won_7", offset: 33 * D },
+      { template: "won_8", offset: 54 * D },
+    ],
     stopIf: (l) => l.status !== "won" || !!l.refunded_at,
   },
   behaviour: {
@@ -133,6 +139,12 @@ export const SEQUENCES: Record<string, Sequence> = {
     id: "test", label: "Test sends", trigger: "Integrations → Send test",
     steps: [],
     stopIf: () => false,
+  },
+  // Appended (round 2): one note per open cohort, a few days before applications close (src/growth/cohorts.ts).
+  cohort: {
+    id: "cohort", label: "Cohort: applications close soon", trigger: "Open cohort, COHORT_NOTICE_DAYS before apply-by (A/B leads not booked)",
+    steps: [],
+    stopIf: (l) => l.status !== "applied",
   },
 };
 

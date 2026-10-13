@@ -24,6 +24,7 @@ import { getRep, type Rep } from "../sales/reps";
 import {
   applyInlineBooking, availableTimes, bookInvitee, pickSlots, resolveEventType, type EventTypeRef,
 } from "../integrations/calendly";
+import { inlineBookingOn } from "../growth/experiments";
 
 // RFC 5322 atext, minus characters that have no business in a real address and break HTML contexts.
 const EMAIL_RE = /^[A-Za-z0-9!#$%&'*+/=?^_{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_{|}~-]+)*@([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$/;
@@ -325,6 +326,8 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
 
 async function offerSlots(rt: Runtime, lead: Lead, tier: Tier, rep: Rep | null, tz: string, fresh = false): Promise<SlotOffer | null> {
   if (!rt.settings.has("CALENDLY_API_TOKEN") || !inlineTiers(rt).includes(tier)) return null;
+  // Experiment slot inline_booking: an "off" arm gets the full calendar instead.
+  if (!(await inlineBookingOn(rt, lead))) return null;
   const et = await resolveEventType(rt, bookingUrlFor(rt, tier, rep));
   if (!et) return null;
   const all = await availableTimes(rt, et.uri, 5, { fresh });
@@ -349,7 +352,7 @@ export async function bookInlineSlot(rt: Runtime, id: Identity, input: { start?:
   const route = lead.route || "/book";
   if (!lead.app_completed_at) return { ok: false, status: 409, code: "not_ready", message: "Please finish your application first." };
   const tier = effectiveTier(lead);
-  if (!tier || !inlineTiers(rt).includes(tier) || lead.status === "disqualified") return { ok: false, status: 403, code: "not_allowed", message: "Please pick a time on the calendar.", route };
+  if (!tier || !inlineTiers(rt).includes(tier) || lead.status === "disqualified" || !(await inlineBookingOn(rt, lead))) return { ok: false, status: 403, code: "not_allowed", message: "Please pick a time on the calendar.", route };
   const now = rt.now();
   if (liveBooking(lead, now)) return { ok: true, next: "/breakout", callAt: lead.call_at };
   const t = Date.parse(String(input.start ?? ""));
