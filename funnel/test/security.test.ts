@@ -180,7 +180,7 @@ describe("secrets and privacy", () => {
     expect(isHistorical({ booking_source: "funnel", call_at: now + 86_400_000 }, now)).toBe(false);
   });
   it("every email carries the postal address and one-click unsubscribe in both parts", () => {
-    const r = renderEmail({ subject: "S", paragraphs: ["Hi there,", "Body"] }, { link: (p) => "https://x.com" + p, unsubUrl: "https://x.com/u/l/sig", pixelUrl: null, address: "Street 1, Bergen", sigName: "Bendik", company: "Operator" });
+    const r = renderEmail({ subject: "S", paragraphs: ["Hi there,", "Body"] }, { link: (p) => "https://x.com" + p, unsubUrl: "https://x.com/u/l/sig", pixelUrl: null, address: "Street 1, Bergen", sigName: "Bendik", company: "Asymmetrical AI Solutions" });
     expect(r.html).toContain("Street 1, Bergen");
     expect(r.text).toContain("Street 1, Bergen");
     expect(r.html).toContain("https://x.com/u/l/sig");

@@ -1,4 +1,4 @@
-/* Operator first-party tracker. Browser-only signals; the server already logged the page view.
+/* First-party tracker. Browser-only signals; the server already logged the page view.
    Never records what anyone types. Each feature lives in its own IIFE so names never collide. */
 (function () {
   "use strict";

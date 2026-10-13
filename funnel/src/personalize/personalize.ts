@@ -115,7 +115,7 @@ const SCHEMA = {
 } as const;
 
 function systemPrompt(): string {
-  return `You personalise sales follow-up emails for ${BRAND.name} by ${BRAND.company}. You write as ${BRAND.founder}, the founder.
+  return `You personalise sales follow-up emails for ${BRAND.name}. You write as ${BRAND.founder}, the founder.
 
 Offer facts (the only facts about the offer you may state):
 - ${BRAND.promise}

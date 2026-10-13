@@ -18,8 +18,8 @@ const UAS = [
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/480.0]",
 ];
 const ENTRIES = [
-  () => `/?utm_source=facebook&utm_medium=paid&utm_campaign=Operator%20%E2%80%93%20Founders&utm_content=Hook%20A&utm_term=LAL%202%25&fbclid=fb${Math.random().toString(36).slice(2)}`,
-  () => `/?utm_source=facebook&utm_medium=paid&utm_campaign=Operator%20%E2%80%93%20Founders&utm_content=Hook%20B&fbclid=fb${Math.random().toString(36).slice(2)}`,
+  () => `/?utm_source=facebook&utm_medium=paid&utm_campaign=Asymmetrical%20%E2%80%93%20Founders&utm_content=Hook%20A&utm_term=LAL%202%25&fbclid=fb${Math.random().toString(36).slice(2)}`,
+  () => `/?utm_source=facebook&utm_medium=paid&utm_campaign=Asymmetrical%20%E2%80%93%20Founders&utm_content=Hook%20B&fbclid=fb${Math.random().toString(36).slice(2)}`,
   () => `/m?utm_source=facebook&utm_medium=paid&utm_campaign=Dental%20%E2%80%93%20LAL%202%25&utm_content=Agency%20angle&fbclid=fb${Math.random().toString(36).slice(2)}`,
   () => `/for/${rnd(["dental", "law", "ecommerce", "agencies", "construction", "saas"])}`,
   () => `/?utm_source=youtube&utm_medium=video&utm_campaign=channel&lk=yt-desc`,

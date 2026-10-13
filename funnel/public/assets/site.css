@@ -1,4 +1,4 @@
-/* Operator funnel. Apple-tradition product page: bright white, near-black ink, one flowing
+/* Asymmetrical AI Solutions funnel. Apple-tradition product page: bright white, near-black ink, one flowing
    blue-to-violet-to-rose accent, Inter Display for headlines. Soft moving colour and silk lines sit
    behind the content; motion only when allowed. */
 /* Self-hosted fonts (SIL Open Font License, see /assets/fonts/OFL.txt): no third-party request before consent.
@@ -715,3 +715,6 @@ body.page-privacy, body.page-resources { background:
   background-repeat: no-repeat; background-size: auto; }
 .poster-play, .player:hover .poster-play { backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: 0 0 0 10px rgba(255,255,255,.10), 0 0 40px 6px rgba(140,120,255,.35), 0 18px 40px -14px rgba(0,0,0,.55); }
 @media (max-width: 760px) { .poster-play { box-shadow: 0 0 0 7px rgba(255,255,255,.10), 0 0 28px 4px rgba(140,120,255,.35); } }
+.brand { gap: 9px; }
+.brand .brand-sub { font-weight: 500; color: var(--grey); letter-spacing: -.01em; margin-left: -4px; }
+@media (max-width: 380px) { .brand .brand-sub { display: none; } }

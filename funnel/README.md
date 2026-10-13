@@ -1,6 +1,6 @@
-# Operator funnel + Funnel HQ
+# Asymmetrical AI Solutions funnel + Funnel HQ
 
-A high-ticket VSL funnel for **Operator** (Asym's eight-week, done-with-you Claude Code program for founders doing $1M+), plus **Funnel HQ**, the CRM and analytics dashboard behind it. It all runs in **one Cloudflare Worker** with a **D1** database and a 5-minute cron. There are no other servers and no client framework.
+A high-ticket VSL funnel for **Asymmetrical AI Solutions** (Asym's eight-week, done-with-you Claude Code program for founders doing $1M+), plus **Funnel HQ**, the CRM and analytics dashboard behind it. It all runs in **one Cloudflare Worker** with a **D1** database and a 5-minute cron. There are no other servers and no client framework.
 
 ```
  Ad / video / email ─▶ /  or  /for/<industry>[/<angle>]  or  /m (Meta smart route)

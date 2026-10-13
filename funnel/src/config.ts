@@ -3,7 +3,8 @@
 // src/followup/templates.ts; email timing lives in src/integrations/sequences.ts.
 
 export const BRAND = {
-  name: "Operator",
+  name: "Asymmetrical AI Solutions",
+  short: "Asymmetrical",
   company: "Asym",
   founder: "Bendik",
   founderFull: "Bendik, Asym",
@@ -18,7 +19,7 @@ export const BRAND = {
     "If your VSL page, tracking and sales dashboard are not live by the end of week eight, we keep working with you at no extra cost until they are, as long as you attend the weekly sessions.",
   callName: "strategy call",
   disclaimer:
-    "Operator is an independent program by Asym. Not affiliated with or endorsed by Anthropic. Claude and Claude Code are trademarks of Anthropic, PBC, used descriptively. Results depend on your business and the work you put in. Figures on this site are illustrative, not advice.",
+    "Asymmetrical AI Solutions is an independent company. Not affiliated with or endorsed by Anthropic. Claude and Claude Code are trademarks of Anthropic, PBC, used descriptively. Results depend on your business and the work you put in. Figures on this site are illustrative, not advice.",
   salesTimezone: "Europe/Oslo",
 };
 
@@ -50,7 +51,7 @@ export const OUTCOME_PROMISES = [
 ];
 
 export const VIDEOS = {
-  main: { id: "main", title: "The Operator film", ctaRevealAt: 312, duration: 540, chapters: [
+  main: { id: "main", title: "The film", ctaRevealAt: 312, duration: 540, chapters: [
     { at: 0, key: "market_moved", label: "The market has moved" },
     { at: 70, key: "two_types", label: "Two kinds of founders" },
     { at: 140, key: "not_your_fault", label: "Why agencies and SaaS stack up" },
@@ -102,7 +103,7 @@ export const LANDING = {
     { value: "7", unit: "days", label: "money-back window" },
   ],
   statement:
-    "Most founders rent their growth: an agency for ads, a SaaS for pages, another for tracking, a freelancer for the dashboard. Operator turns that rent into something you own.",
+    "Most founders rent their growth: an agency for ads, a SaaS for pages, another for tracking, a freelancer for the dashboard. We turn that rent into something you own.",
   system: [
     { key: "pages", title: "VSL pages and applications", body: "A page like this one, with an application that scores and routes every lead. Your team edits it in plain English." },
     { key: "tracking", title: "Meta ads with server-side tracking", body: "Conversions API with deduplication and qualified-lead values, so Meta optimises for buyers, not clicks." },
@@ -157,7 +158,7 @@ export const FAQS: Faq[] = [
   { id: "agency", q: "Why not just hire an agency?", topics: ["agency"], a: "You can. You will pay every month and own nothing when you stop. Here the pages, tracking and dashboards are yours, and your team knows how to change them." },
   { id: "guarantee", q: "What is the guarantee?", topics: ["guarantee"], a: "Seven days from your start date. If it is not for you, tell us and you get your money back. On top of that, if the core systems are not live by the end of week eight, we keep working with you until they are, as long as you attend the weekly sessions." },
   { id: "results", q: "Will this grow my revenue?", topics: ["results"], a: "It gives you the machine and the data to grow on purpose. What it produces depends on your offer, your market and your team. We will not promise you a number." },
-  { id: "claude", q: "Are you part of Anthropic?", topics: ["trust"], a: "No. Operator is an independent program by Asym. We build on Claude Code because it is the best tool for the job." },
+  { id: "claude", q: "Are you part of Anthropic?", topics: ["trust"], a: "No. Asymmetrical AI Solutions is an independent company. We build on Claude Code because it is the best tool for the job." },
   { id: "data", q: "Who owns the code and data?", topics: ["ownership"], a: "You do. Everything runs on your accounts: your domain, your Cloudflare, your ad account. We never hold your data hostage." },
   { id: "after", q: "What happens after eight weeks?", topics: ["after"], a: "Your team runs it. Some founders keep a monthly session with us, most don't need to." },
 ];
@@ -268,7 +269,7 @@ export const CONSENT_COUNTRIES = [
 
 export const CALL_CONSENT = {
   version: "2026-10-v1",
-  label: "Yes, Operator by Asym may call me about my application, including with an AI assistant. Calls may be recorded. This is not a condition of buying anything, and I can say stop at any time.",
+  label: "Yes, Asymmetrical AI Solutions may call me about my application, including with an AI assistant. Calls may be recorded. This is not a condition of buying anything, and I can say stop at any time.",
 };
 
 export const AI_CALLER = {
@@ -332,7 +333,7 @@ ${faqs.map((f) => `  Q: ${f.q}\n  A: ${f.a}`).join("\n")}
 }
 
 export const OUTBOUND_FIRST_MESSAGE =
-  "Hi {{first_name}}, this is Sam, an AI assistant calling from Operator by Asym. This call is recorded, and you can say stop at any time and we won't call again. You can also reach us on {{callback_number}}. {{opening}}";
+  "Hi {{first_name}}, this is Sam, an AI assistant calling from Asymmetrical AI Solutions. This call is recorded, and you can say stop at any time and we won't call again. You can also reach us on {{callback_number}}. {{opening}}";
 
 export function inboundSystemPrompt(faqs: Faq[]): string {
   return `You are ${AI_CALLER.name}, an AI assistant answering calls for ${BRAND.company}'s ${BRAND.name} program.

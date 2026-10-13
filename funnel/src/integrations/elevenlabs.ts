@@ -97,13 +97,13 @@ export async function cancelCalls(rt: Runtime, leadId: string, kinds: CallKind[]
 
 function opening(kind: CallKind, closer: string, callTime: string): string {
   if (kind === "confirm") return `I'm calling to confirm your call with ${closer} on ${callTime}. Does that still work for you?`;
-  if (kind === "speed_to_lead") return `Thanks for applying for Operator. I can send you a link to pick a time with ${closer}. Would that help?`;
+  if (kind === "speed_to_lead") return `Thanks for applying for Asymmetrical. I can send you a link to pick a time with ${closer}. Would that help?`;
   if (kind === "rebook") return `We missed you on your call with ${closer}. I can send a link to pick a new time. Would that help?`;
   return "This is a test call from Funnel HQ.";
 }
 
 function voicemail(kind: CallKind, callback: string): string {
-  const who = "This is an automated message from Operator by Asym.";
+  const who = "This is an automated message from Asymmetrical AI Solutions.";
   const end = ` To reach us or to stop these calls, call ${callback}.`;
   if (kind === "confirm") return `${who} Calling to confirm your call. Your confirmation email has the details.${end}`;
   if (kind === "speed_to_lead") return `${who} Calling about your application. We have emailed you a link to book a time.${end}`;
@@ -329,12 +329,12 @@ const DATA_COLLECTION = {
 function agentBody(rt: Runtime, kind: "outbound" | "inbound") {
   const voice = rt.settings.get("ELEVENLABS_VOICE_ID");
   return {
-    name: kind === "outbound" ? "Operator · outbound (Sam)" : "Operator · inbound callback (Sam)",
+    name: kind === "outbound" ? "Asymmetrical · outbound (Sam)" : "Asymmetrical · inbound callback (Sam)",
     conversation_config: {
       agent: {
         first_message: kind === "outbound"
           ? OUTBOUND_FIRST_MESSAGE
-          : "Hi, this is Sam, an AI assistant for Operator by Asym. This call is recorded. How can I help?",
+          : "Hi, this is Sam, an AI assistant for Asymmetrical AI Solutions. This call is recorded. How can I help?",
         language: "en",
         prompt: { prompt: kind === "outbound" ? outboundSystemPrompt(FAQS) : inboundSystemPrompt(FAQS), llm: rt.settings.get("ELEVENLABS_LLM") || "claude-sonnet-5-5" },
       },

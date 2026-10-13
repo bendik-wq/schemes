@@ -294,7 +294,7 @@ async function processOne(rt: Runtime, row: EmailRow): Promise<Outcome> {
     pixelUrl: `${rt.origin}/o/${row.id}.gif`,
     address: rt.settings.get("BUSINESS_ADDRESS") || "[postal address not set]",
     sigName: ctx.sigName,
-    company: rt.settings.get("SITE_NAME") || `${BRAND.name} by ${BRAND.company}`,
+    company: rt.settings.get("SITE_NAME") || `${BRAND.name}`,
   });
   const meta = { subject: rendered.subject, personalized: p.mode, facts_used: JSON.stringify(p.factsUsed), personalize_error: p.error };
 
@@ -363,7 +363,7 @@ export async function previewTemplate(rt: Runtime, lead: Lead | null, template: 
   const r = renderEmail(p.content, {
     link: ctx.link, unsubUrl: `${rt.origin}/u/preview`, pixelUrl: null,
     address: rt.settings.get("BUSINESS_ADDRESS") || "[postal address not set]", sigName: ctx.sigName,
-    company: rt.settings.get("SITE_NAME") || `${BRAND.name} by ${BRAND.company}`,
+    company: rt.settings.get("SITE_NAME") || `${BRAND.name}`,
   });
   return { ...r, mode: p.mode, factsUsed: p.factsUsed };
 }
@@ -376,7 +376,7 @@ export async function sendTestEmail(rt: Runtime, to: string): Promise<{ ok: bool
   const rendered = renderEmail(t(ctx), {
     link: ctx.link, unsubUrl: `${rt.origin}/u/test`, pixelUrl: null,
     address: rt.settings.get("BUSINESS_ADDRESS") || "[postal address not set]", sigName: ctx.sigName,
-    company: rt.settings.get("SITE_NAME") || `${BRAND.name} by ${BRAND.company}`,
+    company: rt.settings.get("SITE_NAME") || `${BRAND.name}`,
   });
   if (!rt.settings.has("RESEND_API_KEY") || !rt.settings.has("EMAIL_FROM")) return { ok: true, simulated: true };
   const r = await sendViaResend(rt, to, rendered, `${rt.origin}/u/test`, newId("t"));

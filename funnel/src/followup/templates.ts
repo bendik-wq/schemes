@@ -14,7 +14,7 @@ export const BLOCKERS: Record<string, { name: string; subject: string; body: str
     subject: "No one to build it: what that means here",
     body: [
       "You said there is no one on the team to build this. It is the most common reason founders keep renting.",
-      "Operator does not need a developer. Claude Code writes the code. What it needs is one curious person who sits in the weekly sessions and keeps going between them.",
+      "The program does not need a developer. Claude Code writes the code. What it needs is one curious person who sits in the weekly sessions and keeps going between them.",
       "On the call we can work out who that person might be. Often it is someone in operations or marketing who already does half of it by hand.",
     ],
   },
@@ -69,7 +69,7 @@ const BLOCKER_FALLBACK = {
   name: "whatever has held you back",
   body: [
     "Most founders who apply have tried to fix their growth setup before. Usually something got in the way: no one to build it, a retainer, tracking nobody trusts, or simply time.",
-    "Operator is built around those. Claude Code does the heavy lifting, your team owns the result, and we sit with them weekly until they can run it.",
+    "Asymmetrical is built around those. Claude Code does the heavy lifting, your team owns the result, and we sit with them weekly until they can run it.",
     "If something specific has held you back, reply and tell me. I would rather hear it now than guess.",
   ],
 };
@@ -119,7 +119,7 @@ export const OBJECTION_COPY: Record<string, { subject: string; body: string[] }>
     body: [
       "On the call, price was the sticking point. That is a fair thing to weigh carefully.",
       "The way I would look at it: put next to it what you pay each year for agencies, freelancers and software, and how much of that you will still be paying in two years.",
-      "Operator is a one-off build that your team keeps. That does not make it the right call for everyone, but it is the comparison that matters.",
+      "It is a one-off build that your team keeps. That does not make it the right call for everyone, but it is the comparison that matters.",
       "If the number is the only thing in the way, reply and say so. We can look at a smaller first scope.",
     ],
   },
@@ -209,12 +209,12 @@ export const LOST_ANGLES: Record<string, string[][]> = {
     ["You chose to go with an agency. I hope it goes well, and I mean that."],
     ["One suggestion, whatever you build with them: make sure the pages, tracking and data sit on your own accounts. It keeps your options open."],
     ["A few months in is a good time to check what the agency has built and what you would keep if you stopped tomorrow."],
-    ["If the agency relationship is working, keep it. If you are starting to wonder what you own at the end of it, that is when Operator fits."],
+    ["If the agency relationship is working, keep it. If you are starting to wonder what you own at the end of it, that is when Asymmetrical fits."],
     ["Agency contracts often come up for renewal around now. If yours does, it may be worth comparing the two options again."],
     ["If you ever want your team to own what the agency runs today, the door is open."],
   ],
   "Built in-house": [
-    ["You decided to build it in-house. That is the same idea Operator is built on, so I am glad you are owning it."],
+    ["You decided to build it in-house. That is the same idea Asymmetrical is built on, so I am glad you are owning it."],
     ["One thing that helps: server-side tracking with a value for qualified leads, so Meta learns from the right people. It is worth doing early."],
     ["If your team gets stuck on a piece, pages, tracking or the dashboard, reply and ask. A short answer costs me nothing."],
     ["A few months in is a good time to check what has shipped and what is still on the list."],
@@ -239,14 +239,14 @@ export const LOST_ANGLES: Record<string, string[][]> = {
   ],
   Trust: [
     ["I understand you were not sure enough to go ahead. Trust is earned, and I did not expect to earn it in one call."],
-    ["Whatever you decide, a good test for anyone you hire: does everything run on your accounts, and do you get a written plan before the work starts. Operator does both."],
+    ["Whatever you decide, a good test for anyone you hire: does everything run on your accounts, and do you get a written plan before the work starts. Asymmetrical does both."],
     ["If you want to see a live page and dashboard built this way, I can walk you through one."],
     ["The seven-day money-back window and the delivery guarantee are there for exactly this kind of doubt. Happy to go through them again."],
     ["If you want to talk to me again before deciding anything, book a time. No pressure."],
     ["The door stays open. If it ever feels right, I am here."],
   ],
   Other: [
-    ["Thank you for considering Operator. I understand it was not the right moment."],
+    ["Thank you for considering Asymmetrical. I understand it was not the right moment."],
     ["If it is useful, the resources page has a worksheet for listing what you rent today and what it costs."],
     ["A few months on, I wanted to check whether anything has changed on your side."],
     ["If owning your growth setup is still on your list, I am happy to talk again."],
@@ -577,7 +577,7 @@ const CANCELLED: Record<string, Template> = {
 // ── Lost ──────────────────────────────────────────────────────────────────────
 
 const LOST: Record<string, Template> = {
-  lo_1: (c) => mk("Thanks for considering Operator", [hi(c), ...lostAngle(c.d, 0), "No reply needed. I wanted to say thank you."]),
+  lo_1: (c) => mk("Thanks for considering Asymmetrical", [hi(c), ...lostAngle(c.d, 0), "No reply needed. I wanted to say thank you."]),
   lo_2: (c) =>
     mk("A few weeks on from our conversation", [
       hi(c),
@@ -614,9 +614,9 @@ const LOST: Record<string, Template> = {
 
 const WON: Record<string, Template> = {
   won_1: (c) =>
-    mk("Welcome to Operator, and what happens this week", [
+    mk("Welcome to Asymmetrical, and what happens this week", [
       hi(c),
-      "Welcome to Operator. I am glad we are doing this together.",
+      "Welcome to Asymmetrical. I am glad we are doing this together.",
       "This week we set the kickoff session, agree who on your team owns the build, and start the audit.",
       "Over the next few days I will send a few short emails: what accounts to have ready, who should own it, and what the week-one audit involves.",
       "If you have a question before then, reply here. It comes straight to me.",
@@ -714,7 +714,7 @@ const NURTURE: Record<string, Template> = {
   nu_tracking: (c) =>
     mk("Why Meta may be learning from the wrong people", [
       hi(c),
-      "One idea worth knowing whatever you decide about Operator.",
+      "One idea worth knowing whatever you decide about Asymmetrical.",
       "Meta optimises for whatever event you send it. If that is a form fill or a page view, it finds more people who fill forms and view pages.",
       "With server-side tracking you can send a value for qualified applications instead. Then Meta learns from the people who fit, not the people who click.",
       "The resources page has a short note on how it works.",

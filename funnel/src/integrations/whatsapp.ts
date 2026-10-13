@@ -13,7 +13,7 @@ import { track } from "../tracking/track";
 export function waLink(rt: Runtime, lead: Pick<Lead, "ref_code" | "first_name"> | null, context: string): string | null {
   const num = (rt.settings.get("FOUNDER_WHATSAPP") || "").replace(/\D/g, "");
   if (!num) return null;
-  const ctx = context === "booked" ? "I'm booked in for a call" : context === "resources" ? "I'd like to stay in touch" : "I have a question about Operator";
+  const ctx = context === "booked" ? "I'm booked in for a call" : context === "resources" ? "I'd like to stay in touch" : "I have a question about Asymmetrical";
   const text = `Hi ${BRAND.founder}, ${ctx}.${lead ? ` (ref ${lead.ref_code})` : ""}`;
   return `https://wa.me/${num}?text=${encodeURIComponent(text)}`;
 }
