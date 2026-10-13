@@ -5,6 +5,8 @@ import type { Env } from "./env";
 import { requireAdmin, login, logoutEverywhere, sameOrigin } from "./admin/auth";
 import { adminApi } from "./routes/admin";
 import { adminGrowth } from "./routes/admin-growth";
+import { sendCohortNotices } from "./growth/cohorts";
+import { kvGate } from "./lib/kv";
 import { api } from "./routes/api";
 import { links } from "./routes/links";
 import { hooks } from "./routes/hooks";
@@ -258,6 +260,7 @@ export default {
   async scheduled(_ctrl: ScheduledController, env: Env, ctx: ExecutionContext) {
     const rt = await makeRuntime(env, ctx);
     await quiet("heartbeat", () => cronHeartbeat(rt));
+    await quiet("growth", async () => { if (await kvGate(env, "gate:cohort_notices", 3_600_000)) await sendCohortNotices(rt); });
     await quiet("emails", () => processEmailQueue(rt));
     await quiet("forwards", () => retryForwards(rt));
     await quiet("upcoming", () => pingUpcomingCalls(rt));

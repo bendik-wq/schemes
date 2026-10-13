@@ -61,6 +61,8 @@ export function mxVerdict(j: unknown): boolean | null {
 export async function emailDomainOk(rt: Runtime, email: string): Promise<boolean> {
   const domain = email.split("@")[1] || "";
   if (!domain || PERSONAL_EMAIL_DOMAINS.includes(domain)) return true;
+  // Local simulations only: ALLOW_TEST_EMAILS=1 in .dev.vars lets the reserved example.* domains through.
+  if (rt.settings.get("ALLOW_TEST_EMAILS") === "1" && /(^|\.)example\.(com|org|net)$/.test(domain)) return true;
   const key = `mx:${domain.slice(0, 200)}`;
   const c = await kvGetJson<{ ok: boolean; at: number } | null>(rt.env, key, null);
   if (c && rt.now() - c.at < (c.ok ? 7 * 86_400_000 : 3_600_000)) return c.ok;

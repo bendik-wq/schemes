@@ -22,9 +22,11 @@ export interface SettingDef {
 export const SETTINGS: SettingDef[] = [
   { key: "PUBLIC_URL", group: "site", label: "Public URL", kind: "url", help: "Your live domain, e.g. https://apply.example.com. Email links use it." },
   { key: "SITE_NAME", group: "site", label: "Site name", help: "Shown in titles and emails." },
+  { key: "REFERRAL_REWARD", group: "site", label: "Referral reward text", help: "Only a real reward you will honour. Empty = no reward line." },
 
   { key: "RESEND_API_KEY", group: "email", label: "Resend API key", secret: true, help: "resend.com → API keys. Without it, emails are simulated." },
   { key: "EMAIL_FROM", group: "email", label: "From", help: "Name <name@yourdomain.com> on a verified Resend domain." },
+  { key: "COHORT_NOTICE_DAYS", group: "email", label: "Cohort apply-by note (days before)", kind: "number", def: "4", help: "0 turns it off." },
   { key: "EMAIL_REPLY_TO", group: "email", label: "Reply-to" },
   { key: "BUSINESS_ADDRESS", group: "email", label: "Postal address", help: "Required in every email (CAN-SPAM, PECR)." },
   { key: "EMAIL_SIGNATURE", group: "email", label: "Signature name", def: "Bendik" },

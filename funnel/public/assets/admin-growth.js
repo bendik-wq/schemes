@@ -468,6 +468,13 @@
   });
 
   function boot() {
+    // Growth tools are for owners, managers and viewers; reps get a 403 from the API, so hide the menu too.
+    fetch("/admin/api/me", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+      const role = j && j.user ? j.user.role : "";
+      if (role !== "closer" && role !== "setter") start();
+    }).catch(() => {});
+  }
+  function start() {
     const nav = $("#nav");
     if (nav) new MutationObserver(() => { if (!nav.querySelector("[data-growth-nav]")) injectNav(); else syncNav(); }).observe(nav, { childList: true });
     injectNav();
