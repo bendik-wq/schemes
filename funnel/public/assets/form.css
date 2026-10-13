@@ -66,3 +66,8 @@
   .slot-foot .btn { width: 100%; margin-left: 0; }
   .full-cal { text-align: center; padding: 8px 0; }
 }
+/* No-JS fallback form */
+.nojs { display: grid; gap: 14px; }
+.nojs label { display: grid; gap: 6px; font-size: 14px; font-weight: 500; }
+.nojs input:not([type=checkbox]) { height: 48px; padding: 0 14px; border: 1px solid var(--hair); border-radius: 12px; font: inherit; }
+.nojs .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }

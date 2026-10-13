@@ -26,8 +26,16 @@
   <form class="apply" novalidate autocomplete="on">
     <div class="progress inline" aria-hidden="true"><i></i></div>
     <div class="steps" aria-live="polite"></div>
-    <noscript><p class="err">The application needs JavaScript. Please enable it, or message us and we will help.</p></noscript>
   </form>
+        <noscript><form class="nojs" method="post" action="/api/apply/nojs">
+          <p>The full application needs JavaScript. Leave your details and we will send you a link to finish it.</p>
+          <label>Name <input name="name" autocomplete="name" required></label>
+          <label>Work email <input name="email" type="email" autocomplete="email" required></label>
+          <label>Mobile (with country code) <input name="phone" type="tel" autocomplete="tel" required></label>
+          <label class="check"><input type="checkbox" name="call_consent"> <span>Yes, Asymmetrical AI Solutions may call me about my application, including with an AI assistant. Calls may be recorded. This is not a condition of buying anything, and I can say stop at any time.</span></label>
+          <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <button class="btn" type="submit">Continue</button>
+        </form></noscript>
   <p class="apply-foot"><a href="/privacy">Privacy</a> · <button type="button" class="linkish" data-cookie-settings>Cookie settings</button></p>
 </main>
 </body>
