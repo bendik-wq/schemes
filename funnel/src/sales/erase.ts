@@ -24,6 +24,7 @@ export async function eraseLead(rt: Runtime, leadId: string): Promise<{ ok: bool
     db.prepare("DELETE FROM vsl_views WHERE lead_id = ?").bind(lead.id),
     db.prepare("DELETE FROM sessions WHERE lead_id = ?").bind(lead.id),
     db.prepare("UPDATE payments SET lead_id = 'erased', note = NULL, method = NULL WHERE lead_id = ?").bind(lead.id),
+    db.prepare("DELETE FROM lead_revops WHERE lead_id = ?").bind(lead.id),
     db.prepare("DELETE FROM leads WHERE id = ?").bind(lead.id),
   ];
   for (const v of visitors) {

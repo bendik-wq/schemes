@@ -9,6 +9,8 @@ import { getLead, leadSessionContext, effectiveTier, type Lead } from "../funnel
 import { EVENTS } from "./catalog";
 import { isHttps, validOutbound } from "../lib/outbound";
 import type { Who } from "./track";
+import { popcount } from "./vsl";
+import { settingsStageValue } from "../sales/values";
 
 export type Destination = "meta" | "ga4" | "posthog" | "crm";
 
@@ -26,6 +28,30 @@ const CRM_EVENTS = new Set([
   "lead_captured", "app_submitted", "lead_qualified", "booking_scheduled", "booking_rescheduled", "booking_cancelled",
   "call_showed", "call_no_show", "deal_won", "deal_lost", "payment_recorded", "lead_status_changed", "unsubscribed",
 ]);
+
+/** CRM stages sent to Meta as offline conversions (action_source "system_generated"). */
+export const CRM_STAGE_EVENTS = new Set(["call_showed", "call_no_show", "deal_won", "deal_lost", "payment_recorded", "lead_status_changed"]);
+
+/**
+ * The Meta event name for an event, or null when it is not sent to Meta. Most names come from the
+ * catalog; a few depend on the event: refunds, disqualifications and the first application step.
+ */
+export function metaEventName(name: string, props: Record<string, unknown>, value?: number): string | null {
+  const def = EVENTS[name];
+  if (name === "lead_status_changed") return props.to === "disqualified" ? "Disqualified" : null;
+  if (name === "payment_recorded") {
+    const amount = typeof value === "number" ? value : Number(props.amount);
+    if (!Number.isFinite(amount) || amount === 0) return null;
+    return amount < 0 ? "Refund" : def?.meta || null;
+  }
+  return def?.meta || null;
+}
+
+/** Meta's own dedupe key. Stable per lead for once-per-lead events so a double send collapses. */
+export function metaEventId(ev: Pick<ForwardEvent, "id" | "name" | "who">): string {
+  if (ev.name === "app_step" && ev.who.leadId) return `startapp_${ev.who.leadId}`;
+  return ev.id;
+}
 
 const BACKOFF_MIN = [1, 5, 30, 120, 720];
 const MAX_ATTEMPTS = 5;
@@ -90,21 +116,30 @@ async function prepare(rt: Runtime, ev: ForwardEvent): Promise<Prepared[]> {
   const value = ev.value ?? (typeof ev.props.value === "number" ? (ev.props.value as number) : undefined);
   const currency = ev.currency || "USD";
 
-  if (adsAllowed && def.meta && s.has("META_PIXEL_ID") && s.has("META_ACCESS_TOKEN")) {
+  let metaName = adsAllowed ? metaEventName(ev.name, ev.props, value) : null;
+  // StartApplication: only the first application step per lead.
+  if (metaName && ev.name === "app_step") {
+    if (!lead) metaName = null;
+    else if (await rt.env.DB.prepare("SELECT 1 AS x FROM forward_log WHERE destination = 'meta' AND event_name = 'app_step' AND lead_id = ? LIMIT 1").bind(lead.id).first()) metaName = null;
+  }
+  if (metaName && s.has("META_PIXEL_ID") && s.has("META_ACCESS_TOKEN")) {
     const { data, keys } = await metaUserData(lead, who);
     const custom: Record<string, unknown> = {};
-    if (value != null) { custom.value = value; custom.currency = currency; }
-    if (lead) {
-      const t = effectiveTier(lead);
-      if (t) custom.lead_tier = t;
-    }
+    const tier = lead ? effectiveTier(lead) : typeof ev.props.tier === "string" ? (ev.props.tier as string) : null;
+    // Stage values: P(won | stage, tier) x average deal once calibrated; the fixed tier value until then.
+    const metaValue = settingsStageValue(s, ev.name, tier, value);
+    if (metaValue != null) { custom.value = metaValue; custom.currency = currency; }
+    if (tier) { custom.lead_tier = tier; custom.tier = tier; }
     if (typeof ev.props.video === "string") custom.content_name = ev.props.video;
+    const watched = typeof ev.props.percent === "number" ? (ev.props.percent as number) : await watchedPct(rt, lead, who);
+    if (watched != null) custom.watched_pct = watched;
+    const crmStage = CRM_STAGE_EVENTS.has(ev.name);
     const body: Record<string, unknown> = {
       data: [{
-        event_name: def.meta,
+        event_name: metaName,
         event_time: Math.floor(ev.ts / 1000),
-        event_id: ev.id,
-        action_source: who.ip || who.ua ? "website" : "system_generated",
+        event_id: metaEventId(ev),
+        action_source: crmStage ? "system_generated" : who.ip || who.ua ? "website" : "system_generated",
         event_source_url: eventUrl,
         user_data: data,
         custom_data: custom,
@@ -153,6 +188,15 @@ async function prepare(rt: Runtime, ev: ForwardEvent): Promise<Prepared[]> {
     });
   }
   return out;
+}
+
+/** Share of the main film watched (0-100) by this lead or visitor, or null when they never played it. */
+async function watchedPct(rt: Runtime, lead: Lead | null, who: Who): Promise<number | null> {
+  const vid = who.visitorId || lead?.visitor_id || "";
+  if (!lead && !vid) return null;
+  const r = await rt.env.DB.prepare("SELECT buckets FROM vsl_views WHERE video = 'main' AND (lead_id = ? OR visitor_id = ?) ORDER BY last_at DESC LIMIT 1")
+    .bind(lead?.id || "", vid).first<{ buckets: string }>().catch(() => null);
+  return r ? popcount(r.buckets) : null;
 }
 
 export function leadSnapshot(lead: Lead) {

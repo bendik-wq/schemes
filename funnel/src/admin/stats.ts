@@ -5,7 +5,8 @@
 import type { Runtime } from "../app";
 import { APPLICATION, BRAND, HEADLINES, VIDEOS, type VideoId } from "../config";
 import { localParts, tzOffset, validTimezone, zonedTime } from "../integrations/sequences";
-import { MICRO_EVENTS } from "../tracking/catalog";
+import { EVENTS, MICRO_EVENTS } from "../tracking/catalog";
+import { dayKey } from "../integrations/meta-ads";
 import { BUCKETS, bucketSet, popcount } from "../tracking/vsl";
 
 // ── Small D1 helpers ─────────────────────────────────────────────────────────
@@ -243,13 +244,25 @@ export async function dailyTrend(rt: Runtime, f: Filters) {
   return { days, series: { visitors: series(vis), optins: series(opt), applications: series(app), booked: series(bk), won: series(won) } };
 }
 
+/** Ad spend between two instants, by the sales-time-zone days they cover (all platforms). */
+export async function spendBetween(rt: Runtime, from: number, to: number): Promise<number> {
+  const tz = salesTz(rt);
+  const r = await one<{ s: number }>(rt, "SELECT COALESCE(SUM(spend), 0) AS s FROM ad_spend WHERE date >= ? AND date <= ?",
+    [from > 0 ? dayKey(from, tz) : "0000-00-00", dayKey(Math.max(from, to - 1), tz)]).catch(() => null);
+  return Math.round(num(r?.s) * 100) / 100;
+}
+
+const ratio = (a: number, b: number): number | null => (b > 0 ? Math.round((a / b) * 100) / 100 : null);
+
 export async function overview(rt: Runtime, f: Filters) {
-  const [cur, prev, trend] = await Promise.all([
+  const [cur, prev, trend, spend, prevSpend] = await Promise.all([
     windowCounts(rt, f, f.since, f.until),
     f.prevSince != null ? windowCounts(rt, f, f.prevSince, f.since) : Promise.resolve(null),
     dailyTrend(rt, f),
+    spendBetween(rt, f.since, f.until),
+    f.prevSince != null ? spendBetween(rt, f.prevSince, f.since) : Promise.resolve(0),
   ]);
-  const kpi = (c: Counts) => ({
+  const kpi = (c: Counts, sp: number) => ({
     visitors: c.visitors,
     play_rate: pct(c.plays, c.visitors),
     applications: c.applied,
@@ -259,11 +272,17 @@ export async function overview(rt: Runtime, f: Filters) {
     revenue: c.revenue,
     cash: c.cash,
     whatsapp: c.whatsapp,
+    won: c.won,
+    // Blended paid acquisition: all ad spend over all funnel outcomes in the period.
+    spend: sp,
+    cac: ratio(sp, c.won),
+    cash_roas: ratio(c.cash, sp),
+    cost_per_booked: ratio(sp, c.booked),
   });
   return {
     range: f.range, since: f.since,
-    kpis: kpi(cur),
-    prev: prev ? kpi(prev) : null,
+    kpis: kpi(cur, spend),
+    prev: prev ? kpi(prev, prevSpend) : null,
     counts: cur,
     funnel: funnelRows(cur),
     trend,
@@ -511,6 +530,12 @@ export async function applicationReport(rt: Runtime, f: Filters) {
 
 export const MATCH_KEYS = ["em", "ph", "fbp", "fbc", "ip", "ua", "external_id"] as const;
 
+/** Funnel order for the stage x destination matrix on the Tracking tab. */
+export const STAGE_ORDER = [
+  "page_view", "vsl_25", "vsl_50", "vsl_cta_reveal", "lead_captured", "app_step", "app_submitted", "lead_qualified", "booking_scheduled",
+  "call_showed", "call_no_show", "deal_won", "deal_lost", "payment_recorded", "lead_status_changed",
+];
+
 export async function trackingReport(rt: Runtime, f: Filters) {
   const [byDest, errors, meta, byEvent] = await Promise.all([
     all<{ destination: string; status: string; n: number }>(rt, "SELECT destination, status, COUNT(*) AS n FROM forward_log WHERE created_at >= ? GROUP BY destination, status", [f.since]),
@@ -534,7 +559,22 @@ export async function trackingReport(rt: Runtime, f: Filters) {
     return { id: d, configured: configured[d], sent, retry, failed, success_rate: pct(sent, sent + failed) };
   });
   const total = num(meta?.total);
+  // Stage x destination: sent / failed / retrying, and for Meta the share of events with a hashed email or phone.
+  const cells = await all<{ event_name: string; destination: string; sent: number; failed: number; retry: number; total: number; matched: number }>(rt,
+    `SELECT event_name, destination, SUM(status = 'sent') AS sent, SUM(status = 'failed') AS failed, SUM(status IN ('retry','sending')) AS retry,
+       COUNT(*) AS total, SUM(match_keys LIKE '%"em"%' OR match_keys LIKE '%"ph"%') AS matched
+     FROM forward_log WHERE created_at >= ? GROUP BY event_name, destination`, [f.since]);
+  const stageNames = [...new Set([...STAGE_ORDER, ...cells.map((c) => c.event_name)])].filter((e) => cells.some((c) => c.event_name === e) || STAGE_ORDER.includes(e));
+  const stage_matrix = stageNames.map((e) => ({
+    event: e,
+    meta: (EVENTS[e]?.meta || null) as string | null,
+    cells: Object.fromEntries(["meta", "ga4", "posthog", "crm"].map((d) => {
+      const c = cells.find((x) => x.event_name === e && x.destination === d);
+      return [d, c ? { sent: num(c.sent), failed: num(c.failed), retry: num(c.retry), match_rate: d === "meta" ? pct(num(c.matched), num(c.total)) : null } : null];
+    })),
+  }));
   return {
+    stage_matrix,
     destinations,
     errors: errors.map((e) => ({ ...e, error: (e.error || "").replace(/access_token=[^&\s"]+/g, "access_token=…").slice(0, 200) })),
     match_keys: MATCH_KEYS.map((k) => ({ key: k, n: num(meta?.[k]), pct: pct(num(meta?.[k]), total) })),
