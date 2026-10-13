@@ -36,7 +36,7 @@ export async function setLeadEmailStatus(rt: Runtime, leadId: string, status: Em
 }
 
 /** Marketing sequences that the deliverability guard pauses. Reminders and post-call mail keep going. */
-export const PAUSABLE_SEQUENCES = ["abandoned", "tier_a", "tier_b", "tier_c", "nurture", "lost", "cancelled", "behaviour"];
+export const PAUSABLE_SEQUENCES = ["abandoned", "tier_a", "tier_b", "tier_c", "nurture", "lost", "cancelled", "behaviour", "cohort"];
 
 export interface EmailPause { at: number; reason: string }
 

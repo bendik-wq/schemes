@@ -68,3 +68,11 @@
 /assets/og.png
   Cache-Control: public, max-age=86400
   Cross-Origin-Resource-Policy: cross-origin
+
+/assets/admin-growth.css
+  Cache-Control: public, max-age=300
+  Cross-Origin-Resource-Policy: same-origin
+
+/assets/admin-growth.js
+  Cache-Control: public, max-age=300
+  Cross-Origin-Resource-Policy: same-origin

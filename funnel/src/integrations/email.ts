@@ -79,7 +79,7 @@ export async function buildCtx(rt: Runtime, lead: Lead, emailId: string): Promis
   const tz = await leadTimezone(rt, lead);
   const rep = await getRep(rt, lead.closer_id);
   const links = new Map<string, string>();
-  for (const p of ["/", "/apply", "/book", "/breakout", "/resources", "/go/join", "/go/reschedule", "/go/confirm", "/go/requalify"]) {
+  for (const p of ["/", "/apply", "/book", "/breakout", "/resources", "/go/join", "/go/reschedule", "/go/confirm", "/go/requalify", "/refer", "/proof/submit"]) {
     links.set(p, `${rt.origin}/r/${emailId}/${await signShort(secret, `r|${emailId}|${p}`)}?u=${encodeURIComponent(p)}`);
   }
   const link = (path: string) => {
