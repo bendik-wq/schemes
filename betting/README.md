@@ -7,6 +7,7 @@ cd betting
 python3 -m betting scan --sample                        # demo uten nett/nøkkel
 export ODDS_API_KEY=...                                 # gratis på the-odds-api.com
 python3 -m betting scan --sport soccer_epl soccer_norway_eliteserien
+python3 -m betting scan --free --brands ub paf leo      # uten nøkkel: Pinnacle + Kambi-bøker
 python3 -m betting backtest --league E0 --season 2425   # test på ekte historikk
 python3 -m betting model --sample Brann Molde           # modellens fair odds
 python3 -m unittest tests/test_betting.py
@@ -40,5 +41,6 @@ Log-loss: modell 1.0011, Pinnacle 0.9830, blanding 0.9825
 * `--sample` bruker oppdiktede odds og en modell trent på simulerte resultater, så tallene der er bare for å vise funksjonene.
 
 ## Datakilder
+* Uten nøkkel (`--free`, `sources.py`): Pinnacle og Kambi-bøkene (Unibet, Paf, LeoVegas) via datastrømmene nettsidene deres bruker. Dette er ikke offisielle API-er: det kan bryte vilkårene deres og slutte å virke når de endrer noe. Kampene matches på lagnavn og avsparkstid. Kambi priser alle sine merker likt, så arbitrasje mellom dem er sjelden; verdien ligger i Kambi mot Pinnacle.
 * Live odds: [the-odds-api.com](https://the-odds-api.com) (`ODDS_API_KEY`). `python3 -m betting sports` lister sportsnøkler.
 * Resultater og historiske odds: [football-data.co.uk](https://www.football-data.co.uk) – CSV-ene kan brukes direkte med `--results` og `backtest --file`.

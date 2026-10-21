@@ -2,6 +2,7 @@
 
     python -m betting scan --sample                    # offline demo
     python -m betting scan --sport soccer_epl          # live (krever ODDS_API_KEY)
+    python -m betting scan --free                      # live uten nøkkel (Pinnacle + Unibet)
     python -m betting scan --sport soccer_epl --results E0.csv   # + egen modell
     python -m betting model --sample Brann Molde       # modellprediksjon
     python -m betting backtest --league E0 --season 2425   # historisk test
@@ -32,6 +33,9 @@ def _hdr(title: str) -> None:
 def cmd_scan(a: argparse.Namespace) -> None:
     if a.sample:
         events = data.sample_events()
+    elif a.free:
+        from .sources import fetch_free
+        events = fetch_free(tuple(a.brands))
     elif a.file:
         events = data.load_events(a.file)
     else:
@@ -177,6 +181,9 @@ def main(argv: list[str] | None = None) -> None:
     src = s.add_mutually_exclusive_group()
     src.add_argument("--sample", action="store_true", help="bruk innebygde eksempeldata")
     src.add_argument("--file", help="JSON i The Odds API-format")
+    src.add_argument("--free", action="store_true",
+                     help="uten nøkkel: Pinnacle + Kambi (uoffisielle kilder, se sources.py)")
+    s.add_argument("--brands", nargs="+", default=["ub"], help="Kambi-bøker: ub, paf, leo")
     s.add_argument("--sport", nargs="+", default=["soccer_epl"])
     s.add_argument("--regions", default="eu,uk")
     s.add_argument("--markets", default="h2h,totals,spreads")
