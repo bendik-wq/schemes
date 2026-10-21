@@ -209,18 +209,20 @@ class Ticket:
 
 
 def best_ticket(analyses: list[dict], book: str, target_odds: float, min_leg_edge: float = -0.04,
-                min_leg_odds: float = 1.05, min_legs: int = 2) -> Ticket | None:
+                min_leg_odds: float = 1.05, min_legs: int = 2, max_leg_edge: float = 0.12) -> Ticket | None:
     """Høyest treffsjanse med samlet odds >= target_odds, ett spill per kamp hos `book`.
 
     Spill som er priset mer enn `min_leg_edge` under rettferdig pris tas ikke med,
-    så kupongen ikke betaler for mye margin.
+    så kupongen ikke betaler for mye margin. Spill med mer enn `max_leg_edge`
+    over rettferdig pris er nesten alltid datafeil (feil fortegn eller linje) og
+    forkastes også.
     """
     per_match = []
     for a in analyses:
         cands = []
         for l in a["legs"]:
             o = l.prices.get(book)
-            if o and o >= min_leg_odds and l.p * o - 1 >= min_leg_edge:
+            if o and o >= min_leg_odds and min_leg_edge <= l.p * o - 1 <= max_leg_edge:
                 cands.append((l, o))
         per_match.append(cands)
 
