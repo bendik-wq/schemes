@@ -9,6 +9,7 @@ har du positiv forventning.
 """
 from __future__ import annotations
 
+import math
 import statistics
 from dataclasses import dataclass
 
@@ -42,25 +43,36 @@ def fair_probabilities(
     sharp_books: tuple[str, ...] = DEFAULT_SHARP,
     method: str = "shin",
     min_books: int = 3,
+    max_sharp_dev: float = 0.25,
+    max_dev_books: int = 5,
 ) -> tuple[dict[str, float], str] | None:
     """Sann sannsynlighet per utfall. Skarp bok først, ellers median av markedet."""
     complete = m.complete_books()
     outs = m.outcomes()
     if len(outs) < 2:
         return None
+    consensus = None
+    if len(complete) >= min_books:
+        per_outcome: dict[str, list[float]] = {o: [] for o in outs}
+        for prices in complete.values():
+            for o, p in zip(outs, devig([prices[o] for o in outs], method)):
+                per_outcome[o].append(p)
+        med = {o: statistics.median(v) for o, v in per_outcome.items()}
+        s = sum(med.values())
+        consensus = {o: p / s for o, p in med.items()}
+
     for sharp in sharp_books:
         if sharp in complete:
-            probs = devig([complete[sharp][o] for o in outs], method)
-            return dict(zip(outs, probs)), sharp
-    if len(complete) < min_books:
+            probs = dict(zip(outs, devig([complete[sharp][o] for o in outs], method)))
+            # Skiller den skarpe boka seg kraftig fra et bredt marked, er den trolig
+            # utdatert eller feil akkurat her. Da er medianen tryggere.
+            if consensus and len(complete) >= max_dev_books and any(
+                    abs(math.log(probs[o] / consensus[o])) > max_sharp_dev for o in outs):
+                return consensus, f"konsensus av {len(complete)} bøker ({sharp} avviker)"
+            return probs, sharp
+    if consensus is None:
         return None
-    per_outcome: dict[str, list[float]] = {o: [] for o in outs}
-    for prices in complete.values():
-        for o, p in zip(outs, devig([prices[o] for o in outs], method)):
-            per_outcome[o].append(p)
-    med = {o: statistics.median(v) for o, v in per_outcome.items()}
-    s = sum(med.values())
-    return {o: p / s for o, p in med.items()}, f"konsensus av {len(complete)} bøker"
+    return consensus, f"konsensus av {len(complete)} bøker"
 
 
 def blend(market_probs: dict[str, float], model_probs: dict[str, float], model_weight: float) -> dict[str, float]:

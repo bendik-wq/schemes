@@ -44,7 +44,7 @@ class SourcesTest(unittest.TestCase):
         merged = merge_events(pin, kam)
         self.assertEqual(len(merged), 1)
         self.assertEqual(len(merged[0]["bookmakers"]), 2)
-        bets = find_value_bets(group_markets(merged))
+        bets = find_value_bets(group_markets(merged, skip_started=False))
         # Unibet 2.30 på hjemmelaget mot Pinnacle 2.10 skal være value, med Pinnacles lagnavn.
         self.assertIn(("Unibet", "Manchester United"), [(b.bookmaker, b.outcome) for b in bets])
 

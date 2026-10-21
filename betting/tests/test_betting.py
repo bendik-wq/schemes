@@ -74,6 +74,36 @@ class ArbTest(unittest.TestCase):
         self.assertEqual(ms[0].line, -1.5)
 
 
+class LiveDataTest(unittest.TestCase):
+    def test_exchange_commission(self):
+        ms = group_markets([event("e", {"Betfair": {"A": 3.0, "B": 1.5}})])
+        self.assertAlmostEqual(ms[0].prices["Betfair"]["A"], 1 + 2.0 * 0.95)
+
+    def test_started_events_skipped(self):
+        ev = event("e", {"X": {"A": 2.2, "B": 1.7}, "Y": {"A": 1.8, "B": 2.1}})
+        ev["commence_time"] = "2000-01-01T00:00:00Z"
+        self.assertEqual(group_markets([ev]), [])
+        self.assertEqual(len(group_markets([ev], skip_started=False)), 1)
+
+    def test_placeholder_exchange_prices_ignored(self):
+        books = {"Betfair": {"A": 1.1, "B": 1.1}, "Pinnacle": {"A": 1.95, "B": 1.95}, "Soft": {"A": 2.10, "B": 1.75}}
+        bets = find_value_bets(group_markets([event("e", books)]))
+        self.assertEqual([(b.bookmaker, b.outcome, b.source) for b in bets], [("Soft", "A", "Pinnacle")])
+
+    def test_sharp_outlier_falls_back_to_consensus(self):
+        books = {f"b{i}": {"A": 1.12, "B": 6.6} for i in range(5)}
+        books["Pinnacle"] = {"A": 1.30, "B": 3.80}   # skarp bok langt unna resten
+        from betting.value import fair_probabilities
+        probs, source = fair_probabilities(group_markets([event("e", books)])[0])
+        self.assertIn("konsensus", source)
+
+    def test_rounded_stakes_never_lose(self):
+        ms = group_markets([event("e", {"X": {"A": 1.17, "B": 6.0}, "Y": {"A": 1.12, "B": 7.5}})])
+        arb = find_arbs(ms)[0]
+        pay = arb.payouts(arb.stakes(1000, round_to=10))
+        self.assertGreaterEqual(min(pay.values()), 0)
+
+
 class ValueTest(unittest.TestCase):
     def test_soft_book_above_pinnacle_is_value(self):
         ms = group_markets([event("e", {

@@ -7,7 +7,7 @@ import os
 import random
 import urllib.parse
 import urllib.request
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from .models import Match, parse_date
@@ -119,7 +119,8 @@ def sample_events() -> list[dict]:
 
     def ev(i, home, away, books):
         return {"id": f"ev{i}", "sport_key": "soccer_norway_eliteserien",
-                "commence_time": f"2026-10-2{4 + i % 3}T17:00:00Z",
+                "commence_time": (datetime.now(timezone.utc).replace(hour=17, minute=0, second=0, microsecond=0)
+                                  + timedelta(days=2 + i % 3)).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "home_team": home, "away_team": away, "bookmakers": books}
 
     H, A = "Bodø/Glimt", "Rosenborg"

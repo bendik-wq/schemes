@@ -14,6 +14,31 @@ med alle bookmakernes priser side om side.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+
+# Børser tar provisjon av nettogevinsten. Oppgitt odds må justeres ned før
+# de sammenlignes med vanlige bookmakere, ellers ser man falske arbitrasjer.
+COMMISSION = {"Betfair": 0.05, "Betfair Exchange": 0.05, "Smarkets": 0.02, "Matchbook": 0.02}
+
+
+# Rimelig spenn for én bookmakers egen sum av 1/odds på et komplett marked.
+SANE_OVERROUND = (0.97, 1.25)
+
+
+def net_odds(price: float, commission: float) -> float:
+    return 1 + (price - 1) * (1 - commission)
+
+
+def _started(commence_time: str, now: datetime) -> bool:
+    if not commence_time:
+        return False
+    try:
+        t = datetime.fromisoformat(commence_time.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    return t <= now
 
 
 @dataclass
@@ -42,14 +67,38 @@ class Market:
         return seen
 
     def complete_books(self) -> dict[str, dict[str, float]]:
-        """Bare bookmakere som har pris på alle utfall (trengs for devig)."""
+        """Bookmakere med fornuftig pris på alle utfall (trengs for devig).
+
+        Bøker der summen av implisitte sannsynligheter er urimelig forkastes.
+        Det fanger plassholder-odds fra børser uten omsetning (f.eks. 1.09 på
+        alle utfall) og åpenbare tastefeil, som ellers gir falske funn.
+        """
         outs = self.outcomes()
-        return {b: p for b, p in self.prices.items() if all(o in p for o in outs)}
+        out = {}
+        for b, p in self.prices.items():
+            if all(o in p for o in outs):
+                s = sum(1 / p[o] for o in outs)
+                if SANE_OVERROUND[0] <= s <= SANE_OVERROUND[1]:
+                    out[b] = p
+        return out
+
+    def _suspect_books(self) -> set[str]:
+        outs = self.outcomes()
+        bad = set()
+        for b, p in self.prices.items():
+            if all(o in p for o in outs):
+                s = sum(1 / p[o] for o in outs)
+                if not SANE_OVERROUND[0] <= s <= SANE_OVERROUND[1]:
+                    bad.add(b)
+        return bad
 
     def best_prices(self) -> dict[str, tuple[float, str]]:
         """Beste odds per utfall på tvers av bookmakere: {utfall: (odds, bookmaker)}."""
         best: dict[str, tuple[float, str]] = {}
+        bad = self._suspect_books()
         for book, outs in self.prices.items():
+            if book in bad:
+                continue
             for name, price in outs.items():
                 if name not in best or price > best[name][0]:
                     best[name] = (price, book)
@@ -68,11 +117,24 @@ def _outcome_key(market_key: str, outcome: dict, home: str) -> tuple[str, float 
     return name, None
 
 
-def group_markets(events: list[dict], markets: tuple[str, ...] = ("h2h", "totals", "spreads")) -> list[Market]:
+def group_markets(
+    events: list[dict],
+    markets: tuple[str, ...] = ("h2h", "totals", "spreads"),
+    commission: dict[str, float] | None = None,
+    skip_started: bool = True,
+    now: datetime | None = None,
+) -> list[Market]:
+    """`skip_started` hopper over kamper som har startet: live-odds fra API-et
+    er forsinket og gir falske funn. `commission` justerer børsodds (standard COMMISSION)."""
+    commission = COMMISSION if commission is None else commission
+    now = now or datetime.now(timezone.utc)
     grouped: dict[tuple, Market] = {}
     for ev in events:
+        if skip_started and _started(ev.get("commence_time", ""), now):
+            continue
         for bm in ev.get("bookmakers", []):
             book = bm.get("title") or bm["key"]
+            c = commission.get(book, 0.0)
             for mk in bm.get("markets", []):
                 if mk["key"] not in markets:
                     continue
@@ -87,5 +149,6 @@ def group_markets(events: list[dict], markets: tuple[str, ...] = ("h2h", "totals
                             home=ev["home_team"], away=ev["away_team"],
                             market=mk["key"], line=line,
                         )
-                    m.prices.setdefault(book, {})[name] = float(oc["price"])
+                    price = float(oc["price"])
+                    m.prices.setdefault(book, {})[name] = round(net_odds(price, c), 4) if c else price
     return list(grouped.values())

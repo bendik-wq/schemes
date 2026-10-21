@@ -24,13 +24,15 @@ class Arb:
         `round_to` runder hver innsats (f.eks. 10 kr) så det ser mindre
         mistenkelig ut hos bookmakeren. Sjekk `payouts` etterpå.
         """
-        out = {}
-        for name, (price, _) in self.legs.items():
-            s = total * implied(price) / self.overround
-            if round_to:
-                s = round(s / round_to) * round_to
-            out[name] = s
-        return out
+        exact = {n: total * implied(p) / self.overround for n, (p, _) in self.legs.items()}
+        # Prøv grov avrunding først; gir den tap på et utfall, prøv finere, til slutt eksakt.
+        for step in (round_to, 5, 1):
+            if not step or step > round_to:
+                continue
+            out = {n: round(s / step) * step for n, s in exact.items()}
+            if all(v > 0 for v in out.values()) and min(self.payouts(out).values()) >= 0:
+                return out
+        return exact
 
     def payouts(self, stakes: dict[str, float]) -> dict[str, float]:
         total = sum(stakes.values())
