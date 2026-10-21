@@ -174,6 +174,18 @@ def cmd_backtest(a: argparse.Namespace) -> None:
           "det sikreste tegnet på ekte edge; ROI på én sesong er mest støy.")
 
 
+def cmd_patterns(a: argparse.Namespace) -> None:
+    from .patterns import all_strategies, load_games, run
+    games = load_games(a.dir)
+    rows = run(games, all_strategies(games), min_n=a.min_n)
+    rows.sort(key=lambda r: -(r["z"] if r["z"] == r["z"] else -99))
+    print(f"{len(games)} kamper, {len(rows)} mønstre. ROI med beste sluttkurs (snittkurs i parentes).")
+    print("Med mange tester vil noen se gode ut ved flaks: krev positiv ROI i både trening og test.\n")
+    for r in rows:
+        print(f"{r['mønster'][:60]:<61}{r['spill']:>6}  {r['ROI beste']*100:+6.1f}% ({r['ROI snitt']*100:+6.1f}%)"
+              f"  z {r['z']:+5.1f}  trening {r['ROI trening']*100:+6.1f}%  test {r['ROI test']*100:+6.1f}%")
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(prog="betting", description="Arbitrasje, value bets og parlays")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -229,6 +241,11 @@ def main(argv: list[str] | None = None) -> None:
     ui.add_argument("--no-browser", action="store_true")
     ui.set_defaults(func=lambda a: __import__("betting.server", fromlist=["serve"]).serve(
         port=a.port, open_browser=not a.no_browser))
+
+    pt = sub.add_parser("patterns", help="let etter lønnsomme mønstre i historiske data")
+    pt.add_argument("--dir", required=True, help="mappe med football-data CSV-er (LIGA_SESONG.csv)")
+    pt.add_argument("--min-n", type=int, default=300)
+    pt.set_defaults(func=cmd_patterns)
 
     sp = sub.add_parser("sports", help="list sportsnøkler fra The Odds API")
     sp.set_defaults(func=lambda a: [print(f"{x['key']:<40}{x['title']}") for x in data.list_sports()])
