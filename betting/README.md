@@ -24,6 +24,10 @@ python3 -m unittest tests/test_betting.py
 
 Serveren lytter bare på 127.0.0.1. API-nøkkelen lagres kun i nettleseren din. Nedlastede resultatfiler caches i `~/.betting_cache`.
 
+## Publisert på GitHub Pages
+
+`.github/workflows/betting-pages.yml` bygger en statisk versjon (`betting/build_site.py`) og publiserer den på GitHub Pages ved hver push og hver morgen. Siden kjører Python-koden i nettleseren med Pyodide, og resultatdata fra football-data.co.uk lastes ned av workflowen. The Odds API kalles direkte fra nettleseren; Pinnacle/Kambi virker bare hvis de tillater kall fra andre nettsider (CORS).
+
 ## Hva den finner
 
 | Modul | Hva | Hvorfor det er en ineffektivitet |

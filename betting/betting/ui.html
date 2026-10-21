@@ -131,7 +131,7 @@ td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numer
       <label>Data
         <select id="m-league"><option value="">Eksempel (simulert Eliteserien)</option></select>
       </label>
-      <label>Sesong <input id="m-season" value="2526" placeholder="2526"></label>
+      <label>Sesong <input id="m-season" value="2526,2627" placeholder="2526,2627"></label>
       <label>Halveringstid (dager) <input id="m-hl" type="number" value="180"></label>
     </div>
     <div class="row"><button class="btn" id="m-load">Last lag</button><span class="note" id="m-status"></span></div>
@@ -149,7 +149,7 @@ td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numer
   <div class="panel">
     <div class="grid">
       <label>Liga <select id="b-league"></select></label>
-      <label>Sesong <input id="b-season" value="2425"></label>
+      <label>Sesong <input id="b-season" value="2526"></label>
       <label>Spill hos
         <select id="b-soft">
           <option value="B365">Bet365</option><option value="BW">Bwin</option>
@@ -193,11 +193,100 @@ document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
 });
 const savedTab = store.get("tab"); if (savedTab) document.querySelector(`nav [data-tab=${savedTab}]`)?.click();
 
+// To moduser: lokalt (python3 -m betting ui) går kall til Python-serveren.
+// På GitHub Pages finnes ingen server, så Python-koden kjøres i nettleseren med Pyodide.
+const STATIC = !["127.0.0.1", "localhost"].includes(location.hostname) || location.protocol === "file:";
+const PY_MODULES = ["__init__", "odds", "markets", "arbitrage", "value", "parlay", "models", "data", "backtest", "sources", "service"];
+const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/";
+let pyReady = null;
+
+function loadScript(src) {
+  return new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => fail(new Error("Fikk ikke lastet " + src)); document.head.appendChild(s); });
+}
+function initPython() {
+  if (!pyReady) pyReady = (async () => {
+    await loadScript(PYODIDE + "pyodide.js");
+    const py = await loadPyodide({indexURL: PYODIDE});
+    py.FS.mkdirTree("/app/betting"); py.FS.mkdirTree("/data");
+    await Promise.all(PY_MODULES.map(async (m) => {
+      const r = await fetch(`py/betting/${m}.py`); if (!r.ok) throw new Error(`mangler py/betting/${m}.py`);
+      py.FS.writeFile(`/app/betting/${m}.py`, await r.text());
+    }));
+    py.runPython(`import os, sys; os.environ["BETTING_CACHE"] = "/data"; sys.path.insert(0, "/app")
+import json, betting.service as service`);
+    return py;
+  })().catch((e) => { pyReady = null; throw e; });
+  return pyReady;
+}
+async function ensureCsv(py, league, seasons) {
+  for (const season of String(seasons).split(",").map((x) => x.trim()).filter(Boolean)) {
+    const name = `${league}_${season}.csv`;
+    if (py.FS.analyzePath(`/data/${name}`).exists) continue;
+    const r = await fetch(`data/${name}`);
+    if (!r.ok) throw new Error(`Ingen resultatdata for ${LEAGUES[league] || league} sesong ${season} på siden.`);
+    py.FS.writeFile(`/data/${name}`, await r.text());
+  }
+}
+async function getJson(url, label) {
+  let r;
+  try { r = await fetch(url); } catch { throw new Error(`${label}: nettleseren fikk ikke kontakt (blokkert av CORS eller nettverk).`); }
+  if (!r.ok) { let msg = r.statusText; try { msg = (await r.json()).message || msg; } catch {} throw new Error(`${label}: ${r.status} ${msg}`); }
+  return r.json();
+}
+async function prepareScan(params) {
+  if (params.source === "oddsapi") {
+    if (!params.api_key) throw new Error("Skriv inn API-nøkkel fra the-odds-api.com.");
+    const events = [];
+    for (const sport of params.sports) {
+      const q = new URLSearchParams({apiKey: params.api_key, regions: "eu,uk", markets: "h2h,totals,spreads", oddsFormat: "decimal"});
+      events.push(...await getJson(`https://api.the-odds-api.com/v4/sports/${sport}/odds?${q}`, `The Odds API (${sport})`));
+    }
+    return {...params, source: "events", events, api_key: ""};
+  }
+  if (params.source === "free") {
+    const warn = [], raw = {kambi: {}};
+    try {
+      const base = "https://guest.api.arcadia.pinnacle.com/0.1/sports/29";
+      raw.pinnacle = await Promise.all([getJson(`${base}/matchups`, "Pinnacle"), getJson(`${base}/markets/straight`, "Pinnacle")]);
+    } catch (e) { warn.push(e.message); }
+    for (const b of params.brands) {
+      try {
+        raw.kambi[b] = await getJson(`https://eu-offering-api.kambicdn.com/offering/v2018/${b}/listView/football/all/all/all/matches.json?lang=en_GB&market=GB&useCombined=true`, `Kambi (${b})`);
+      } catch (e) { warn.push(e.message); }
+    }
+    if (!raw.pinnacle && !Object.keys(raw.kambi).length) throw new Error("Ingen gratiskilder svarte:\n" + warn.join("\n"));
+    return {...params, source: "raw_free", raw, fetch_warnings: warn};
+  }
+  return params;
+}
 async function api(name, params) {
-  const r = await fetch(`/api/${name}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(params)});
-  const j = await r.json();
-  if (!r.ok) throw new Error(j.error || r.statusText);
-  return j;
+  if (!STATIC) {
+    const r = await fetch(`/api/${name}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(params)});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    return j;
+  }
+  const py = await initPython();
+  if (name === "scan") {
+    params = await prepareScan(params);
+    if (params.model_league) await ensureCsv(py, params.model_league, params.model_season || "2526,2627");
+  } else if (params.league) {
+    await ensureCsv(py, params.league, params.season || (name === "backtest" ? "2526" : "2526,2627"));
+  } else if (name === "backtest") {
+    await ensureCsv(py, "E0", "2526");
+  }
+  py.globals.set("_args", JSON.stringify(params));
+  try {
+    return JSON.parse(py.runPython(`json.dumps(service.${name}(json.loads(_args)), ensure_ascii=False)`));
+  } catch (e) {
+    const lines = String(e.message || e).trim().split("\n"); throw new Error(lines[lines.length - 1]);
+  }
+}
+if (STATIC) {
+  const st = $("#s-status"); st.textContent = "Laster Python i nettleseren …";
+  initPython().then(() => st.textContent = "Klar.").catch((e) => st.textContent = e.message);
+  document.querySelector(".sub").insertAdjacentHTML("beforeend",
+    " Kjører i nettleseren din: API-nøkkelen og alle beregninger blir på din maskin.");
 }
 async function busy(btn, status, fn) {
   btn.disabled = true; status.textContent = "Jobber …"; const t = performance.now();

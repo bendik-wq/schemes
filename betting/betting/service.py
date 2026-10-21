@@ -29,6 +29,17 @@ def results_file(league: str, season: str) -> Path:
     return path
 
 
+def load_results(league: str, seasons: str) -> list:
+    """Resultater for én eller flere sesonger, f.eks. "2526,2627"."""
+    out = []
+    for season in [x.strip() for x in str(seasons).split(",") if x.strip()]:
+        out += data.load_results_csv(results_file(league, season))
+    return out
+
+
+DEFAULT_MODEL_SEASONS = "2526,2627"
+
+
 def scan(p: dict) -> dict:
     source = p.get("source", "sample")
     warnings: list[str] = []
@@ -37,6 +48,23 @@ def scan(p: dict) -> dict:
     elif source == "free":
         from .sources import fetch_free
         events = fetch_free(tuple(p.get("brands") or ["ub"]))
+    elif source == "events":
+        # Odds hentet av nettleseren (GitHub Pages-versjonen) i The Odds API-format.
+        events = p.get("events") or []
+    elif source == "raw_free":
+        # Rådata fra Pinnacle/Kambi hentet av nettleseren.
+        from .sources import KAMBI_BRANDS, merge_events, parse_kambi, parse_pinnacle
+        raw = p.get("raw") or {}
+        parts = []
+        if raw.get("pinnacle"):
+            parts.append(parse_pinnacle(*raw["pinnacle"]))
+        else:
+            parts.append([])
+            warnings.append("Fikk ikke hentet Pinnacle; value bets mot skarp pris mangler.")
+        for brand, payload in (raw.get("kambi") or {}).items():
+            parts.append(parse_kambi(payload, KAMBI_BRANDS.get(brand, brand)))
+        events = merge_events(*parts) if parts[0] else [e for part in parts for e in part]
+        warnings += p.get("fetch_warnings") or []
     elif source == "oddsapi":
         events = []
         for sport in p.get("sports") or ["soccer_epl"]:
@@ -56,7 +84,7 @@ def scan(p: dict) -> dict:
     if source == "sample":
         results = data.simulate_results()
     elif league:
-        results = data.load_results_csv(results_file(league, p.get("model_season") or "2526"))
+        results = load_results(league, p.get("model_season") or DEFAULT_MODEL_SEASONS)
     else:
         results = None
     if results:
@@ -115,7 +143,7 @@ def scan(p: dict) -> dict:
 
 def _model(p: dict) -> DixonColes:
     if p.get("league"):
-        results = data.load_results_csv(results_file(p["league"], p.get("season") or "2526"))
+        results = load_results(p["league"], p.get("season") or DEFAULT_MODEL_SEASONS)
     else:
         results = data.simulate_results()
     return DixonColes(half_life_days=_f(p, "half_life", 180)).fit(results)
@@ -148,7 +176,7 @@ def predict(p: dict) -> dict:
 
 def backtest(p: dict) -> dict:
     from . import backtest as bt
-    path = results_file(p.get("league") or "E0", p.get("season") or "2425")
+    path = results_file(p.get("league") or "E0", p.get("season") or "2526")
     res = bt.run(str(path), warmup=int(_f(p, "warmup", 100)), min_edge=_f(p, "min_edge", 0.02),
                  model_weight=_f(p, "model_weight", 0.3), soft=p.get("soft") or "B365")
     out = []
