@@ -4,6 +4,7 @@ Statistisk verktøy som leter etter ineffektiviteter i oddsmarkedet. Ren Python 
 
 ```bash
 cd betting
+python3 -m betting ui                                   # web-grensesnitt på http://127.0.0.1:8765
 python3 -m betting scan --sample                        # demo uten nett/nøkkel
 export ODDS_API_KEY=...                                 # gratis på the-odds-api.com
 python3 -m betting scan --sport soccer_epl soccer_norway_eliteserien
@@ -12,6 +13,16 @@ python3 -m betting backtest --league E0 --season 2425   # test på ekte historik
 python3 -m betting model --sample Brann Molde           # modellens fair odds
 python3 -m unittest tests/test_betting.py
 ```
+
+## Web-grensesnitt
+
+`python3 -m betting ui` starter en lokal server og åpner nettleseren. Tre faner:
+
+* **Skann odds** – velg kilde (eksempeldata, gratis Pinnacle + Kambi, eller The Odds API med nøkkel), bankroll, min. edge og Kelly. Viser arbitrasje med innsats per ben, value bets (sorterbar tabell), parlays og modell mot marked.
+* **Modell** – velg liga, last styrkeliste og beregn sannsynligheter og fair odds for en kamp.
+* **Backtest** – kjør strategiene på en historisk sesong og se ROI, CLV og log-loss.
+
+Serveren lytter bare på 127.0.0.1. API-nøkkelen lagres kun i nettleseren din. Nedlastede resultatfiler caches i `~/.betting_cache`.
 
 ## Hva den finner
 

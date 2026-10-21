@@ -1,5 +1,6 @@
 """Kommandolinje.
 
+    python -m betting ui                               # web-grensesnitt i nettleseren
     python -m betting scan --sample                    # offline demo
     python -m betting scan --sport soccer_epl          # live (krever ODDS_API_KEY)
     python -m betting scan --free                      # live uten nøkkel (Pinnacle + Unibet)
@@ -222,6 +223,12 @@ def main(argv: list[str] | None = None) -> None:
     bt.add_argument("--model-weight", type=float, default=0.3)
     bt.add_argument("--half-life", type=float, default=180)
     bt.set_defaults(func=cmd_backtest)
+
+    ui = sub.add_parser("ui", help="start web-grensesnittet i nettleseren")
+    ui.add_argument("--port", type=int, default=8765)
+    ui.add_argument("--no-browser", action="store_true")
+    ui.set_defaults(func=lambda a: __import__("betting.server", fromlist=["serve"]).serve(
+        port=a.port, open_browser=not a.no_browser))
 
     sp = sub.add_parser("sports", help="list sportsnøkler fra The Odds API")
     sp.set_defaults(func=lambda a: [print(f"{x['key']:<40}{x['title']}") for x in data.list_sports()])

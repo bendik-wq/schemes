@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Betting-algo</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #14171c; --muted: #5f6773; --line: #e3e6eb;
+  --accent: #1f6feb; --accent-ink: #ffffff; --good: #137a3f; --good-bg: #e6f4ec;
+  --bad: #b42318; --bad-bg: #fdecea; --warn-bg: #fff6e0; --warn-ink: #7a4b00;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216; --panel: #171b21; --ink: #e8ebef; --muted: #98a1ad; --line: #2a3039;
+    --accent: #4c8dff; --accent-ink: #0b0d10; --good: #4cc982; --good-bg: #13291d;
+    --bad: #ff7b72; --bad-bg: #2d1615; --warn-bg: #2a2110; --warn-ink: #f0c36b;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 18px 20px 0; max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 14px; }
+nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+nav button { background: none; border: 0; padding: 10px 14px; font: inherit; color: var(--muted);
+  border-bottom: 2px solid transparent; cursor: pointer; }
+nav button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px 20px 60px; }
+.tab { display: none; } .tab.on { display: block; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+input, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 9px; min-width: 0; }
+.checks { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--ink); font-size: 14px; }
+.checks label { flex-direction: row; align-items: center; color: var(--ink); font-size: 14px; }
+.row { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.btn { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 6px;
+  padding: 9px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+.btn:disabled { opacity: .5; cursor: wait; }
+.note { color: var(--muted); font-size: 12px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+.err { background: var(--bad-bg); color: var(--bad); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; white-space: pre-wrap; }
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+h2 { font-size: 15px; margin: 0 0 10px; display: flex; gap: 8px; align-items: baseline; }
+h2 .count { color: var(--muted); font-weight: 400; font-size: 13px; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; cursor: pointer; user-select: none; }
+td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.card .top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.badge { background: var(--good-bg); color: var(--good); border-radius: 6px; padding: 2px 8px; font-weight: 600;
+  font-family: var(--mono); font-size: 12px; }
+.empty { color: var(--muted); font-style: italic; }
+.bars div { display: grid; grid-template-columns: 200px 1fr 60px 60px; gap: 8px; align-items: center; padding: 3px 0; }
+.bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+@media (max-width: 640px) {
+  header, main { padding-left: 16px; padding-right: 16px; }
+  .bars div { grid-template-columns: 1fr 60px 60px; } .bars .bar { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Betting-algo</h1>
+  <p class="sub">Arbitrasje, value bets, parlays og Dixon–Coles-modell. Sjekk alltid oddsen hos bookmakeren før du spiller.</p>
+  <nav>
+    <button data-tab="scan" class="on">Skann odds</button>
+    <button data-tab="model">Modell</button>
+    <button data-tab="backtest">Backtest</button>
+  </nav>
+</header>
+<main>
+
+<!-- ===================== SKANN ===================== -->
+<section id="scan" class="tab on">
+  <div class="panel">
+    <div class="grid">
+      <label>Kilde
+        <select id="s-source">
+          <option value="sample">Eksempeldata (offline)</option>
+          <option value="free">Gratis: Pinnacle + Kambi</option>
+          <option value="oddsapi">The Odds API (nøkkel)</option>
+        </select>
+      </label>
+      <label class="only-oddsapi">API-nøkkel <input id="s-key" type="password" placeholder="ODDS_API_KEY"></label>
+      <label class="only-oddsapi">Ligaer (komma)
+        <input id="s-sports" value="soccer_epl,soccer_norway_eliteserien,soccer_uefa_champs_league"></label>
+      <label>Bankroll (kr) <input id="s-bankroll" type="number" value="10000"></label>
+      <label>Min. edge (%) <input id="s-edge" type="number" step="0.5" value="2"></label>
+      <label>Kelly-andel <input id="s-kelly" type="number" step="0.05" value="0.25"></label>
+      <label>Maks odds <input id="s-maxodds" type="number" step="0.5" value="10"></label>
+      <label>Arb-innsats totalt (kr) <input id="s-arbstake" type="number" value="1000"></label>
+      <label>Modell-liga
+        <select id="s-league">
+          <option value="">Ingen modell</option>
+        </select>
+      </label>
+      <label>Modell-vekt <input id="s-mw" type="number" step="0.05" value="0.2"></label>
+      <label>Devig-metode
+        <select id="s-devig"><option>shin</option><option>power</option><option>multiplicative</option><option>additive</option></select>
+      </label>
+    </div>
+    <div class="row only-free checks">
+      Kambi-bøker:
+      <label><input type="checkbox" value="ub" checked> Unibet</label>
+      <label><input type="checkbox" value="paf"> Paf</label>
+      <label><input type="checkbox" value="leo"> LeoVegas</label>
+    </div>
+    <div class="row">
+      <button class="btn" id="s-run">Skann</button>
+      <span class="note" id="s-status"></span>
+    </div>
+  </div>
+  <div id="s-out"></div>
+</section>
+
+<!-- ===================== MODELL ===================== -->
+<section id="model" class="tab">
+  <div class="panel">
+    <div class="grid">
+      <label>Data
+        <select id="m-league"><option value="">Eksempel (simulert Eliteserien)</option></select>
+      </label>
+      <label>Sesong <input id="m-season" value="2526" placeholder="2526"></label>
+      <label>Halveringstid (dager) <input id="m-hl" type="number" value="180"></label>
+    </div>
+    <div class="row"><button class="btn" id="m-load">Last lag</button><span class="note" id="m-status"></span></div>
+    <div class="grid" style="margin-top:14px">
+      <label>Hjemmelag <select id="m-home"></select></label>
+      <label>Bortelag <select id="m-away"></select></label>
+    </div>
+    <div class="row"><button class="btn" id="m-run" disabled>Beregn kamp</button></div>
+  </div>
+  <div id="m-out"></div>
+</section>
+
+<!-- ===================== BACKTEST ===================== -->
+<section id="backtest" class="tab">
+  <div class="panel">
+    <div class="grid">
+      <label>Liga <select id="b-league"></select></label>
+      <label>Sesong <input id="b-season" value="2425"></label>
+      <label>Spill hos
+        <select id="b-soft">
+          <option value="B365">Bet365</option><option value="BW">Bwin</option>
+          <option value="WH">William Hill</option><option value="1XB">1xBet</option>
+          <option value="Max">Beste pris (Max)</option>
+        </select>
+      </label>
+      <label>Min. edge (%) <input id="b-edge" type="number" step="0.5" value="2"></label>
+      <label>Modell-vekt <input id="b-mw" type="number" step="0.05" value="0.3"></label>
+      <label>Oppvarming (kamper) <input id="b-warm" type="number" value="100"></label>
+    </div>
+    <div class="row"><button class="btn" id="b-run">Kjør backtest</button><span class="note" id="b-status"></span></div>
+    <p class="note">Data fra football-data.co.uk. Modellen trenes bare på kamper før hver kamp. CLV = hvor mye bedre oddsen var enn Pinnacles sluttkurs; positiv CLV over tid er det sikreste tegnet på ekte edge.</p>
+  </div>
+  <div id="b-out"></div>
+</section>
+
+</main>
+<script>
+const LEAGUES = {E0: "Premier League", E1: "Championship", SP1: "La Liga", D1: "Bundesliga",
+  I1: "Serie A", F1: "Ligue 1", N1: "Eredivisie", SC0: "Skottland"};
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const pct = (x, d = 1) => x == null ? "–" : `${x >= 0 ? "+" : ""}${(x * 100).toFixed(d)}%`;
+const pctPlain = (x) => `${(x * 100).toFixed(1)}%`;
+const kr = (x) => Math.round(x).toLocaleString("nb-NO");
+const cls = (x) => x > 0 ? "pos" : x < 0 ? "neg" : "";
+const mkt = (m, line) => m === "h2h" ? "1X2" : m === "totals" ? `O/U ${line}` : `HC ${line > 0 ? "+" : ""}${line}`;
+const time = (s) => s ? new Date(s).toLocaleString("nb-NO", {weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}) : "";
+const store = {get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+               set(k, v) { try { localStorage.setItem(k, v); } catch {} }};
+
+for (const [k, v] of Object.entries(LEAGUES)) {
+  for (const id of ["#s-league", "#m-league", "#b-league"]) $(id).add(new Option(v, k));
+}
+
+// Faner
+document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("nav button, .tab").forEach((x) => x.classList.remove("on"));
+  b.classList.add("on"); $("#" + b.dataset.tab).classList.add("on"); store.set("tab", b.dataset.tab);
+});
+const savedTab = store.get("tab"); if (savedTab) document.querySelector(`nav [data-tab=${savedTab}]`)?.click();
+
+async function api(name, params) {
+  const r = await fetch(`/api/${name}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(params)});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+async function busy(btn, status, fn) {
+  btn.disabled = true; status.textContent = "Jobber …"; const t = performance.now();
+  try { await fn(); status.textContent = `Ferdig på ${((performance.now() - t) / 1000).toFixed(1)} s`; }
+  catch (e) { status.textContent = ""; throw e; }
+  finally { btn.disabled = false; }
+}
+const errBox = (e) => `<div class="err">${esc(e.message || e)}</div>`;
+
+// Sorterbare tabeller
+function table(cols, rows, empty = "Ingen funn.") {
+  if (!rows.length) return `<p class="empty">${empty}</p>`;
+  const head = cols.map((c, i) => `<th class="${c.num ? "num" : ""}" data-i="${i}">${c.h}</th>`).join("");
+  const body = rows.map((r) => `<tr>${cols.map((c) => {
+    const v = c.v(r); const raw = c.raw ? c.raw(r) : v;
+    return `<td class="${c.num ? "num" : ""} ${c.c ? c.c(r) : ""}" data-s="${esc(raw)}">${c.html ? v : esc(v)}</td>`;
+  }).join("")}</tr>`).join("");
+  return `<div class="scroll"><table class="sortable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+document.addEventListener("click", (e) => {
+  const th = e.target.closest("table.sortable th"); if (!th) return;
+  const tb = th.closest("table").tBodies[0]; const i = +th.dataset.i;
+  const dir = th.dataset.dir === "desc" ? 1 : -1; th.dataset.dir = dir === 1 ? "asc" : "desc";
+  [...tb.rows].sort((a, b) => {
+    const x = a.cells[i].dataset.s, y = b.cells[i].dataset.s; const nx = parseFloat(x), ny = parseFloat(y);
+    return (isNaN(nx) || isNaN(ny) ? x.localeCompare(y) : nx - ny) * dir;
+  }).forEach((r) => tb.appendChild(r));
+});
+
+// ---------------- Skann ----------------
+const src = $("#s-source");
+src.value = store.get("source", "sample"); $("#s-key").value = store.get("key", "");
+function toggleSource() {
+  document.querySelectorAll(".only-oddsapi").forEach((x) => x.style.display = src.value === "oddsapi" ? "" : "none");
+  document.querySelectorAll(".only-free").forEach((x) => x.style.display = src.value === "free" ? "" : "none");
+}
+src.onchange = () => { store.set("source", src.value); toggleSource(); }; toggleSource();
+
+$("#s-run").onclick = async () => {
+  const out = $("#s-out");
+  store.set("key", $("#s-key").value);
+  const params = {
+    source: src.value, api_key: $("#s-key").value,
+    sports: $("#s-sports").value.split(",").map((x) => x.trim()).filter(Boolean),
+    brands: [...document.querySelectorAll(".only-free input:checked")].map((x) => x.value),
+    bankroll: $("#s-bankroll").value, kelly: $("#s-kelly").value, min_edge: $("#s-edge").value / 100,
+    max_odds: $("#s-maxodds").value, arb_stake: $("#s-arbstake").value, devig: $("#s-devig").value,
+    model_league: $("#s-league").value, model_weight: $("#s-mw").value,
+  };
+  try { await busy($("#s-run"), $("#s-status"), async () => renderScan(await api("scan", params))); }
+  catch (e) { out.innerHTML = errBox(e); }
+};
+
+function renderScan(r) {
+  const s = r.summary;
+  let h = `<div class="chips"><span class="chip">${s.events} kamper</span><span class="chip">${s.markets} markeder</span>
+    <span class="chip">Bøker: ${esc(s.books.join(", ") || "–")}</span>
+    ${s.model ? `<span class="chip">Modell: ${s.model.matches} kamper, dekker ${s.model.markets} markeder</span>` : ""}</div>`;
+  h += r.warnings.map((w) => `<div class="warn">${esc(w)}</div>`).join("");
+  if (!s.events) h += `<div class="warn">Ingen kamper funnet. For «Gratis» må minst to kilder ha samme kamp.</div>`;
+
+  h += `<div class="panel"><h2>Arbitrasje <span class="count">${r.arbs.length} · garantert gevinst uansett utfall</span></h2>`;
+  h += r.arbs.length ? `<div class="cards">${r.arbs.map((a) => `<div class="card">
+      <div class="top"><div><b>${esc(a.match)}</b><div class="note">${mkt(a.market, a.line)} · ${time(a.start)}</div></div>
+      <span class="badge">${pct(a.roi, 2)}</span></div>
+      ${table([{h: "Utfall", v: (l) => l.outcome}, {h: "Odds", num: 1, v: (l) => l.odds.toFixed(2)},
+               {h: "Bok", v: (l) => l.book}, {h: "Innsats", num: 1, v: (l) => kr(l.stake)},
+               {h: "Gevinst", num: 1, v: (l) => (l.profit >= 0 ? "+" : "") + kr(l.profit), c: (l) => cls(l.profit)}], a.legs)}
+    </div>`).join("")}</div>` : `<p class="empty">Ingen arbitrasje akkurat nå.</p>`;
+  h += `</div>`;
+
+  if (r.middles.length) {
+    h += `<div class="panel"><h2>Middles <span class="count">${r.middles.length}</span></h2>${table([
+      {h: "Kamp", v: (m) => m.match}, {h: "Over", v: (m) => `${m.over[0]} @ ${m.over[1]} (${m.over[2]})`},
+      {h: "Under", v: (m) => `${m.under[0]} @ ${m.under[1]} (${m.under[2]})`},
+      ...Object.keys(r.middles[0].table).map((k) => ({h: k + " /100", num: 1, v: (m) => m.table[k].toFixed(1), c: (m) => cls(m.table[k])}))],
+      r.middles)}</div>`;
+  }
+
+  h += `<div class="panel"><h2>Value bets <span class="count">${r.value.length} · odds over rettferdig pris</span></h2>${table([
+    {h: "Kamp", v: (b) => b.match}, {h: "Start", v: (b) => time(b.start), raw: (b) => b.start},
+    {h: "Marked", v: (b) => mkt(b.market, b.line)}, {h: "Utfall", v: (b) => b.outcome}, {h: "Bok", v: (b) => b.book},
+    {h: "Odds", num: 1, v: (b) => b.odds.toFixed(2)}, {h: "Fair", num: 1, v: (b) => b.fair_odds.toFixed(2)},
+    {h: "Edge", num: 1, v: (b) => pct(b.edge), raw: (b) => b.edge, c: (b) => cls(b.edge)},
+    {h: "Innsats", num: 1, v: (b) => kr(b.stake), raw: (b) => b.stake}],
+    r.value, "Ingen value bets over grensen.")}
+    ${r.value.length ? `<p class="note">Fair pris fra: ${esc([...new Set(r.value.map((b) => b.source))].join(", "))}. Innsats = fraksjonell Kelly.</p>` : ""}</div>`;
+
+  h += `<div class="panel"><h2>Parlays <span class="count">${r.parlays.length} · bare +EV-ben, ulike kamper, samme bok</span></h2>`;
+  h += r.parlays.length ? `<div class="cards">${r.parlays.map((p) => `<div class="card">
+      <div class="top"><div><b>${esc(p.book)}</b><div class="note">odds ${p.odds.toFixed(2)} · sannsynlighet ${pctPlain(p.prob)} · innsats ${kr(p.stake)} kr</div></div>
+      <span class="badge">${pct(p.edge)}</span></div>
+      ${p.legs.map((l) => `<div>${esc(l.match)} · ${mkt(l.market, l.line)} · <b>${esc(l.outcome)}</b> <span class="note">${l.odds.toFixed(2)}</span></div>`).join("")}
+    </div>`).join("")}</div>` : `<p class="empty">Ingen lønnsomme parlays.</p>`;
+  h += `</div>`;
+
+  if (r.model_vs_market.length) {
+    h += `<div class="panel"><h2>Modell mot marked <span class="count">største avvik – store tall betyr oftest at modellen tar feil</span></h2>${table([
+      {h: "Kamp", v: (x) => x.match}, {h: "Marked", v: (x) => mkt(x.market, x.line)}, {h: "Utfall", v: (x) => x.outcome},
+      {h: "Beste odds", num: 1, v: (x) => x.odds.toFixed(2)}, {h: "Bok", v: (x) => x.book},
+      {h: "Modell-odds", num: 1, v: (x) => x.model_odds.toFixed(2)},
+      {h: "Avvik", num: 1, v: (x) => pct(x.edge), raw: (x) => x.edge, c: (x) => cls(x.edge)}], r.model_vs_market)}</div>`;
+  }
+  $("#s-out").innerHTML = h;
+}
+
+// ---------------- Modell ----------------
+const mParams = () => ({league: $("#m-league").value, season: $("#m-season").value, half_life: $("#m-hl").value});
+$("#m-load").onclick = async () => {
+  try {
+    await busy($("#m-load"), $("#m-status"), async () => {
+      const r = await api("teams", mParams());
+      for (const sel of [$("#m-home"), $("#m-away")]) {
+        sel.innerHTML = ""; r.teams.forEach((t) => sel.add(new Option(t.team, t.team)));
+      }
+      if (r.teams.length > 1) $("#m-away").selectedIndex = 1;
+      $("#m-run").disabled = false;
+      $("#m-out").innerHTML = `<div class="panel"><h2>Styrkeliste <span class="count">angrep høyt = bra, forsvar lavt = bra</span></h2>${table([
+        {h: "#", num: 1, v: (t) => r.teams.indexOf(t) + 1}, {h: "Lag", v: (t) => t.team},
+        {h: "Angrep", num: 1, v: (t) => t.attack.toFixed(2), c: (t) => cls(t.attack)},
+        {h: "Forsvar", num: 1, v: (t) => t.defence.toFixed(2), c: (t) => cls(-t.defence)},
+        {h: "Netto", num: 1, v: (t) => (t.attack - t.defence).toFixed(2)}], r.teams)}</div>`;
+    });
+  } catch (e) { $("#m-out").innerHTML = errBox(e); }
+};
+$("#m-run").onclick = async () => {
+  try {
+    await busy($("#m-run"), $("#m-status"), async () => {
+      const r = await api("predict", {...mParams(), home: $("#m-home").value, away: $("#m-away").value});
+      const bars = (rows, label) => `<div class="bars">${rows.map((x) => `<div><span>${esc(x[label])}</span>
+        <span class="bar"><i style="width:${(x.prob * 100).toFixed(1)}%"></i></span>
+        <span class="num">${pctPlain(x.prob)}</span><span class="num note">${(1 / x.prob).toFixed(2)}</span></div>`).join("")}</div>`;
+      $("#m-out").innerHTML = `<div class="panel"><h2>${esc(r.home)} – ${esc(r.away)}
+          <span class="count">forventede mål ${r.xg[0].toFixed(2)} – ${r.xg[1].toFixed(2)}</span></h2>
+        <p class="note">Sannsynlighet og rettferdig odds. Spill bare når bookmakerens odds er klart høyere.</p>
+        ${bars(r.rows, "label")}</div>
+        <div class="panel"><h2>Mest sannsynlige resultater</h2>${bars(r.scores, "score")}</div>`;
+    });
+  } catch (e) { $("#m-out").innerHTML = errBox(e); }
+};
+
+// ---------------- Backtest ----------------
+$("#b-run").onclick = async () => {
+  const params = {league: $("#b-league").value, season: $("#b-season").value, soft: $("#b-soft").value,
+    min_edge: $("#b-edge").value / 100, model_weight: $("#b-mw").value, warmup: $("#b-warm").value};
+  try {
+    await busy($("#b-run"), $("#b-status"), async () => {
+      const r = await api("backtest", params);
+      const best = Math.min(...Object.values(r.logloss));
+      $("#b-out").innerHTML = `<div class="panel"><h2>Resultat <span class="count">${r.matches} kamper, flat innsats 100 per spill</span></h2>${table([
+          {h: "Strategi", v: (l) => l.name}, {h: "Spill", num: 1, v: (l) => l.bets},
+          {h: "Innsats", num: 1, v: (l) => kr(l.staked)},
+          {h: "Resultat", num: 1, v: (l) => (l.profit >= 0 ? "+" : "") + kr(l.profit), raw: (l) => l.profit, c: (l) => cls(l.profit)},
+          {h: "ROI", num: 1, v: (l) => pct(l.roi), raw: (l) => l.roi, c: (l) => cls(l.roi)},
+          {h: "Snitt-CLV", num: 1, v: (l) => pct(l.clv, 2), raw: (l) => l.clv ?? -9, c: (l) => cls(l.clv)}], r.ledgers)}
+        <p class="note">ROI på én sesong er mest støy. CLV forteller om strategien faktisk slo markedet.</p></div>
+        <div class="panel"><h2>Treffsikkerhet <span class="count">log-loss på 1X2, lavere er bedre</span></h2>${table([
+          {h: "Kilde", v: (x) => x[0] + (x[1] === best ? "  ★" : "")}, {h: "Log-loss", num: 1, v: (x) => x[1].toFixed(4)}],
+          Object.entries(r.logloss))}</div>`;
+    });
+  } catch (e) { $("#b-out").innerHTML = errBox(e); }
+};
+</script>
+</body>
+</html>
