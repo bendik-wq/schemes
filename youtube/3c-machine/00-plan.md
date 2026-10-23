@@ -162,3 +162,141 @@ Each episode also has: 3 title options, thumbnail text (≤4 words), description
 | [26-30.md](26-30.md) | Grow what you bought |
 | [31-35.md](31-35.md) | Scale and exit |
 | [36-40.md](36-40.md) | Objections and the close |
+
+---
+
+# Seasons 2 and 3: episodes 41–100
+
+Season 1 (01–40) is the full model, start to finish. Season 2 (41–70) goes deep on what happens after you own it: failed deals, growth, team, and running a group. Season 3 (71–100) is exits, industry playbooks, advanced structures and deal breakdowns. Same offer, CTA, rules and template as Season 1. Each season opener re-introduces the 3C map for new viewers; 70 hands to 71; 100 hands back to 01.
+
+**Facts we don't have yet.** The two failed deals (41, 42) and any deal detail beyond `source-owners-academy.md` must come from Josh. Those scripts are built around `[JOSH: …]` prompts (what the business was, the structure, the moment it broke, the lesson), written so Josh can fill them from memory in one sitting. Never invent the details.
+
+## Season 2 — Own it, grow it (41–70)
+
+### Act 9 — Deals that died (41–45)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 41 | **Inside a $3M no-money-down deal that failed** | Josh's deal: the business, the structure, where it broke, what it cost, the lesson. `[JOSH: details]` | "I lost millions learning these harsh business lessons" |
+| 42 | **Inside a $15M no-money-down deal that failed** | Bigger deal, different failure: bank, DD, seller or lawyers. `[JOSH: details]` | "I failed…" (what he did after) |
+| 43 | **Four deals fell over before my first one closed** | The four failures and ~1,000 calls before the physio clinic; what each taught | "How I went broke trying to get rich… and then got rich" |
+| 44 | **Why sellers pull out at the last minute** | Seller remorse, family, staff, advisers; how to keep a deal alive | Handle objections before they appear |
+| 45 | **The dead-deal checklist** | Every red flag from failed deals in one list, by stage | Log every lost call's reason and fix the top one |
+
+### Act 10 — Grow: profit (46–50)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 46 | **Find the margin leaks in your first 30 days** | Unit economics by product, customer and job | The math behind crazy profit margins |
+| 47 | **Cut the costs your customers never see** | Overheads, suppliers, software; protect what customers feel | Labour cost per revenue dollar should fall |
+| 48 | **Turn one-off customers into contracts** | Maintenance plans, retainers, memberships | Collect upfront; fixed term just past how long happy clients stay |
+| 49 | **A guarantee for a boring business** | Service guarantees that win jobs and make money | Most guarantees suck; design from your data |
+| 50 | **Get paid faster** | Deposits, payment terms, debtor days, working capital | Cash-on-cash every 30 days |
+
+### Act 11 — Grow: sales and marketing (51–55)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 51 | **Answer every enquiry in 5 minutes** | Speed to lead in a trades or clinic business | Speed to lead under 5 minutes; 42% vs 3% |
+| 52 | **Give the business a sales process** | Quote, follow-up, close; a script the team can run | His call stages and flowchart |
+| 53 | **Hire the first salesperson** | When, who, pay on cash collected | Sales hiring playbook; pay on cash collected |
+| 54 | **Ads for a boring business** | Cost per booked job from lifetime value; local Meta and Google | CAC ≤ 30% of LTV; optimise for revenue, not cheap leads |
+| 55 | **Turn customers into proof** | Reviews, case studies, before/afters | Proof is the most valuable asset |
+
+### Act 12 — Grow: team and operations (56–60)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 56 | **Hire the GM before you need one** | Scorecard, search, handover from seller | Set KPIs for every seat before you hire |
+| 57 | **SOPs from screen recordings** | Document the top 10 recurring tasks in a week | Operations, systems and SOPs |
+| 58 | **Keep the key staff after the sale** | Day-1 conversations, retention bonuses, small equity | Team built so the business runs without him |
+| 59 | **Get / Keep / Jail for a small business** | One owner per bucket; org chart on one page | Get / Keep / Jail |
+| 60 | **Culture when the owner changes** | First all-hands, what not to change, trust | Leadership and management lessons |
+
+### Act 13 — Scale: build the group (61–65)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 61 | **The holdco: how to structure a group** | Holding company, subsidiaries, why it matters for lending and exit | — |
+| 62 | **Shared services across businesses** | Finance, HR, marketing run once for all | 64 tools behind his business |
+| 63 | **Bolt-ons: small deals that raise the group's value** | Buying small, cheap add-ons to a platform | — |
+| 64 | **Buying your competitor** | Approach, synergies, staff overlap | — |
+| 65 | **Financing deal #3 and beyond** | Portfolio lending, cross-collateral, lender trust | Forecast from unit economics |
+
+### Act 14 — Scale: you as the owner (66–70)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 66 | **Your week when you own five businesses** | Calendar, reporting rhythm, where your hours go | "Hustle culture is broken" |
+| 67 | **Board meetings that move the numbers** | Agenda, KPI pack, decisions | Every number he tracked |
+| 68 | **Your risk budget** | Reserve floor, what you will never sign | Never fund growth with unsecured debt |
+| 69 | **Pace without burnout** | Health, energy, decide at 60% without running at 100% | Got fit, then made $3M/month; "the disappointment of $5M/month" |
+| 70 | **How partnerships break, and how to stop it** | Roles, deadlock rules, buy-sell clauses | Running a business with your bros or spouse |
+
+## Season 3 — Exit, playbooks and deal breakdowns (71–100)
+
+### Act 15 — The exit (71–75)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 71 | **What private equity actually pays for** | Recurring revenue, owner-independence, clean numbers, size | Profit, not revenue, sets the price |
+| 72 | **Build the data room before anyone asks** | What goes in, when to start, how it shortens DD | Clean numbers shorten diligence |
+| 73 | **Sell 60%, keep 40%** | Recapitalisation and the second bite | — |
+| 74 | **Earn-outs: when to say yes** | How they work, how they go wrong | — |
+| 75 | **Selling to your managers** | Management buyouts and vendor finance in reverse | — |
+
+### Act 16 — Industry playbooks I (76–80)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 76 | **Buying a healthcare clinic** | Josh's world: billing by practitioner, staff, regulation | — |
+| 77 | **Buying an HVAC or electrical business** | Saul's NDA as the example: staff, contracts, retiring owners | Buy boring |
+| 78 | **Buying an accounting firm** | Recurring fees, client retention, succession | — |
+| 79 | **Buying a veterinary practice** | Jy's KingVets path; vets, equipment, lending | — |
+| 80 | **Buying a B2B service firm** | Contracts, key-person risk, concentration | Owner-independence is valuation |
+
+### Act 17 — Industry playbooks II (81–85)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 81 | **Buying a manufacturer** | Assets, ABL, customers, plant | — |
+| 82 | **Buying a logistics or transport business** | Fleet, contracts, margins | — |
+| 83 | **Buying a plumbing or roofing business** | Owner-operators, crews, demand | Can revenue be bought with ads? |
+| 84 | **Buying a childcare or education business** | Licences, occupancy, staff ratios | — |
+| 85 | **How to pick your industry** | A scoring sheet: bankable, boring, fragmented, retiring owners | His three caps: location, key person, platform |
+
+### Act 18 — Advanced structures (86–90)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 86 | **The 99-year "pension plan" offer** | Elliot's structure (friend), why sellers say yes | — |
+| 87 | **Interest-only with balloons** | Cam's structure (friend): IO 10 years, balloons in years 3 and 10 | — |
+| 88 | **When the seller owns the building** | Rent deferrals, leases, sale-and-leaseback | — |
+| 89 | **Borrowing against the business's assets** | ABL on receivables and stock | — |
+| 90 | **Mezzanine and bigger deals** | When to use it and what it costs | — |
+
+### Act 19 — Deal breakdowns (91–95)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 91 | **My first deal, line by line** | The physio clinic: 7 years at 4%, 9-month holiday, no deposit, $150K year one | — |
+| 92 | **Two deals in 23 days** | Cam (friend): what had to be true to move that fast | Speed as a system |
+| 93 | **A bank funded 100% of a $2.4M first deal** | Christian Dawes (example): what the bank saw | — |
+| 94 | **From a cold call to a $3.8M NDA** | Saul (member): the call, the NDA, early DD | — |
+| 95 | **A $5.5M radiology deal to a $200M exit** | Jason Nagy (friend): the 60/40 structure and 7 years of growth | Each jump came from one outside insight |
+
+### Act 20 — The long game (96–100)
+
+| # | Working title | Content | Daniel tie-in |
+|---|---|---|---|
+| 96 | **Time, money, energy** | Which one you've actually committed | "Give me 4 minutes and you'll never need motivation again" |
+| 97 | **Walk-away power** | Why the buyer who can walk wins | Never cut the price |
+| 98 | **Your 10-year plan: one business to a group** | Milestones by year, what changes at each | Every revenue level explained |
+| 99 | **Jackpot, legacy or flip?** | Three goals, three strategies | "Generational wealth" |
+| 100 | **100 episodes in 20 minutes** | The whole series condensed; the most direct pitch | Buy experience |
+
+## Season 2–3 files
+
+| File | Episodes |
+|---|---|
+| [41-45.md](41-45.md) … [96-100.md](96-100.md) | One file per act, five episodes each |
