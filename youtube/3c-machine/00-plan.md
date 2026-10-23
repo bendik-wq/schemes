@@ -1,4 +1,4 @@
-# "The 3C Machine": a 40-video YouTube series that sells the 3C acquisition model
+# "The 3C Machine": a 100-video YouTube series that sells the 3C acquisition model
 
 Every episode is a VSL for one thing: **a call with Josh about buying a business with little to no money down** (Owners Academy or 1:1 advisory with G&L M&A Advisory). Content comes from two sources:
 
