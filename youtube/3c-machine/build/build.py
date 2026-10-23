@@ -28,7 +28,19 @@ body=[]
 for a in acts:
     n=int(re.search(r'^# Act (\d+)',a,re.M).group(1))
     body.append(a)
-allmd=front+'\n\n'+'\n'.join(smap)+'\n\n'+'\n\n'.join(body)+'\n\n'+'\n'.join(app)+'\n'
+import unicodedata
+def slug(t):
+    t=t.lower(); t=re.sub(r'[^\w\s-]','',t); return re.sub(r'\s+','-',t.strip())
+toc=['# Contents','']
+for a in acts:
+    m=re.match(r'# (Act \d+ · .+)',a); t=m.group(1)
+    n=int(re.search(r'Act (\d+)',t).group(1))
+    if n in seasons: toc+=['',f'**{seasons[n]}**','']
+    eps=re.findall(r'^## (EP \d+) · ',a,re.M)
+    toc.append(f'- [{t}](#{slug(t)}) · {eps[0][3:]}–{eps[-1][3:]}')
+toc+=['',"- [The 100 episodes](#the-100-episodes)","- [Appendix · Josh's interview sheet](#appendix-joshs-interview-sheet)"]
+front2=front.replace('# How to use this document','\n'.join(toc)+'\n\n# How to use this document',1)
+allmd=front2+'\n\n'+'\n'.join(smap)+'\n\n'+'\n\n'.join(body)+'\n\n'+'\n'.join(app)+'\n'
 open('the-3c-machine.md','w').write(allmd)
-subprocess.run(['pandoc','the-3c-machine.md','-f','gfm-tex_math_dollars+yaml_metadata_block' if False else 'markdown-tex_math_dollars-tex_math_single_backslash+pipe_tables+task_lists','-o','The 3C Machine.docx','--reference-doc','reference.docx','--toc','--toc-depth=1','--lua-filter','pagebreak.lua','-M','toc-title=Contents'],check=True)
+subprocess.run(['pandoc','the-3c-machine.md','-f','gfm-tex_math_dollars+yaml_metadata_block' if False else 'markdown-tex_math_dollars-tex_math_single_backslash+pipe_tables+task_lists','-o','The 3C Machine.docx','--reference-doc','reference.docx','--lua-filter','pagebreak.lua','-M','toc-title=Contents'],check=True)
 print(len(files),'acts',len(allmd),'chars',count,'josh prompts')
