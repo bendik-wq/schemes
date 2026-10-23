@@ -29,6 +29,10 @@ The v1 scripts are too long, too beginner and too much like a wall of text. V2 i
 - Ad-safe first line: no "are you…" call-outs, no income claim in the first line.
 - Keep the episode number, topic and place in the series. Keep the hand-off to the next episode, as one line at the end of CLOSE.
 
+## Pick a shape and a title formula per episode
+
+From the style guide, choose the shape that fits the topic and vary it across your act: (A) ladder of levels, (B) ranked N mistakes, (C) confession → diagnosis → rule (only with Josh's sourced stories or `[JOSH: …]` prompts), (D) X vs Y with a self-test and verdict, (E) teardown of a real document or deal in the order a seller/bank sees it, (F) short contrarian talk. The numbered parts in the template become "Level 1…", "Mistake 1…", "Option A / Option B" and so on. Write titles with his formulas (dollar figure, first person, "vs", "every level from X to Y", "N mistakes", "(step-by-step)"), but put a deal or structure number in the title, never an income claim, and only numbers from the source or labelled illustrative. Record the shape in the header's **Copy** row.
+
 ## Template (follow exactly)
 
 The act file starts with:
