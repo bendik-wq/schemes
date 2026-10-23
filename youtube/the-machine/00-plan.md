@@ -17,7 +17,7 @@ One offer, one price, one CTA (Daniel's rule 3: "one offer, one price, per audie
 | **Not for** | Offers under $3,000. Founders who won't take sales calls at the start. Businesses that couldn't deliver if sales doubled next month. Anyone wanting leads without changing the offer. |
 | **Delivery: the 7 parts** | 1. Offer + guarantee workshop · 2. 30 launch ads on an angle matrix · 3. VSL script + page · 4. Scored application with lead routing · 5. Speed-to-lead and show-up stack (texts, email, reminder calls) · 6. Sales call script + objection flowchart · 7. Revenue-per-lead dashboard (Funnel HQ) |
 | **Price** | $15,000, paid upfront (or 2 × $8,250). Optional ad management: $3,000/month. |
-| **Guarantee** | Not live in 30 days: we keep working free until it is. |
+| **Guarantee** | Not live in 30 days: we keep working free until it is. Conditions (proposed, confirm before filming 04): payment on time, offer workshop attended in week 1, ad and domain access within 3 days, drafts approved within 2 business days. |
 | **CTA** | "There's a short application under this video. If it looks like a fit, we'll map out your machine on a call." |
 | **Non-fit path** | Under $3K offer or pre-revenue → the free checklist ("The Machine Checklist", a PDF of the 7 parts). |
 
