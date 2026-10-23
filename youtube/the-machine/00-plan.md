@@ -141,3 +141,13 @@ After all 20 are live, make a playlist "The Machine (start here)" and an end-scr
 | [06-10.md](06-10.md) | Call value, 100 ads, organic, VSLs, page order |
 | [11-15.md](11-15.md) | Form scoring, show-up, script, objections, hiring closers |
 | [16-20.md](16-20.md) | RPL, attribution, cash, capacity, finale |
+
+## Before filming
+
+- [ ] **Application page for this offer.** The live funnel (`funnel/src/config.ts`) still sells the older 8-week Claude Code program for $1M+/year businesses. Point `[APPLY LINK]` at a page and form for the High-Ticket Funnel Build ($3K+ offer, $30–300K/month), since episodes 10–12 walk viewers through that page.
+- [ ] **Fill placeholders:** `[APPLY LINK]`, `[CHECKLIST LINK]`, `[PLAYLIST LINK]`, and the free Machine Checklist PDF itself.
+- [ ] **Confirm guarantee conditions** (§1) before episode 04.
+- [ ] **Episode 09 promise:** it says a text-only page will run beside the VSL for non-founder ads. Build it or cut the line.
+- [ ] **Episodes 16–17:** Funnel HQ has no ready-made revenue-per-lead-per-closer column; the script says it's "one division away". Add the column or film with that wording.
+- [ ] **Swap `[PROOF: …]`** as founding clients produce results. Never fill them with invented numbers.
+- [ ] **Re-time** description timestamps from the final edit (current ones are estimates from word counts).
