@@ -140,7 +140,7 @@ Each episode also has: 3 title options, thumbnail text (≤4 words), description
 | 37 | **"Nobody will take me seriously"** | Steal credibility; Josh at 25; the IBM-CEO student story | — |
 | 38 | **"My situation is different"** | Jy (IT), Saul (member), Christian Dawes (example) — relationships stated | "Most people are too smart for their own good" |
 | 39 | **Can you do this from free content?** | Josh agrees you can; the case for speed and someone to ask; "how many offers have you sent?" | "I paid $20K to learn this in 5 minutes"; buy experience |
-| 40 | **The whole 3C model in 15 minutes** | Finale: recap all five stages, who it's for, the most direct pitch | Every big jump came from one outside insight |
+| 40 | **The whole 3C model in one video** | Finale: recap all five stages, who it's for, the most direct pitch | Every big jump came from one outside insight |
 
 ## 6. Publishing and measurement
 
