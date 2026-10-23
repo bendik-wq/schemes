@@ -1,3 +1,6 @@
 *.docx
 !reference.docx
 the-3c-machine.md
+scripts-v3.md
+pure.md
+*.pdf
