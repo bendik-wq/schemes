@@ -1,0 +1,282 @@
+{
+ "fire extinguisher inspection": {
+  "last12": 3.42,
+  "yoy": 0.84,
+  "two_year": 1.86,
+  "at_peak_pct": 56.9,
+  "size_vs_anchor": 3.4
+ },
+ "backflow testing": {
+  "last12": 4.58,
+  "yoy": 0.92,
+  "two_year": 2.2,
+  "at_peak_pct": 65.5,
+  "size_vs_anchor": 4.6
+ },
+ "hood cleaning": {
+  "last12": 4.75,
+  "yoy": 0.85,
+  "two_year": 1.5,
+  "at_peak_pct": 47.5,
+  "size_vs_anchor": 4.8
+ },
+ "infrared thermography": {
+  "last12": 0.42,
+  "yoy": null,
+  "two_year": null,
+  "at_peak_pct": 8.3,
+  "size_vs_anchor": 0.4
+ },
+ "permanent christmas lights": {
+  "last12": 1.92,
+  "yoy": 0.96,
+  "two_year": 1.15,
+  "at_peak_pct": 10.6,
+  "size_vs_anchor": 1.9
+ },
+ "dryer vent cleaning": {
+  "last12": 23.83,
+  "yoy": 0.96,
+  "two_year": 2.53,
+  "at_peak_pct": 51.8,
+  "size_vs_anchor": 23.8
+ },
+ "fire door inspection": {
+  "last12": 0.08,
+  "yoy": 1.0,
+  "two_year": null,
+  "at_peak_pct": 8.3,
+  "size_vs_anchor": 0.1
+ },
+ "HOA management": {
+  "last12": 10.08,
+  "yoy": 0.98,
+  "two_year": 1.59,
+  "at_peak_pct": 53.1,
+  "size_vs_anchor": 10.1
+ },
+ "senior move manager": {
+  "last12": 0.08,
+  "yoy": null,
+  "two_year": null,
+  "at_peak_pct": 8.3,
+  "size_vs_anchor": 0.1
+ },
+ "estate cleanout": {
+  "last12": 1.67,
+  "yoy": 1.43,
+  "two_year": null,
+  "at_peak_pct": 33.3,
+  "size_vs_anchor": 1.7
+ },
+ "scholarship granting organization": {
+  "last12": 0.0,
+  "yoy": null,
+  "two_year": null,
+  "at_peak_pct": 0,
+  "size_vs_anchor": 0.0
+ },
+ "education freedom tax credit": {
+  "last12": 1.17,
+  "yoy": null,
+  "two_year": null,
+  "at_peak_pct": 58.3,
+  "size_vs_anchor": 1.2
+ },
+ "microschool": {
+  "last12": 1.25,
+  "yoy": 1.07,
+  "two_year": 1.36,
+  "at_peak_pct": 62.5,
+  "size_vs_anchor": 1.2
+ },
+ "education savings account": {
+  "last12": 1.83,
+  "yoy": 0.79,
+  "two_year": 1.1,
+  "at_peak_pct": 36.7,
+  "size_vs_anchor": 1.8
+ },
+ "school voucher": {
+  "last12": 4.58,
+  "yoy": 1.15,
+  "two_year": 1.62,
+  "at_peak_pct": 30.6,
+  "size_vs_anchor": 4.6
+ },
+ "fortified roof": {
+  "last12": 1.17,
+  "yoy": 1.08,
+  "two_year": 1.27,
+  "at_peak_pct": 38.9,
+  "size_vs_anchor": 1.2
+ },
+ "wildfire mitigation": {
+  "last12": 0.67,
+  "yoy": 0.89,
+  "two_year": null,
+  "at_peak_pct": 33.3,
+  "size_vs_anchor": 0.7
+ },
+ "roof grant": {
+  "last12": 1.0,
+  "yoy": 1.09,
+  "two_year": 1.5,
+  "at_peak_pct": 33.3,
+  "size_vs_anchor": 1.0
+ },
+ "ICHRA": {
+  "last12": 3.42,
+  "yoy": 0.89,
+  "two_year": 1.52,
+  "at_peak_pct": 56.9,
+  "size_vs_anchor": 3.4
+ },
+ "assumable mortgage": {
+  "last12": 2.92,
+  "yoy": 1.35,
+  "two_year": 0.83,
+  "at_peak_pct": 36.5,
+  "size_vs_anchor": 2.9
+ },
+ "english proficiency truck drivers": {
+  "last12": 0.0,
+  "yoy": null,
+  "two_year": null,
+  "at_peak_pct": 0,
+  "size_vs_anchor": 0.0
+ },
+ "tariff refund": {
+  "last12": 7.5,
+  "yoy": 10.0,
+  "two_year": null,
+  "at_peak_pct": 16.0,
+  "size_vs_anchor": 7.5
+ },
+ "duty drawback": {
+  "last12": 0.0,
+  "yoy": 0.0,
+  "two_year": null,
+  "at_peak_pct": 0.0,
+  "size_vs_anchor": 0.0
+ },
+ "sell land to data center": {
+  "last12": 0.0,
+  "yoy": null,
+  "two_year": null,
+  "at_peak_pct": 0,
+  "size_vs_anchor": 0.0
+ },
+ "data center lease land": {
+  "last12": 0.0,
+  "yoy": null,
+  "two_year": null,
+  "at_peak_pct": 0.0,
+  "size_vs_anchor": 0.0
+ },
+ "direct primary care": {
+  "last12": 6.0,
+  "yoy": 0.97,
+  "two_year": 1.64,
+  "at_peak_pct": 33.3,
+  "size_vs_anchor": 6.0
+ },
+ "remote patient monitoring": {
+  "last12": 2.08,
+  "yoy": 1.04,
+  "two_year": 1.56,
+  "at_peak_pct": 41.7,
+  "size_vs_anchor": 2.1
+ },
+ "website accessibility": {
+  "last12": 2.5,
+  "yoy": 0.88,
+  "two_year": 2.0,
+  "at_peak_pct": 8.3,
+  "size_vs_anchor": 2.5
+ },
+ "Medicaid work requirements": {
+  "last12": 1.58,
+  "yoy": 1.58,
+  "two_year": null,
+  "at_peak_pct": 13.2,
+  "size_vs_anchor": 3.8
+ },
+ "cost segregation": {
+  "last12": 1.08,
+  "yoy": 0.52,
+  "two_year": 1.08,
+  "at_peak_pct": 36.1,
+  "size_vs_anchor": 2.6
+ },
+ "AI policy": {
+  "last12": 13.58,
+  "yoy": 0.51,
+  "two_year": 4.79,
+  "at_peak_pct": 13.6,
+  "size_vs_anchor": 32.3
+ },
+ "Claude certification": {
+  "last12": 1.17,
+  "yoy": 14.0,
+  "two_year": null,
+  "at_peak_pct": 29.2,
+  "size_vs_anchor": 2.8
+ },
+ "AI training for employees": {
+  "last12": 0.92,
+  "yoy": 0.73,
+  "two_year": null,
+  "at_peak_pct": 30.6,
+  "size_vs_anchor": 0.9
+ },
+ "EPR packaging": {
+  "last12": 0.42,
+  "yoy": 5.0,
+  "two_year": null,
+  "at_peak_pct": 20.8,
+  "size_vs_anchor": 0.4
+ },
+ "rural health transformation": {
+  "last12": 2.08,
+  "yoy": 1.56,
+  "two_year": null,
+  "at_peak_pct": 52.1,
+  "size_vs_anchor": 2.1
+ },
+ "home inspection": {
+  "last12": 59.17,
+  "yoy": 1.14,
+  "two_year": 2.16,
+  "at_peak_pct": 61.0,
+  "size_vs_anchor": 59.2
+ },
+ "sewer camera inspection": {
+  "last12": 1.33,
+  "yoy": 1.78,
+  "two_year": null,
+  "at_peak_pct": 44.4,
+  "size_vs_anchor": 5.1
+ },
+ "heat pump": {
+  "last12": 36.0,
+  "yoy": 1.13,
+  "two_year": 1.94,
+  "at_peak_pct": 36.0,
+  "size_vs_anchor": 138.5
+ },
+ "EPA 608 certification": {
+  "last12": 0.42,
+  "yoy": null,
+  "two_year": null,
+  "at_peak_pct": 41.7,
+  "size_vs_anchor": 1.6
+ },
+ "AI accountant": {
+  "last12": 0.0,
+  "yoy": 0.0,
+  "two_year": null,
+  "at_peak_pct": 0.0,
+  "size_vs_anchor": 0.0
+ }
+}
