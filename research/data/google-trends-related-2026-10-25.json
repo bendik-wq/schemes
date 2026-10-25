@@ -1602,5 +1602,853 @@
  "NAD injections": {
   "rising": [],
   "top": []
+ },
+ "longevity clinic": {
+  "rising": [
+   {
+    "query": "new york times",
+    "value": 35900
+   }
+  ],
+  "top": [
+   {
+    "query": "longevity health",
+    "value": 100
+   },
+   {
+    "query": "longevity medical clinic",
+    "value": 59
+   },
+   {
+    "query": "longevity clinic near me",
+    "value": 44
+   },
+   {
+    "query": "longevity care clinic",
+    "value": 37
+   },
+   {
+    "query": "anderson longevity clinic",
+    "value": 24
+   },
+   {
+    "query": "healthy longevity clinic",
+    "value": 18
+   },
+   {
+    "query": "new york times",
+    "value": 2
+   }
+  ]
+ },
+ "med spa": {
+  "rising": [
+   {
+    "query": "avelure med spa",
+    "value": 11100
+   },
+   {
+    "query": "med spa services",
+    "value": 110
+   },
+   {
+    "query": "the one med spa",
+    "value": 80
+   },
+   {
+    "query": "best med spa",
+    "value": 80
+   },
+   {
+    "query": "its a secret med spa",
+    "value": 80
+   },
+   {
+    "query": "what is a med spa",
+    "value": 70
+   },
+   {
+    "query": "best med spa near me",
+    "value": 70
+   },
+   {
+    "query": "one med spa",
+    "value": 60
+   },
+   {
+    "query": "look lab med spa",
+    "value": 60
+   },
+   {
+    "query": "lou lou med spa",
+    "value": 50
+   },
+   {
+    "query": "elase med spa",
+    "value": 50
+   },
+   {
+    "query": "metro med spa",
+    "value": 40
+   },
+   {
+    "query": "microneedling",
+    "value": 40
+   },
+   {
+    "query": "latina med spa",
+    "value": 40
+   }
+  ],
+  "top": [
+   {
+    "query": "med spa near me",
+    "value": 100
+   },
+   {
+    "query": "the med spa",
+    "value": 99
+   },
+   {
+    "query": "spa near me",
+    "value": 94
+   },
+   {
+    "query": "best med spa",
+    "value": 68
+   },
+   {
+    "query": "laser med spa",
+    "value": 43
+   },
+   {
+    "query": "skin med spa",
+    "value": 42
+   },
+   {
+    "query": "med spa jobs",
+    "value": 37
+   },
+   {
+    "query": "medspa",
+    "value": 22
+   },
+   {
+    "query": "vio med spa",
+    "value": 21
+   },
+   {
+    "query": "med spa services",
+    "value": 19
+   },
+   {
+    "query": "what is a med spa",
+    "value": 18
+   },
+   {
+    "query": "glow med spa",
+    "value": 14
+   },
+   {
+    "query": "revive med spa",
+    "value": 14
+   },
+   {
+    "query": "med spa nurse",
+    "value": 12
+   },
+   {
+    "query": "microneedling",
+    "value": 12
+   },
+   {
+    "query": "one med spa",
+    "value": 12
+   },
+   {
+    "query": "evolve med spa",
+    "value": 11
+   },
+   {
+    "query": "best med spa near me",
+    "value": 10
+   },
+   {
+    "query": "med spa chicago",
+    "value": 10
+   },
+   {
+    "query": "iv med spa",
+    "value": 10
+   },
+   {
+    "query": "med spa jobs near me",
+    "value": 9
+   },
+   {
+    "query": "med spa hiring",
+    "value": 9
+   },
+   {
+    "query": "laser hair removal",
+    "value": 8
+   },
+   {
+    "query": "med spa laser hair removal",
+    "value": 8
+   },
+   {
+    "query": "bella med spa",
+    "value": 8
+   }
+  ]
+ },
+ "GLP-1": {
+  "rising": [
+   {
+    "query": "embody",
+    "value": 265350
+   },
+   {
+    "query": "embody reviews",
+    "value": 151100
+   },
+   {
+    "query": "embody glp-1 reviews",
+    "value": 146950
+   },
+   {
+    "query": "compounded glp-1 nationwide recall",
+    "value": 72850
+   },
+   {
+    "query": "embody glp-1",
+    "value": 62850
+   },
+   {
+    "query": "medicare glp-1 bridge program",
+    "value": 53850
+   },
+   {
+    "query": "quad ed",
+    "value": 49400
+   },
+   {
+    "query": "shop lc",
+    "value": 46450
+   },
+   {
+    "query": "embody glp1",
+    "value": 31900
+   },
+   {
+    "query": "shoplc",
+    "value": 26550
+   },
+   {
+    "query": "medvi quad reviews",
+    "value": 25500
+   },
+   {
+    "query": "embody tirzepatide",
+    "value": 24250
+   },
+   {
+    "query": "shoplc com",
+    "value": 18600
+   },
+   {
+    "query": "embody tirzepatide reviews",
+    "value": 17100
+   },
+   {
+    "query": "joinem",
+    "value": 15500
+   },
+   {
+    "query": "shoplc live",
+    "value": 12150
+   },
+   {
+    "query": "bioma glp-1 booster",
+    "value": 11150
+   },
+   {
+    "query": "quad medvi",
+    "value": 10900
+   },
+   {
+    "query": "shop lc jewelry",
+    "value": 7350
+   },
+   {
+    "query": "glp-1 receptor agonist",
+    "value": 600
+   },
+   {
+    "query": "glp-1 news",
+    "value": 400
+   },
+   {
+    "query": "glp-1 pill",
+    "value": 200
+   },
+   {
+    "query": "glp-1 what is it",
+    "value": 110
+   },
+   {
+    "query": "glp-1 tirzepatide",
+    "value": 100
+   },
+   {
+    "query": "tirzepatide",
+    "value": 90
+   }
+  ],
+  "top": [
+   {
+    "query": "glp-1 weight loss",
+    "value": 100
+   },
+   {
+    "query": "what is glp-1",
+    "value": 98
+   },
+   {
+    "query": "glp",
+    "value": 60
+   },
+   {
+    "query": "glp-1 for weight loss",
+    "value": 47
+   },
+   {
+    "query": "glp 1",
+    "value": 47
+   },
+   {
+    "query": "glp-1 cost",
+    "value": 45
+   },
+   {
+    "query": "glp-1 tirzepatide",
+    "value": 44
+   },
+   {
+    "query": "glp-1 receptor agonist",
+    "value": 43
+   },
+   {
+    "query": "semaglutide",
+    "value": 42
+   },
+   {
+    "query": "tirzepatide",
+    "value": 42
+   },
+   {
+    "query": "glp-1 drugs",
+    "value": 41
+   },
+   {
+    "query": "glp-1 news",
+    "value": 40
+   },
+   {
+    "query": "what is a glp-1",
+    "value": 34
+   },
+   {
+    "query": "glp-1 agonists",
+    "value": 34
+   },
+   {
+    "query": "glp-1 side effects",
+    "value": 34
+   },
+   {
+    "query": "glp1",
+    "value": 32
+   },
+   {
+    "query": "glp-1 medications",
+    "value": 29
+   },
+   {
+    "query": "wegovy",
+    "value": 27
+   },
+   {
+    "query": "ozempic",
+    "value": 26
+   },
+   {
+    "query": "embody",
+    "value": 26
+   },
+   {
+    "query": "embody glp-1",
+    "value": 25
+   },
+   {
+    "query": "zepbound",
+    "value": 22
+   },
+   {
+    "query": "glp-1 near me",
+    "value": 21
+   },
+   {
+    "query": "glp-1 supplement",
+    "value": 21
+   },
+   {
+    "query": "glp-1 pill",
+    "value": 18
+   }
+  ]
+ },
+ "vibe coding": {
+  "rising": [
+   {
+    "query": "medvi",
+    "value": 302950
+   },
+   {
+    "query": "embody",
+    "value": 213000
+   },
+   {
+    "query": "shop lc",
+    "value": 184100
+   },
+   {
+    "query": "quad ed",
+    "value": 176200
+   },
+   {
+    "query": "quad medvi",
+    "value": 168150
+   },
+   {
+    "query": "elixamd",
+    "value": 132350
+   },
+   {
+    "query": "medvi reviews",
+    "value": 114000
+   },
+   {
+    "query": "embody reviews",
+    "value": 105200
+   },
+   {
+    "query": "shoplc",
+    "value": 98100
+   },
+   {
+    "query": "quad for ed",
+    "value": 78650
+   },
+   {
+    "query": "rouje",
+    "value": 70500
+   },
+   {
+    "query": "shoplc com",
+    "value": 66050
+   },
+   {
+    "query": "medvi weight loss",
+    "value": 61300
+   },
+   {
+    "query": "medvi quad reviews",
+    "value": 57200
+   },
+   {
+    "query": "hosting.com",
+    "value": 55450
+   },
+   {
+    "query": "embody tirzepatide",
+    "value": 53300
+   },
+   {
+    "query": "draftkings bonus",
+    "value": 51900
+   },
+   {
+    "query": "shoplc live",
+    "value": 48800
+   },
+   {
+    "query": "a2 hosting",
+    "value": 48450
+   },
+   {
+    "query": "embody glp1",
+    "value": 47000
+   },
+   {
+    "query": "lc jewelry",
+    "value": 45850
+   },
+   {
+    "query": "embody glp-1",
+    "value": 43350
+   },
+   {
+    "query": "hostinger promo code",
+    "value": 35400
+   },
+   {
+    "query": "em weight loss",
+    "value": 35150
+   },
+   {
+    "query": "draftkings",
+    "value": 5000
+   }
+  ],
+  "top": [
+   {
+    "query": "ai vibe coding",
+    "value": 100
+   },
+   {
+    "query": "what is vibe coding",
+    "value": 77
+   },
+   {
+    "query": "vibe coding tools",
+    "value": 31
+   },
+   {
+    "query": "vibe coding meaning",
+    "value": 30
+   },
+   {
+    "query": "claude vibe coding",
+    "value": 23
+   },
+   {
+    "query": "claude",
+    "value": 22
+   },
+   {
+    "query": "google vibe coding",
+    "value": 18
+   },
+   {
+    "query": "lovable",
+    "value": 16
+   },
+   {
+    "query": "lovable vibe coding",
+    "value": 16
+   },
+   {
+    "query": "vibe coding apps",
+    "value": 15
+   },
+   {
+    "query": "best vibe coding tools",
+    "value": 14
+   },
+   {
+    "query": "what is vibe coding ai",
+    "value": 14
+   },
+   {
+    "query": "vibe coding platform",
+    "value": 14
+   },
+   {
+    "query": "medvi",
+    "value": 13
+   },
+   {
+    "query": "vibe coding definition",
+    "value": 12
+   },
+   {
+    "query": "claude code",
+    "value": 11
+   },
+   {
+    "query": "vibe coding platforms",
+    "value": 11
+   },
+   {
+    "query": "vibe coding reddit",
+    "value": 11
+   },
+   {
+    "query": "cursor",
+    "value": 11
+   },
+   {
+    "query": "github",
+    "value": 10
+   },
+   {
+    "query": "embody",
+    "value": 9
+   },
+   {
+    "query": "shop lc",
+    "value": 8
+   },
+   {
+    "query": "quad ed",
+    "value": 8
+   },
+   {
+    "query": "quad medvi",
+    "value": 7
+   },
+   {
+    "query": "draftkings",
+    "value": 7
+   }
+  ]
+ },
+ "buy a business": {
+  "rising": [
+   {
+    "query": "iphone 6 plus to buy",
+    "value": 8250
+   },
+   {
+    "query": "iphone 11 pro max to buy",
+    "value": 7450
+   },
+   {
+    "query": "business news today",
+    "value": 750
+   },
+   {
+    "query": "ai news today",
+    "value": 700
+   },
+   {
+    "query": "iphone 15 to buy",
+    "value": 400
+   },
+   {
+    "query": "buy toyota",
+    "value": 300
+   },
+   {
+    "query": "buy a business near me",
+    "value": 80
+   }
+  ],
+  "top": [
+   {
+    "query": "how to buy a business",
+    "value": 100
+   },
+   {
+    "query": "buy a small business",
+    "value": 35
+   },
+   {
+    "query": "buy business insurance",
+    "value": 21
+   },
+   {
+    "query": "buy a business near me",
+    "value": 12
+   },
+   {
+    "query": "buy toyota",
+    "value": 7
+   },
+   {
+    "query": "business news today",
+    "value": 6
+   },
+   {
+    "query": "how to buy a business with no money",
+    "value": 4
+   },
+   {
+    "query": "how to start a small business",
+    "value": 2
+   },
+   {
+    "query": "sba loan to buy a business",
+    "value": 1
+   },
+   {
+    "query": "ai news today",
+    "value": 1
+   },
+   {
+    "query": "iphone 15 to buy",
+    "value": 1
+   },
+   {
+    "query": "iphone 6 plus to buy",
+    "value": 0
+   },
+   {
+    "query": "iphone 11 pro max to buy",
+    "value": 0
+   }
+  ]
+ },
+ "hormone replacement therapy": {
+  "rising": [
+   {
+    "query": "fda hormone replacement therapy",
+    "value": 130
+   },
+   {
+    "query": "hormone replacement therapy miami",
+    "value": 100
+   },
+   {
+    "query": "cost of hormone replacement therapy",
+    "value": 80
+   },
+   {
+    "query": "hormone replacement therapy atlanta",
+    "value": 60
+   },
+   {
+    "query": "hormone replacement therapy cost",
+    "value": 60
+   },
+   {
+    "query": "men's hormone replacement therapy",
+    "value": 60
+   },
+   {
+    "query": "best hormone replacement therapy",
+    "value": 60
+   },
+   {
+    "query": "hormone replacement therapy tampa",
+    "value": 50
+   },
+   {
+    "query": "online hormone replacement therapy",
+    "value": 40
+   },
+   {
+    "query": "hormone replacement therapy and breast cancer",
+    "value": 40
+   },
+   {
+    "query": "bio identical hormone replacement therapy near me",
+    "value": 40
+   }
+  ],
+  "top": [
+   {
+    "query": "what is hormone replacement therapy",
+    "value": 100
+   },
+   {
+    "query": "bioidentical hormone replacement therapy",
+    "value": 83
+   },
+   {
+    "query": "best hormone replacement therapy",
+    "value": 73
+   },
+   {
+    "query": "hormone therapy for women",
+    "value": 68
+   },
+   {
+    "query": "hormone replacement therapy near me",
+    "value": 67
+   },
+   {
+    "query": "hormone replacement therapy for women",
+    "value": 66
+   },
+   {
+    "query": "hrt therapy",
+    "value": 66
+   },
+   {
+    "query": "hrt hormone replacement therapy",
+    "value": 66
+   },
+   {
+    "query": "hrt",
+    "value": 61
+   },
+   {
+    "query": "estrogen replacement therapy",
+    "value": 61
+   },
+   {
+    "query": "estrogen",
+    "value": 57
+   },
+   {
+    "query": "hormone replacement therapy for menopause",
+    "value": 38
+   },
+   {
+    "query": "testosterone",
+    "value": 35
+   },
+   {
+    "query": "testosterone replacement therapy",
+    "value": 35
+   },
+   {
+    "query": "hormone replacement therapy testosterone",
+    "value": 34
+   },
+   {
+    "query": "progesterone",
+    "value": 31
+   },
+   {
+    "query": "hormone replacement therapy cost",
+    "value": 29
+   },
+   {
+    "query": "hormone replacement therapy benefits",
+    "value": 26
+   },
+   {
+    "query": "perimenopause",
+    "value": 26
+   },
+   {
+    "query": "online hormone replacement therapy",
+    "value": 24
+   },
+   {
+    "query": "hormone replacement therapy side effects",
+    "value": 23
+   },
+   {
+    "query": "hormone replacement therapy men",
+    "value": 23
+   },
+   {
+    "query": "natural hormone replacement therapy",
+    "value": 20
+   },
+   {
+    "query": "female hormone replacement therapy",
+    "value": 20
+   },
+   {
+    "query": "estradiol",
+    "value": 19
+   }
+  ]
  }
 }
