@@ -53,8 +53,13 @@ body.quake .app { animation: quake .6s linear; }
 header.top { border-bottom: 1px solid var(--line); background: rgba(13, 8, 16, .75); backdrop-filter: blur(6px); }
 .top-inner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand . tools" "nav nav nav"; align-items: center; gap: 8px 12px; padding-block: 10px 8px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
 .brand { grid-area: brand; justify-self: start; font-family: var(--f-display); font-size: 1.6rem; color: var(--pumpkin); letter-spacing: .04em; white-space: nowrap; background: none; border: 0; cursor: pointer; padding: 0; line-height: 1; }
-nav.rounds { grid-area: nav; display: flex; gap: 4px; overflow-x: auto; min-width: 0; scrollbar-width: none; }
-nav.rounds::-webkit-scrollbar { display: none; }
+nav.rounds { grid-area: nav; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+@media (max-width: 820px) {
+  nav.rounds { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 4px; }
+  .top-inner { grid-template-columns: minmax(0, 1fr); grid-template-areas: "brand" "tools" "nav"; }
+  .tools { justify-content: start; flex-wrap: wrap !important; }
+}
+input, select, textarea { box-sizing: border-box; }
 .tab { font: 600 .85rem/1 var(--f-body); color: var(--ash); background: transparent; border: 1px solid transparent; border-radius: 999px; padding: 8px 11px; cursor: pointer; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
 .tab .n { font-family: var(--f-mono); font-size: .75rem; opacity: .7; }
 .tab:hover { color: var(--bone); border-color: var(--line); }
@@ -359,7 +364,13 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
 @media (max-width: 820px) { .draw-layout { grid-template-columns: minmax(0, 1fr); } .coffins { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* Spøkelsesbesøk og drikkeruletten */
-.icon-btn.drink { border-color: var(--candle); color: var(--candle); }
+.icon-btn.drink { border-color: var(--gold); background: var(--gold); color: var(--ink-on-bright); font-weight: 700; }
+.tab.casino-tab { color: var(--gold); border-color: var(--gold); }
+.casino-cta { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 16px 18px; border-radius: 18px; background: radial-gradient(120% 100% at 0% 0%, var(--felt), var(--felt-2)); border: 2px solid var(--gold); }
+.casino-cta .ico { font-size: 2.4rem; line-height: 1; }
+.casino-cta b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 1.8rem; line-height: 1; color: var(--gold); }
+.casino-cta span { color: var(--bone); font-size: .9rem; }
+@media (max-width: 520px) { .casino-cta { grid-template-columns: minmax(0, 1fr); } .casino-cta .ico { display: none; } }
 .ghost-card { width: min(640px, 100%); background: radial-gradient(120% 90% at 50% 0%, #3a2350, var(--crypt)); border: 2px solid var(--hex); border-radius: 28px; padding: clamp(22px, 5vw, 44px); display: grid; gap: 16px; text-align: center; box-shadow: 0 0 120px rgba(167, 123, 255, .45); animation: ghostIn .7s cubic-bezier(.2, 1.4, .4, 1); }
 @keyframes ghostIn { from { transform: translateY(40px) scale(.7); opacity: 0; filter: blur(10px); } }
 .ghost-card .boo { font-size: clamp(4rem, 12vw, 7rem); line-height: 1; animation: float 2.4s ease-in-out infinite; }
@@ -1122,7 +1133,7 @@ function render() {
 }
 function renderNav() {
   const nav = $("#nav");
-  nav.innerHTML = activeRounds().map((r, k) => `<button class="tab" data-act="go" data-to="${r.id}" aria-current="${state.screen === r.id}" title="${esc(roundName(r.id))}"><span class="n">${k + 1}</span>${roundShort(r.id)}</button>`).join("")
+  nav.innerHTML = activeRounds().map((r, k) => `<button class="tab ${r.id === "casino" ? "casino-tab" : ""}" data-act="go" data-to="${r.id}" aria-current="${state.screen === r.id}" title="${esc(roundName(r.id))}"><span class="n">${k + 1}</span>${roundShort(r.id)}</button>`).join("")
     + `<button class="tab" data-act="go" data-to="end" aria-current="${state.screen === "end"}">Kåring</button>`;
   const cur = nav.querySelector('[aria-current="true"]');
   if (cur) nav.scrollLeft = Math.max(0, cur.offsetLeft - nav.clientWidth / 2 + cur.offsetWidth / 2);
@@ -1196,6 +1207,7 @@ const VIEWS = {
         </section>
       </div>
       <div class="stack">
+      <div class="casino-cta"><span class="ico" aria-hidden="true">🎰</span><div><b>Dødskasinoet</b><span>Rulett, blackjack mot Døden, gravautomaten og Dødsstigen. Åpne når som helst med K.</span></div><button class="btn" style="background:var(--gold)" data-act="opencasino">Åpne kasinoet</button></div>
       ${onlinePanel()}
       <section class="panel" aria-labelledby="h-rounds">
         <h2 id="h-rounds">Kveldens program</h2>
