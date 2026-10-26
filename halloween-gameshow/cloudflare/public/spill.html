@@ -96,11 +96,21 @@ textarea { font: 600 1.15rem/1.35 var(--f-body); color: var(--bone); background:
 #scare { position: fixed; inset: 0; z-index: 11; display: grid; place-items: center; background: #000; font-size: 60vw; line-height: 1; animation: strobe .1s steps(2) infinite; }
 @keyframes strobe { 50% { background: #6a0010; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.me { background: none; border: 0; cursor: pointer; padding: 0; }
+.me small { display: block; font: 500 .7rem var(--f-mono); color: var(--ash); letter-spacing: .08em; text-transform: uppercase; }
+#menu, #flash { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; padding: 20px; background: rgba(8, 4, 10, .85); }
+#menu .card, #flash .card { width: min(420px, 100%); }
+.qr { background: #fff; padding: 10px; border-radius: 14px; width: min(240px, 70vw); margin: 0 auto; }
+.qr svg { width: 100%; height: auto; display: block; }
+#flash .card { border: 2px solid var(--hex); text-align: center; animation: pop .4s cubic-bezier(.2, 1.6, .4, 1); }
+#flash h2 { font-family: var(--f-display); font-weight: 400; font-size: 2.4rem; line-height: 1; margin: 0; color: var(--hex); }
+@keyframes pop { from { transform: scale(.6) rotate(-6deg); opacity: 0; } }
 </style>
+<script src="/qrcode.js"></script>
 </head>
 <body>
 <div class="wrap">
-  <header><div class="brand">Spøkelsesshowet</div><div class="me" id="me"></div></header>
+  <header><div class="brand">Spøkelsesshowet</div><button class="me" id="me" data-act="menu" aria-label="Meny"></button></header>
   <main id="main"><div class="card"><p class="lede">Kobler til rommet …</p></div></main>
 </div>
 <div id="conn" class="conn" hidden>Mistet kontakten. Prøver igjen …</div>
@@ -118,7 +128,8 @@ const store = {
 };
 
 const params = new URLSearchParams(location.search);
-let code = (params.get("rom") || location.hash.slice(1) || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
+// Romkoden kommer fra QR-lenken. Uten den bruker vi rommet mobilen sist var med i.
+let code = (params.get("rom") || location.hash.slice(1) || store.get("last-room") || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
 const S = {
   pid: store.get("pid") || (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)),
   name: store.get("name") || "",
@@ -128,12 +139,13 @@ const S = {
   myVotes: {}, editing: false, react: null
 };
 store.set("pid", S.pid);
-const savedTeam = store.get("team-" + code);
-if (Number.isInteger(savedTeam)) S.team = savedTeam;
+function loadIdentity() { const t = store.get("team-" + code); S.team = Number.isInteger(t) ? t : -1; S.joined = false; }
+loadIdentity();
 
 let ws = null, retry = 0;
 function connect() {
   if (code.length !== 4) { renderCode(); return; }
+  try { if (ws) { ws.onclose = null; ws.close(); } } catch (e) {}
   ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/${code}?role=player&pid=${encodeURIComponent(S.pid)}`);
   ws.onopen = () => { retry = 0; $("#conn").hidden = true; if (S.joined) send({ t: "join", name: S.name, team: S.team }); };
   ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (_) { return; } handle(m); };
@@ -144,7 +156,7 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 function handle(m) {
   if (m.t === "welcome") {
     S.teams = m.teams || []; S.phase = m.phase || { mode: "watch" }; S.buzz = m.buzz;
-    if (S.name && S.team >= 0 && S.team < S.teams.length) { S.joined = true; send({ t: "join", name: S.name, team: S.team }); }
+    if (S.name && S.team >= 0 && S.team < S.teams.length) { S.joined = true; store.set("last-room", code); send({ t: "join", name: S.name, team: S.team }); }
     render();
   }
   if (m.t === "teams") { S.teams = m.teams; if (S.team >= S.teams.length) { S.joined = false; S.team = -1; } if (!S.editing) render(); else renderMe(); }
@@ -159,8 +171,9 @@ function handle(m) {
     if (m.pid === S.pid) { vibrate([80, 40, 200]); tone(880, .2); tone(1320, .3, .15); }
     render();
   }
-  if (m.t === "pour" && S.joined && (m.teams || []).includes(S.team)) drink(m);
+  if (m.t === "pour" && S.joined && (m.pids && m.pids.length ? m.pids.includes(S.pid) : (m.teams || []).includes(S.team))) drink(m);
   if (m.t === "scare") scare();
+  if (m.t === "flash") flash(m);
   if (m.t === "react") { S.react = { key: m.key, state: m.state, result: null }; if (m.state === "go") vibrate(120); render(); }
   if (m.t === "pressAck") { if (S.react && S.react.key === m.key) { S.react.result = m; render(); } }
 }
@@ -185,6 +198,35 @@ function drink(m) {
   vibrate([300, 100, 300, 100, 600]); tone(220, .4, 0, "sawtooth", .12); tone(165, .6, .3, "sawtooth", .12);
   setTimeout(() => d.remove(), 7000);
 }
+function flash(m) {
+  document.getElementById("flash")?.remove();
+  const d = document.createElement("div"); d.id = "flash";
+  d.innerHTML = `<div class="card"><div style="font-size:3rem">👻</div><h2>${esc(m.title || "Spøkelsesbesøk")}</h2><p class="q">${esc(m.text || "")}</p><p class="note">Trykk for å lukke</p></div>`;
+  d.onclick = () => d.remove(); document.body.appendChild(d);
+  vibrate([100, 60, 100]); tone(660, .3, 0, "sine", .12); tone(990, .5, .25, "sine", .1);
+  setTimeout(() => d.remove(), 9000);
+}
+/* Hold skjermen våken mens man spiller, og koble til igjen når mobilen våkner */
+let wakeLock = null;
+async function keepAwake() { try { if ("wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); } } catch (e) {} }
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (S.joined) keepAwake();
+  if (code.length === 4 && (!ws || ws.readyState > 1)) { retry = 0; connect(); }
+});
+function menu() {
+  document.getElementById("menu")?.remove();
+  const d = document.createElement("div"); d.id = "menu";
+  let qr = "";
+  try { if (typeof qrcode === "function" && code) { const q = qrcode(0, "M"); q.addData(`${location.origin}/spill?rom=${code}`); q.make(); qr = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); } } catch (e) {}
+  d.innerHTML = `<div class="card"><div class="eyebrow">Rom ${esc(code)}</div>
+    ${qr ? `<div class="qr">${qr}</div><p class="note" style="text-align:center">La andre skanne denne for å bli med.</p>` : ""}
+    ${S.joined ? `<button class="btn ghost" data-act="rejoin">Bytt lag eller navn</button>` : ""}
+    <button class="btn ghost" data-act="leave">Bli med i et annet rom</button>
+    <button class="btn" data-act="closemenu">Lukk</button></div>`;
+  d.addEventListener("click", e => { if (e.target === d) d.remove(); });
+  document.body.appendChild(d);
+}
 function scare() {
   document.getElementById("scare")?.remove();
   const d = document.createElement("div"); d.id = "scare"; d.textContent = "💀"; document.body.appendChild(d);
@@ -198,7 +240,7 @@ const myTeam = () => S.teams[S.team];
 function renderMe() {
   const t = myTeam();
   document.documentElement.style.setProperty("--tc", COLORS[S.team] || COLORS[0]);
-  $("#me").innerHTML = S.joined && t ? `${esc(S.name)}<b>${esc(t.name)} · ${fmt(t.score)}</b>` : code ? `Rom ${esc(code)}` : "";
+  $("#me").innerHTML = S.joined && t ? `${esc(S.name)}<b>${esc(t.name)} · ${fmt(t.score)}</b><small>Meny</small>` : code ? `Rom ${esc(code)}<small>Meny</small>` : "";
 }
 function render() {
   renderMe();
@@ -214,7 +256,7 @@ function renderCode() {
     <input type="text" id="code" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ABCD"><button class="btn" data-act="code">Bli med</button></div>`;
 }
 function joinView() {
-  if (!S.teams.length) return `<div class="card"><div class="eyebrow">Rom ${esc(code)}</div><h1>Venter på verten</h1><p class="lede">Lagene er ikke klare ennå. Siden oppdaterer seg selv.</p></div>`;
+  if (!S.teams.length) return `<div class="card"><div class="eyebrow">Rom ${esc(code)}</div><h1>Venter på verten</h1><p class="lede">Lagene er ikke klare ennå. Siden oppdaterer seg selv.</p><p class="note">Står det et annet rom på storskjermen? Skann QR-koden på nytt.</p><button class="btn ghost" data-act="leave">Skriv inn en annen kode</button></div>`;
   return `<div class="card">
     <div class="eyebrow">Rom ${esc(code)}</div>
     <h1>Hvem er du?</h1>
@@ -338,11 +380,20 @@ document.addEventListener("pointerdown", e => {
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
   const a = b.dataset.act, p = S.phase;
-  if (a === "code") { const v = ($("#code").value || "").toUpperCase().replace(/[^A-Z]/g, ""); if (v.length === 4) { code = v; history.replaceState(null, "", "?rom=" + v); connect(); } }
+  if (a === "code") { const v = ($("#code").value || "").toUpperCase().replace(/[^A-Z]/g, ""); if (v.length === 4) { code = v; loadIdentity(); history.replaceState(null, "", "?rom=" + v); connect(); } }
+  if (a === "menu") menu();
+  if (a === "closemenu") document.getElementById("menu")?.remove();
+  if (a === "rejoin") { document.getElementById("menu")?.remove(); S.joined = false; render(); }
+  if (a === "leave") {
+    document.getElementById("menu")?.remove(); store.set("last-room", null);
+    try { if (ws) { ws.onclose = null; ws.close(); } } catch (e) {}
+    code = ""; S.joined = false; S.team = -1; history.replaceState(null, "", location.pathname); renderMe(); renderCode();
+  }
   if (a === "pick") { S.name = ($("#name").value || "").trim(); S.team = +b.dataset.k; render(); }
   if (a === "join") {
     S.name = ($("#name").value || "").trim() || "Navnløs"; if (S.team < 0) return;
-    store.set("name", S.name); store.set("team-" + code, S.team); S.joined = true;
+    store.set("name", S.name); store.set("team-" + code, S.team); store.set("last-room", code); S.joined = true;
+    history.replaceState(null, "", "?rom=" + code); keepAwake();
     send({ t: "join", name: S.name, team: S.team }); tone(660, .1); render();
   }
   if (a === "tf") { const v = b.dataset.v === "1"; S.myVotes[p.key] = v; send({ t: "vote", key: p.key, value: v }); vibrate(20); render(); }
