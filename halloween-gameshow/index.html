@@ -439,6 +439,15 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
 .give b { font-size: 1.15rem; }
 @media (max-width: 860px) { .table2 { grid-template-columns: minmax(0, 1fr); } }
 
+/* Kasinofeed fra mobilene */
+#toasts { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); z-index: 35; display: grid; gap: 8px; width: min(340px, calc(100% - 32px)); pointer-events: none; }
+.toast { padding: 10px 14px; border-radius: 14px; background: rgba(10, 42, 30, .95); border: 1px solid var(--gold); border-left: 5px solid var(--tc, var(--gold)); color: var(--bone); font: 600 .9rem/1.3 var(--f-body); box-shadow: 0 10px 30px rgba(0, 0, 0, .5); animation: toastIn .35s ease-out; }
+.toast.big { background: var(--gold); color: var(--ink-on-bright); font-weight: 800; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(40px); } }
+.kings { display: grid; gap: 6px; }
+.kings div { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto; gap: 10px; padding: 8px 12px; border-radius: 10px; background: rgba(0, 0, 0, .3); border-left: 4px solid var(--tc); }
+.kings b { font: 600 1rem var(--f-mono); color: var(--gold); }
+
 /* Mobilspill */
 .icon-btn.online { border-color: var(--ghost); color: var(--ghost); }
 .icon-btn.online.live { background: var(--ghost); color: var(--ink-on-bright); }
@@ -498,6 +507,7 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
   <footer class="scores"><div class="scores-inner" id="scores" aria-live="polite"></div></footer>
 </div>
 <div id="overlay-root"></div>
+<div id="toasts" aria-live="polite"></div>
 
 <script>
 (() => {
@@ -839,7 +849,7 @@ const fresh = () => ({
   finalIdx: 0, finalStage: "wager", wagers: {}, finalMarks: {}, finalApplied: false,
   tieIdx: 0, tieOpen: false, tieReveal: false,
   witchDeck: [], witchCard: null,
-  buzzGen: 0, wheelSpin: 0, room: null, off: {}, ghostFreq: "normal", ghostDeck: [],
+  buzzGen: 0, wheelSpin: 0, room: null, off: {}, ghostFreq: "normal", ghostDeck: [], phoneCasino: true,
   rxHeat: 0, rxState: "ready",
   vIdx: 0, vState: "vote", vResult: null,
   dIdx: -1, dTeam: 0, dState: "ready", dUsed: [],
@@ -1091,15 +1101,15 @@ function addScore(i, d, quiet) {
   if (chip) { chip.classList.remove("up", "down"); void chip.offsetWidth; chip.classList.add(d > 0 ? "up" : "down"); }
   if (!quiet) (d > 0 ? sfx.correct : sfx.wrong)();
 }
-function pour(who, n = 1, headline, pids) {
+function pour(who, n = 1, headline, pids, quiet) {
   const list = (Array.isArray(who) ? who : [who]).filter(i => state.teams[i]);
   if (!list.length) return;
   list.forEach(i => { state.teams[i].shots = (state.teams[i].shots || 0) + n; });
   save(); renderScores();
   list.forEach(i => floater(i, `+${n} ${icon()}`, "shot"));
-  sfx.pour();
   const txt = headline || (list.length === 1 ? `${state.teams[list[0]].name}: ${shotWord(n)}!` : `${shotWord(n)} til ${list.length} lag!`);
-  banner(state.shotMode ? txt.toUpperCase() : txt, list.length === 1 ? tc(list[0]) : "var(--candle)", 2800);
+  if (quiet) toast(`${icon()} ${txt}`, list[0]);
+  else { sfx.pour(); banner(state.shotMode ? txt.toUpperCase() : txt, list.length === 1 ? tc(list[0]) : "var(--candle)", 2800); }
   osend({ t: "pour", teams: list, n, text: txt, pids: pids || null });
 }
 const allTeams = () => state.teams.map((_, k) => k);
@@ -1199,6 +1209,7 @@ const VIEWS = {
           <h2 id="h-rules">Husregler</h2>
           <label class="toggle"><input type="checkbox" id="set-shot" data-setting="shotMode" ${state.shotMode ? "checked" : ""}><div><b>Shot-modus</b><span>Shots på hjulet, Shot-ruletten, gresskaret og hekseklokka. Slå av for familieversjon med sure godterier.</span></div></label>
           <label class="toggle"><input type="checkbox" id="set-wrong" data-setting="wrongShot" ${state.wrongShot ? "checked" : ""}><div><b>Feil svar på tavla gir ${shotWord(1)}</b><span>Djevelens dobbel gir ${shotWord(2)}.</span></div></label>
+          <label class="toggle"><input type="checkbox" id="set-pcasino" data-setting="phoneCasino" ${state.phoneCasino ? "checked" : ""}><div><b>Mobilkasino</b><span>Gjestene kan spille rulett, blackjack og slotmaskin på mobilen mellom slagene, med egne sjeler. Gevinster kan veksles inn til lagpoeng.</span></div></label>
           <label class="toggle"><input type="checkbox" id="set-devil" data-setting="devilOn" ${state.devilOn ? "checked" : ""}><div><b>Djevelens dobbel</b><span>To skjulte ruter på hver tavle gir dobbel verdi og dobbel straff.</span></div></label>
           <div class="toggle" style="cursor:default"><span style="font-size:1.4rem">👻</span><div><b>Spøkelsesbesøk</b><span>Spøkelset dukker opp når det vil med drikkeoppgaver, skåler og drikkeruletten.</span>
             <div class="freq" style="margin-top:8px">${[["off", "Av"], ["rare", "Sjelden"], ["normal", "Vanlig"], ["chaos", "Kaos"]].map(([k, l]) => `<button data-act="ghostfreq" data-f="${k}" aria-pressed="${state.ghostFreq === k}">${l}</button>`).join("")}<button data-act="ghostnow">Prøv nå</button></div></div></div>
@@ -1785,7 +1796,28 @@ function onlineConnect(code) {
   ws.onclose = () => { online.connected = false; renderOnlineBtn(); if (online.ws === ws) setTimeout(() => { if (online.ws === ws && state.room) onlineConnect(state.room); }, Math.min(8000, 500 * 2 ** online.retry++)); };
   ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (_) { return; } onlineMsg(m); };
 }
+function toast(text, team, big) {
+  const box = document.getElementById("toasts"); if (!box) return;
+  const t = document.createElement("div"); t.className = "toast" + (big ? " big" : ""); if (team != null) t.style.setProperty("--tc", tc(team)); t.textContent = text;
+  box.appendChild(t); while (box.children.length > 4) box.firstChild.remove();
+  setTimeout(() => t.remove(), big ? 7000 : 5000);
+}
 function onlineMsg(m) {
+  if (m.t === "cres") {
+    online.wallets = online.wallets || {}; online.wallets[m.pid] = { name: m.name, team: m.team, souls: m.souls };
+    toast(`🎰 ${m.name}: ${m.text}`, m.team, m.big);
+    if (m.big) { sfx.fanfare(); rainCandy(40); }
+    if (m.drink) pour(m.team, m.drink, `${m.name} tapte i mobilkasinoet: ${shotWord(m.drink)}`, [m.pid], true);
+    if (state.screen === "casino") scheduleRender();
+    return;
+  }
+  if (m.t === "cgive" && state.teams[m.to]) { pour(m.to, 1, `${m.name} ga ${shotWord(1)} til ${state.teams[m.to].name}`, null, true); return; }
+  if (m.t === "ccash" && state.teams[m.team] && m.amount > 0) {
+    addScore(m.team, m.amount, true); toast(`💰 ${m.name} vekslet inn ${fmt(m.amount)} til ${state.teams[m.team].name}`, m.team, m.amount >= 300);
+    if (online.wallets && online.wallets[m.pid]) online.wallets[m.pid].souls = 100;
+    if (state.screen === "casino") scheduleRender();
+    return;
+  }
   if (m.t === "roster") { online.players = m.players || []; renderOnlineBtn(); if (online.showQR) renderOverlay(); if (state.screen === "setup") scheduleRender(); }
   if (m.t === "buzzed") { if (m.key === phaseNow().key) buzz(m.team, m.name); }
   if (m.t === "photo") { online.photos[m.team] = m.data; if (state.screen === "costume") scheduleRender(); if (m.name && state.teams[m.team]) banner(`${state.teams[m.team].name} sendte et bilde!`, tc(m.team), 1800); }
@@ -1837,7 +1869,7 @@ function scheduleRender() {
 function phaseNow() {
   const s = state.screen, g = state.buzzGen || 0;
   const round = ROUNDS.some(r => r.id === s) ? roundName(s) : s === "end" ? "Kåringen" : "Spøkelsesshowet";
-  const P = o => Object.assign({ round }, o);
+  const P = o => Object.assign({ round, casino: !!state.phoneCasino, shotMode: !!state.shotMode }, o);
   if ((s === "board" || s === "board2") && state.current && state.current.b === s) {
     const { b, c, i, reveal } = state.current, q = BOARDS[b].data[c].qs[i].q;
     return reveal ? P({ mode: "watch", text: q }) : P({ mode: "buzz", key: `q:${b}:${c}:${i}:${g}`, text: q });
@@ -2396,7 +2428,9 @@ function casinoView() {
   return head("casino", "Døds&shy;", "kasinoet", "", "") + `<div class="casino">
     <div class="casino-top"><div class="games">${tabs.map(([k, l]) => `<button data-act="cgame" data-g="${k}" aria-pressed="${g === k}">${l}</button>`).join("")}</div>
       <div class="pot"><span>Djevelens pott</span><b>${fmt(cs.pot)}</b></div></div>
-    ${giveHtml()}${body}</div><div class="row spread"><span class="progress">Alle tapte poeng havner i Djevelens pott. Ett riktig tall på ruletten, blackjack eller tre gresskar tar hele potten.</span>${nextBtn("casino")}</div>`;
+    ${giveHtml()}${body}
+    ${online.connected && state.phoneCasino ? `<div style="display:grid;gap:8px"><div class="eyebrow" style="color:var(--gold)">Mobilkasinoet · kasinokongene</div>${Object.keys(online.wallets || {}).length ? `<div class="kings">${Object.values(online.wallets).sort((a, b) => b.souls - a.souls).slice(0, 8).map((w, i) => `<div style="--tc:${tc(w.team)}"><span>${i + 1}</span><span>${esc(w.name)} · ${esc(state.teams[w.team]?.name || "")}</span><b>${fmt(w.souls)} sjeler</b></div>`).join("")}</div>` : `<p class="lede" style="color:var(--bone)">Gjestene kan spille på mobilen nå. Trykk «Kasino» på mobilen.</p>`}</div>` : ""}
+    </div><div class="row spread"><span class="progress">Alle tapte poeng havner i Djevelens pott. Ett riktig tall på ruletten, blackjack eller tre gresskar tar hele potten.</span>${nextBtn("casino")}</div>`;
 }
 function casinoVote(m, ph) {
   const cs = C(), k = m.team; if (!state.teams[k]) return;

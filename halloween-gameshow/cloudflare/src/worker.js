@@ -135,6 +135,21 @@ export class Room {
         if (me.team < 0 || typeof msg.data !== "string" || msg.data.length > 160000 || !msg.data.startsWith("data:image/")) return;
         this.toHosts({ t: "draw", team: me.team, data: msg.data, name: me.name });
         break;
+      // Mobilkasinoet: mobilen spiller selv og melder resultatet til storskjermen
+      case "cres": {
+        if (me.team < 0) return;
+        const n = v => Math.max(0, Math.min(10, Math.round(+v || 0)));
+        this.toHosts({ t: "cres", pid: me.pid, name: me.name, team: me.team, game: String(msg.game || "").slice(0, 20), text: String(msg.text || "").slice(0, 140), drink: n(msg.drink), give: n(msg.give), souls: Math.max(0, Math.min(1e6, Math.round(+msg.souls || 0))), big: !!msg.big });
+        break;
+      }
+      case "cgive":
+        if (me.team < 0 || !Number.isInteger(msg.team)) return;
+        this.toHosts({ t: "cgive", pid: me.pid, name: me.name, team: me.team, to: msg.team });
+        break;
+      case "ccash":
+        if (me.team < 0) return;
+        this.toHosts({ t: "ccash", pid: me.pid, name: me.name, team: me.team, amount: Math.max(0, Math.min(1000, Math.round(+msg.amount || 0))) });
+        break;
       case "vote":
         this.toHosts({ t: "vote", key: msg.key, value: msg.value, sub: msg.sub, pid: me.pid, team: me.team, name: me.name });
         break;

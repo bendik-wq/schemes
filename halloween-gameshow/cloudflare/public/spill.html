@@ -23,7 +23,7 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; margin: 0; }
 body { background: radial-gradient(120% 70% at 50% 0%, #2a1630, var(--night) 65%) fixed, var(--night); color: var(--bone); font: 16px/1.45 var(--f-body); overscroll-behavior: none; }
-.wrap { min-height: 100%; display: grid; grid-template-rows: auto 1fr; padding: max(14px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); gap: 14px; max-width: 560px; margin: 0 auto; }
+.wrap { min-height: 100%; display: grid; align-content: start; padding: max(14px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); gap: 14px; max-width: 560px; margin: 0 auto; }
 header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .brand { font-family: var(--f-display); color: var(--pumpkin); font-size: 1.4rem; line-height: 1; }
 .me { font: 600 .85rem/1.2 var(--f-body); text-align: right; color: var(--ash); min-width: 0; }
@@ -107,6 +107,24 @@ textarea { font: 600 1.15rem/1.35 var(--f-body); color: var(--bone); background:
 .cards span { width: 46px; aspect-ratio: 5 / 7; border-radius: 7px; background: #f6f1e7; color: #16110f; display: grid; place-items: center; font: 700 1rem var(--f-mono); }
 .cards span.r { color: #b3122e; }
 .cards span.q { background: repeating-linear-gradient(45deg, #ff7b1c 0 6px, #8a3a08 6px 12px); }
+.ptabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ptabs button { font: 800 1rem/1 var(--f-body); padding: 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--crypt); color: var(--bone); }
+.ptabs button[aria-pressed="true"] { background: var(--tc); color: var(--ink); border-color: var(--tc); }
+.ptabs button.gold[aria-pressed="true"] { background: #e2b94a; border-color: #e2b94a; }
+.ptabs button.alert { animation: nudge .8s ease-in-out infinite alternate; border-color: var(--slime); }
+@keyframes nudge { to { transform: scale(1.04); } }
+.wallet { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.wallet b { font-family: var(--f-display); font-weight: 400; font-size: 2.4rem; line-height: 1; color: #e2b94a; }
+.cgames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cgames button { font: 800 .95rem var(--f-body); padding: 12px 4px; border-radius: 12px; border: 2px solid #e2b94a; background: transparent; color: #e2b94a; }
+.cgames button[aria-pressed="true"] { background: #e2b94a; color: var(--ink); }
+.spinner { height: 120px; border-radius: 18px; display: grid; place-items: center; font: 700 4rem var(--f-mono); color: #fff; background: #141014; border: 3px solid #e2b94a; }
+.preels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.preel { height: 96px; border-radius: 12px; background: #f6f1e7; overflow: hidden; position: relative; }
+.preel .strip { position: absolute; left: 0; right: 0; top: 0; display: grid; }
+.preel .strip span { height: 96px; display: grid; place-items: center; font-size: 3.2rem; }
+.cres { padding: 14px; border-radius: 14px; background: rgba(0, 0, 0, .35); border: 2px solid #e2b94a; display: grid; gap: 8px; animation: pop .35s ease-out; }
+.cres h3 { font-family: var(--f-display); font-weight: 400; font-size: 2rem; margin: 0; line-height: 1; }
 #scare { position: fixed; inset: 0; z-index: 11; display: grid; place-items: center; background: #000; font-size: 60vw; line-height: 1; animation: strobe .1s steps(2) infinite; }
 @keyframes strobe { 50% { background: #6a0010; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -125,6 +143,7 @@ textarea { font: 600 1.15rem/1.35 var(--f-body); color: var(--bone); background:
 <body>
 <div class="wrap">
   <header><div class="brand">Spøkelsesshowet</div><button class="me" id="me" data-act="menu" aria-label="Meny"></button></header>
+  <nav id="tabs" class="ptabs" hidden></nav>
   <main id="main"><div class="card"><p class="lede">Kobler til rommet …</p></div></main>
 </div>
 <div id="conn" class="conn" hidden>Mistet kontakten. Prøver igjen …</div>
@@ -150,7 +169,9 @@ const S = {
   team: -1,
   joined: false,
   teams: [], phase: { mode: "watch" }, buzz: null,
-  myVotes: {}, editing: false, react: null
+  myVotes: {}, editing: false, react: null,
+  view: "show", cgame: "slots", cbusy: false, alert: false, cr: null, give: 0,
+  cbet: { souls: 25, shots: 1, type: "red", num: 13 }, bjp: null
 };
 store.set("pid", S.pid);
 function loadIdentity() { const t = store.get("team-" + code); S.team = Number.isInteger(t) ? t : -1; S.joined = false; }
@@ -173,13 +194,18 @@ function handle(m) {
     if (S.name && S.team >= 0 && S.team < S.teams.length) { S.joined = true; store.set("last-room", code); send({ t: "join", name: S.name, team: S.team }); }
     render();
   }
-  if (m.t === "teams") { S.teams = m.teams; if (S.team >= S.teams.length) { S.joined = false; S.team = -1; } if (!S.editing) render(); else renderMe(); }
+  if (m.t === "teams") { S.teams = m.teams; if (S.team >= S.teams.length) { S.joined = false; S.team = -1; } if (!S.editing && S.view !== "casino") render(); else { renderMe(); renderTabs(); } }
   if (m.t === "phase") {
     const newKey = m.phase.key !== S.phase.key || m.phase.mode !== S.phase.mode;
     S.phase = m.phase; S.buzz = m.buzz;
     if (newKey) S.editing = false;
+    // Når showet trenger deg (buzz, stemme, innsats …), går mobilen tilbake til showet
+    if (newKey && INTERACTIVE.includes(m.phase.mode) && S.view === "casino") { if (S.cbusy) S.alert = true; else { S.view = "show"; vibrate(80); } }
+    if (!m.phase.casino && S.view === "casino" && !S.cbusy) S.view = "show";
+    if (S.view === "casino") { renderTabs(); return; }
     if (!S.editing) render();
   }
+  if (m.t === "buzzed" && S.view === "casino") return;
   if (m.t === "buzzed") {
     S.buzz = { key: m.key, winner: { team: m.team, name: m.name, pid: m.pid } };
     if (m.pid === S.pid) { vibrate([80, 40, 200]); tone(880, .2); tone(1320, .3, .15); }
@@ -256,10 +282,16 @@ function renderMe() {
   document.documentElement.style.setProperty("--tc", COLORS[S.team] || COLORS[0]);
   $("#me").innerHTML = S.joined && t ? `${esc(S.name)}<b>${esc(t.name)} · ${fmt(t.score)}</b><small>Meny</small>` : code ? `Rom ${esc(code)}<small>Meny</small>` : "";
 }
+function renderTabs() {
+  const t = $("#tabs"); const on = S.joined && S.phase.casino;
+  t.hidden = !on; if (!on) return;
+  t.innerHTML = `<button data-act="view" data-v="show" aria-pressed="${S.view === "show"}" class="${S.alert || (S.view === "casino" && INTERACTIVE.includes(S.phase.mode)) ? "alert" : ""}">Showet</button><button class="gold" data-act="view" data-v="casino" aria-pressed="${S.view === "casino"}">🎰 Kasino · ${fmt(wallet())}</button>`;
+}
 function render() {
-  renderMe();
+  renderMe(); renderTabs();
   const main = $("#main");
   if (!S.joined) { main.innerHTML = joinView(); return; }
+  if (S.view === "casino" && S.phase.casino) { main.innerHTML = casinoView(); return; }
   const p = S.phase, v = VIEWS[p.mode] || VIEWS.watch;
   if (p.mode === "draw" && S.team === p.team && $("#pad") && pad.key === padId(p)) { renderMe(); return; }
   main.innerHTML = v(p);
@@ -284,6 +316,124 @@ function board() {
   const ranked = S.teams.map((t, k) => ({ ...t, k })).sort((a, b) => b.score - a.score);
   return `<div class="list">${ranked.map((t, i) => `<div class="li ${t.k === S.team ? "mine" : ""}" style="--c:${COLORS[t.k]}"><span class="n">${i + 1}</span><span class="nm">${esc(t.name)}</span><span class="sc">${fmt(t.score)}${t.shots ? ` · 🥃${t.shots}` : ""}</span></div>`).join("")}</div>`;
 }
+/* ================= Mobilkasinoet ================= */
+const INTERACTIVE = ["buzz", "tf", "wager", "rate", "costume", "choice", "write", "react", "draw", "bid", "stake", "bj", "slot"];
+const RED_N = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const BTYPES = [["red", "Rød"], ["black", "Svart"], ["odd", "Oddetall"], ["even", "Partall"], ["low", "1–18"], ["high", "19–36"], ["d1", "1.–12."], ["d2", "13.–24."], ["d3", "25.–36."], ["num", "Ett tall"]];
+const SYMS = ["🎃", "👻", "💀", "🦇", "🕷️", "🍬", "🧛"], SW = [2, 4, 3, 5, 5, 6, 2];
+const shotsWord = n => S.phase.shotMode === false ? (n === 1 ? "én sur godteri" : `${n} sure godterier`) : (n === 1 ? "ett shot" : `${n} shots`);
+const minShot = () => S.phase.shotMode === false ? 0 : 1;
+const wKey = () => `souls-${code}-${S.pid}`;
+function wallet() { const v = store.get(wKey()); return Number.isFinite(v) ? v : 100; }
+function setWallet(v) { store.set(wKey(), Math.max(0, Math.round(v))); }
+function rWins(t, num, n) { const red = RED_N.has(n); return t === "red" ? n && red : t === "black" ? n && !red : t === "odd" ? n && n % 2 : t === "even" ? n && !(n % 2) : t === "low" ? n >= 1 && n <= 18 : t === "high" ? n >= 19 : t === "d1" ? n >= 1 && n <= 12 : t === "d2" ? n >= 13 && n <= 24 : t === "d3" ? n >= 25 : t === "num" ? num === n : false; }
+const rMult = t => t === "num" ? 35 : /^d/.test(t) ? 2 : 1, gMult = t => t === "num" ? 5 : /^d/.test(t) ? 2 : 1;
+const nColor = n => n === 0 ? "#1f8a4c" : RED_N.has(n) ? "#b3122e" : "#141014";
+function finish(game, res) {
+  // res: { title, text, delta, drink, give, big }
+  setWallet(wallet() + (res.delta || 0));
+  S.cr = res; S.give = res.give || 0; S.cbusy = false;
+  send({ t: "cres", game, text: res.short || res.text, drink: res.drink || 0, give: res.give || 0, souls: wallet(), big: !!res.big });
+  if (res.delta > 0) { vibrate([60, 40, 60]); tone(880, .12); tone(1320, .2, .12); } else { vibrate(200); tone(160, .4, 0, "sawtooth", .1); }
+  if (S.alert) { S.alert = false; }
+  render();
+}
+function stakeOk() { const b = S.cbet; b.souls = Math.max(0, Math.min(wallet(), b.souls)); b.shots = Math.max(minShot(), b.shots); return b.souls > 0 || b.shots > 0; }
+
+/* Rulett: tallene ruller i et vindu og stopper */
+function playRoulette() {
+  if (S.cbusy || !stakeOk()) return; S.cbusy = true; S.cr = null; render();
+  const b = { ...S.cbet }, n = Math.floor(Math.random() * 37), box = $("#spinner"); let i = 0, delay = 40;
+  const tick = () => {
+    const show = i < 24 ? Math.floor(Math.random() * 37) : n;
+    if (box) { box.textContent = show; box.style.background = nColor(show); }
+    tone(900, .02, 0, "square", .04);
+    if (i++ < 24) { delay *= 1.12; setTimeout(tick, delay); return; }
+    S.lastN = n;
+    {
+      const win = rWins(b.type, b.num, n), lbl = b.type === "num" ? `tall ${b.num}` : (BTYPES.find(x => x[0] === b.type) || ["", ""])[1];
+      if (win) finish("rulett", { title: `${n}! Du vant`, text: `+${fmt(b.souls * rMult(b.type))} sjeler på ${lbl}. Del ut ${shotsWord(b.shots * gMult(b.type))}.`, short: `vant ${fmt(b.souls * rMult(b.type))} på rulett (${n})`, delta: b.souls * rMult(b.type), give: b.shots * gMult(b.type), big: b.type === "num" });
+      else { const extra = n === 0 ? 1 : 0; finish("rulett", { title: n === 0 ? "Djevelens null!" : `${n}. Tapt`, text: `Du tapte ${fmt(b.souls)} sjeler og tar ${shotsWord(b.shots + extra)}.`, short: `tapte ${fmt(b.souls)} på rulett (${n})`, delta: -b.souls, drink: b.shots + extra }); }
+    }
+  };
+  tick();
+}
+
+/* Slotmaskin */
+function pickSym() { let r = Math.random() * SW.reduce((a, x) => a + x, 0); for (let i = 0; i < SYMS.length; i++) { r -= SW[i]; if (r < 0) return SYMS[i]; } return SYMS[0]; }
+function playSlots() {
+  if (S.cbusy || !stakeOk()) return; S.cbusy = true; S.cr = null; render();
+  const b = { ...S.cbet }, res = [pickSym(), pickSym(), pickSym()]; if (Math.random() < .25) res[1] = res[0];
+  document.querySelectorAll(".preel .strip").forEach((st, i) => {
+    const syms = Array.from({ length: 18 + i * 8 }, () => SYMS[Math.floor(Math.random() * SYMS.length)]); syms.push(res[i]);
+    st.innerHTML = syms.map(x => `<span>${x}</span>`).join(""); st.style.transform = "translateY(0)"; void st.offsetWidth;
+    st.style.transition = `transform ${1.1 + i * .45}s cubic-bezier(.15,.6,.25,1.02)`; st.style.transform = `translateY(-${(syms.length - 1) * 96}px)`;
+  });
+  setTimeout(() => {
+    S.slots = res; const [a, c, d] = res, three = a === c && c === d, pair = a === c || c === d || a === d, sk = res.filter(x => x === "💀").length;
+    let r;
+    if (three && a === "🎃") r = { title: "JACKPOT!", text: `Tre gresskar! +${fmt(b.souls * 10)} sjeler. Del ut ${shotsWord(3)}.`, short: `JACKPOT på slotmaskinen! +${fmt(b.souls * 10)}`, delta: b.souls * 10, give: 3, big: true };
+    else if (three && a === "💀") r = { title: "Døden vinner", text: `Tre dødningehoder. Du taper ${fmt(b.souls)} og tar ${shotsWord(3)}.`, short: "fikk tre dødningehoder", delta: -b.souls, drink: 3 };
+    else if (three) r = { title: "Tre like!", text: `+${fmt(b.souls * 5)} sjeler. Del ut ${shotsWord(2)}.`, short: `tre like! +${fmt(b.souls * 5)}`, delta: b.souls * 5, give: 2, big: true };
+    else if (sk === 2) r = { title: "Dødsvarsel", text: `To dødningehoder. Du taper ${fmt(b.souls)} og tar ${shotsWord(2)}.`, short: "fikk to dødningehoder", delta: -b.souls, drink: 2 };
+    else if (pair) r = { title: "Et par", text: `+${fmt(b.souls)} sjeler.`, short: `fikk et par, +${fmt(b.souls)}`, delta: b.souls };
+    else r = { title: "Ingenting", text: `Automaten tok ${fmt(b.souls)} sjeler. Ta ${shotsWord(Math.max(1, b.shots))}.`, short: "tapte på slotmaskinen", delta: -b.souls, drink: Math.max(minShot(), b.shots) };
+    finish("slots", r);
+  }, 2300);
+}
+
+/* Blackjack mot Døden, én mot én */
+const SUIT = ["♠", "♥", "♦", "♣"], RANK = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const deck = () => { const d = SUIT.flatMap(s => RANK.map(r => r + s)); for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } return d; };
+function hv(cards) { let v = 0, a = 0; cards.forEach(c => { const r = c.slice(0, -1); if (r === "A") { v += 11; a++; } else v += ["J", "Q", "K"].includes(r) ? 10 : +r; }); while (v > 21 && a) { v -= 10; a--; } return v; }
+function bjStart() { if (S.cbusy || !stakeOk()) return; const d = deck(); S.bjp = { d, me: [d.pop(), d.pop()], death: [d.pop(), d.pop()], bet: { ...S.cbet } }; S.cbusy = true; S.cr = null; if (hv(S.bjp.me) === 21) return bjEnd(); render(); }
+function bjHit(double) {
+  const g = S.bjp; if (!g) return;
+  if (double) { g.bet.souls = Math.min(wallet(), g.bet.souls * 2); g.bet.shots = Math.min(6, Math.max(1, g.bet.shots * 2)); }
+  g.me.push(g.d.pop()); tone(700, .05);
+  if (hv(g.me) >= 21 || double) return bjEnd(); render();
+}
+function bjEnd() {
+  const g = S.bjp, mv = hv(g.me), natural = mv === 21 && g.me.length === 2;
+  if (mv <= 21) while (hv(g.death) < 17) g.death.push(g.d.pop());
+  const dv = hv(g.death), b = g.bet; g.done = true;
+  let r;
+  if (mv > 21) r = { title: "Død!", text: `${mv}. Du tapte ${fmt(b.souls)} sjeler og tar ${shotsWord(b.shots)}.`, short: `gikk over 21 mot Døden`, delta: -b.souls, drink: b.shots };
+  else if (natural && dv !== 21) r = { title: "Blackjack!", text: `+${fmt(Math.round(b.souls * 1.5))} sjeler. Del ut ${shotsWord(b.shots * 2)}.`, short: `fikk BLACKJACK mot Døden`, delta: Math.round(b.souls * 1.5), give: b.shots * 2, big: true };
+  else if (dv > 21 || mv > dv) r = { title: "Du slo Døden", text: `${mv} mot ${dv}. +${fmt(b.souls)} sjeler. Del ut ${shotsWord(b.shots)}.`, short: `slo Døden ${mv}–${dv}`, delta: b.souls, give: b.shots };
+  else if (mv === dv) r = { title: "Uavgjort", text: `${mv} mot ${dv}. Døden venter.`, short: `spilte uavgjort mot Døden`, delta: 0 };
+  else r = { title: "Døden vant", text: `${mv} mot ${dv}. Du tapte ${fmt(b.souls)} og tar ${shotsWord(b.shots)}.`, short: `tapte mot Døden ${mv}–${dv}`, delta: -b.souls, drink: b.shots };
+  finish("blackjack", r);
+}
+
+function casinoView() {
+  const w = wallet(), b = S.cbet, busy = S.cbusy;
+  if (b.souls > w) b.souls = w; if (b.shots < minShot()) b.shots = minShot();
+  const games = [["slots", "Slot"], ["roulette", "Rulett"], ["blackjack", "Blackjack"]];
+  const stake = `<div class="eyebrow">Sjeler i potten</div><div class="chips6">${[10, 25, 50, 100, 250, w].map((v, i) => `<button data-act="cs" data-v="${v}" aria-pressed="${b.souls === v}" ${v > w || busy ? "disabled" : ""}>${i === 5 ? "Alt inn" : v}</button>`).join("")}</div>
+    <div class="eyebrow">${S.phase.shotMode === false ? "Sure godterier" : "Shots"} i potten</div><div class="shots4">${[0, 1, 2, 3].map(v => `<button data-act="csh" data-v="${v}" aria-pressed="${b.shots === v}" ${v < minShot() || busy ? "disabled" : ""}>${v}</button>`).join("")}</div>`;
+  let game = "";
+  if (S.cgame === "roulette") game = `<div class="spinner" id="spinner" style="background:${nColor(S.lastN ?? 0)}">${busy ? "" : S.lastN ?? "?"}</div>
+    <div class="betgrid">${BTYPES.map(([v, l]) => `<button data-act="ct" data-v="${v}" aria-pressed="${b.type === v}" ${busy ? "disabled" : ""}>${l}</button>`).join("")}</div>
+    ${b.type === "num" ? `<div class="tools"><button data-act="cn" data-d="-1">−</button><button style="flex:2;font-size:1.3rem;background:${nColor(b.num)};color:#fff">${b.num}</button><button data-act="cn" data-d="1">+</button></div>` : ""}
+    ${stake}<button class="btn" style="background:#e2b94a" data-act="croul" ${busy ? "disabled" : ""}>Spinn</button>`;
+  else if (S.cgame === "slots") game = `<div class="preels">${(S.slots || ["🎃", "👻", "💀"]).map(x => `<div class="preel"><div class="strip"><span>${x}</span></div></div>`).join("")}</div>${stake}
+    <button class="btn" style="background:#e0435a;color:#f2e8d5" data-act="cslot" ${busy ? "disabled" : ""}>Dra i spaken</button>
+    <p class="note">🎃🎃🎃 10× · tre like 5× · par 2× · 💀💀 tap og ${shotsWord(2)} · bom koster ${shotsWord(1)}</p>`;
+  else { const g = S.bjp;
+    game = g && !g.done ? `<div><b>💀 Døden</b>${cardsHtml([g.death[0], "?"])}</div><div><b>Du · ${hv(g.me)}</b>${cardsHtml(g.me)}</div>
+      <div class="two"><button class="btn" data-act="chit">Trekk</button><button class="btn ghost" data-act="cstand">Stå</button></div>${g.me.length === 2 ? `<button class="btn" style="background:#e2b94a" data-act="cdouble">Dobbel</button>` : ""}`
+      : `${g ? `<div><b>💀 Døden · ${hv(g.death)}</b>${cardsHtml(g.death)}</div><div><b>Du · ${hv(g.me)}</b>${cardsHtml(g.me)}</div>` : `<p class="lede">Slå Døden uten å gå over 21. Døden trekker til 17. Blackjack betaler 3:2.</p>`}${stake}<button class="btn" style="background:#e2b94a" data-act="cbj">Del ut</button>`; }
+  const give = S.give > 0 ? `<div class="cres" style="border-color:var(--hex)"><b>Del ut ${shotsWord(S.give)}: trykk på laget som skal drikke</b><div class="teams">${S.teams.map((t, k) => k === S.team ? "" : `<button class="team" style="--c:${COLORS[k]}" data-act="cg" data-k="${k}">${esc(t.name)}</button>`).join("")}</div></div>` : "";
+  const res = S.cr ? `<div class="cres"><h3 style="color:${S.cr.delta > 0 ? "var(--slime)" : S.cr.delta < 0 ? "var(--blood)" : "#e2b94a"}">${esc(S.cr.title)}</h3><p class="lede" style="color:var(--bone)">${esc(S.cr.text)}</p></div>` : "";
+  const broke = w < 10 && !busy ? `<button class="btn ghost" data-act="csell">Selg sjelen: 100 nye sjeler for ${shotsWord(2)}</button>` : "";
+  return `<div class="card felt"><div class="wallet"><div><div class="eyebrow" style="color:#e2b94a">Din lommebok</div><b>${fmt(w)}</b> <span class="note">sjeler</span></div>
+      ${w > 100 && !busy ? `<button class="btn" style="width:auto;padding:12px 14px;background:var(--slime)" data-act="ccash">Veksle ${fmt(Math.min(1000, w - 100))} til laget</button>` : ""}</div>
+    <div class="cgames">${games.map(([k, l]) => `<button data-act="cgm" data-g="${k}" aria-pressed="${S.cgame === k}" ${busy ? "disabled" : ""}>${l}</button>`).join("")}</div></div>
+    ${give}${res}<div class="card felt">${game}${broke}</div>
+    <p class="note">Du starter med 100 sjeler. Alt over 100 kan veksles inn til poeng for laget, opptil 1000 om gangen.</p>`;
+}
+
 const cardsHtml = arr => `<div class="cards">${(arr || []).map(c => c === "?" ? `<span class="q"></span>` : `<span class="${/[♥♦]/.test(c) ? "r" : ""}">${esc(c)}</span>`).join("")}</div>`;
 const VIEWS = {
   stake(p) {
@@ -446,6 +596,21 @@ document.addEventListener("click", e => {
   if (a === "skull") { const k = +b.dataset.k, n = +b.dataset.n; S.myVotes[p.key + ":" + k] = n; send({ t: "vote", key: p.key, sub: k, value: n }); vibrate(20); render(); }
   if (a === "choose") { const v = b.dataset.num === "1" ? +b.dataset.id : b.dataset.id; S.myVotes[p.key] = v; send({ t: "vote", key: p.key, value: v }); vibrate(20); render(); }
   if (a === "lie") { const v = ($("#lie").value || "").trim().slice(0, 60); if (!v) return; S.myVotes[p.key] = v; S.editing = false; send({ t: "vote", key: p.key, value: v }); vibrate(30); render(); }
+  if (a === "view") { S.view = b.dataset.v; if (S.view === "show") S.alert = false; render(); }
+  if (a === "cgm") { S.cgame = b.dataset.g; S.cr = null; render(); }
+  if (a === "cs") { S.cbet.souls = +b.dataset.v; render(); }
+  if (a === "csh") { S.cbet.shots = +b.dataset.v; render(); }
+  if (a === "ct") { S.cbet.type = b.dataset.v; render(); }
+  if (a === "cn") { S.cbet.num = (S.cbet.num + +b.dataset.d + 37) % 37; render(); }
+  if (a === "croul") { playRoulette(); }
+  if (a === "cslot") { playSlots(); vibrate([40, 30, 40]); }
+  if (a === "cbj") bjStart();
+  if (a === "chit") bjHit(false);
+  if (a === "cdouble") bjHit(true);
+  if (a === "cstand") bjEnd();
+  if (a === "cg") { send({ t: "cgive", team: +b.dataset.k }); S.give--; vibrate(30); render(); }
+  if (a === "ccash") { const amt = Math.min(1000, wallet() - 100); if (amt > 0) { send({ t: "ccash", amount: amt }); setWallet(wallet() - amt); S.cr = { title: "Vekslet inn!", text: `${fmt(amt)} poeng til ${S.teams[S.team]?.name || "laget"}.`, delta: 1 }; tone(1046, .2); render(); } }
+  if (a === "csell") { setWallet(100); S.cr = { title: "Sjelen er solgt", text: `Du fikk 100 nye sjeler. Ta ${shotsWord(2)}.`, delta: 0 }; send({ t: "cres", game: "sjel", text: "solgte sjelen sin til Djevelen", drink: minShot() ? 2 : 0, give: 0, souls: 100 }); render(); }
   if (a === "btype") { S.bet.type = b.dataset.v; render(); }
   if (a === "bnum") { S.bet.num = (S.bet.num + +b.dataset.d + 37) % 37; render(); }
   if (a === "bpts") { S.bet.pts = +b.dataset.v; render(); }
