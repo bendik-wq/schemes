@@ -68,9 +68,23 @@ export class Room {
           const old = await this.get("phase", {});
           await this.ctx.storage.put("phase", msg.phase);
           // Ny buzz-nøkkel betyr nytt spørsmål: lås opp buzzeren
-          if (msg.phase.mode === "buzz" && msg.phase.key !== old.key) await this.ctx.storage.put("buzz", { key: msg.phase.key, winner: null });
+          if ((msg.phase.mode === "buzz" || msg.phase.buzz) && msg.phase.key !== old.key) await this.ctx.storage.put("buzz", { key: msg.phase.key, winner: null });
           const buzz = await this.get("buzz", null);
           this.toPlayers({ t: "phase", phase: msg.phase, buzz });
+          break;
+        }
+        case "reactArm": {
+          // Reaksjonstest: alle mobiler viser VENT, og etter en tilfeldig pause sender rommet GÅ.
+          const key = String(msg.key), delay = Math.max(1000, Math.min(8000, +msg.delay || 3000));
+          this.react = { key, goAt: null, presses: {} };
+          this.toPlayers({ t: "react", key, state: "wait" });
+          clearTimeout(this.reactTimer);
+          this.reactTimer = setTimeout(() => {
+            if (!this.react || this.react.key !== key) return;
+            this.react.goAt = Date.now();
+            this.toPlayers({ t: "react", key, state: "go" });
+            this.toHosts({ t: "reactGo", key });
+          }, delay);
           break;
         }
         case "pour":
@@ -100,13 +114,27 @@ export class Room {
         if (me.team < 0) return;
         const buzz = await this.get("buzz", null);
         const phase = await this.get("phase", {});
-        if (!buzz || buzz.winner || phase.mode !== "buzz" || buzz.key !== phase.key) return;
+        const canBuzz = phase.mode === "buzz" || (phase.buzz === true && phase.team !== me.team);
+        if (!buzz || buzz.winner || !canBuzz || buzz.key !== phase.key) return;
         buzz.winner = { team: me.team, name: me.name, pid: me.pid, at: Date.now() };
         await this.ctx.storage.put("buzz", buzz);
         this.toHosts({ t: "buzzed", ...buzz.winner, key: buzz.key });
         this.toPlayers({ t: "buzzed", ...buzz.winner, key: buzz.key });
         break;
       }
+      case "press": {
+        const r = this.react;
+        if (!r || r.key !== msg.key || me.team < 0 || r.presses[me.pid]) return;
+        const early = !r.goAt, ms = early ? null : Date.now() - r.goAt;
+        r.presses[me.pid] = true;
+        this.send(ws, { t: "pressAck", key: r.key, early, ms });
+        this.toHosts({ t: "pressed", key: r.key, pid: me.pid, name: me.name, team: me.team, early, ms });
+        break;
+      }
+      case "draw":
+        if (me.team < 0 || typeof msg.data !== "string" || msg.data.length > 160000 || !msg.data.startsWith("data:image/")) return;
+        this.toHosts({ t: "draw", team: me.team, data: msg.data, name: me.name });
+        break;
       case "vote":
         this.toHosts({ t: "vote", key: msg.key, value: msg.value, sub: msg.sub, pid: me.pid, team: me.team, name: me.name });
         break;

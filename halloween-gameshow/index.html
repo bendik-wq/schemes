@@ -329,6 +329,49 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
 #scare.flash { animation: redflash .12s steps(2) infinite; }
 @keyframes redflash { 50% { background: #5a0010; } }
 
+/* Refleksen */
+.rx { min-height: min(46vh, 420px); border-radius: 24px; display: grid; place-items: center; align-content: center; gap: 16px; text-align: center; padding: 24px; border: 1px solid var(--line); background: var(--crypt); }
+.rx-big { font-family: var(--f-display); font-size: clamp(4rem, 16vw, 11rem); line-height: .85; }
+.rx-wait { background: #000; color: var(--ash); }
+.rx-wait .rx-big { animation: pulse 1s ease-in-out infinite alternate; }
+.rx-go { background: var(--blood); color: var(--bone); animation: slamIn .25s ease-out; }
+.rx-list { display: grid; gap: 6px; }
+.rx-row { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 12px; background: var(--crypt); border-left: 4px solid var(--tc); }
+.rx-row .ms { font: 500 1.1rem var(--f-mono); font-variant-numeric: tabular-nums; }
+.rx-row.early { opacity: .7; }
+.rx-row.early .ms { color: var(--blood); }
+/* Alternativer (løgn, overlevende, offer) */
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.opt { padding: 16px 18px; border-radius: 16px; background: var(--crypt); border: 2px solid var(--line); display: grid; gap: 6px; align-content: start; }
+.opt .letter { font-family: var(--f-display); font-size: 2rem; line-height: 1; color: var(--pumpkin); }
+.opt .lbl { font: 800 clamp(1.1rem, 2.4vw, 1.5rem)/1.2 var(--f-body); }
+.opt .who { font-size: .85rem; color: var(--ash); }
+.opt.real { border-color: var(--slime); background: rgba(166, 224, 90, .1); }
+.opt.real .letter { color: var(--slime); }
+.opt.fake { opacity: .8; }
+.blank { display: inline-block; min-width: 4ch; border-bottom: 3px solid var(--pumpkin); }
+.tally { display: grid; gap: 6px; }
+.tally div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 8px 12px; border-radius: 10px; background: var(--crypt); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 600 .85rem/1 var(--f-body); padding: 7px 10px; border-radius: 999px; border: 1px solid var(--tc); color: var(--bone); }
+.chip.out { opacity: .35; text-decoration: line-through; }
+/* Tegn monsteret */
+.draw-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.draw-frame { aspect-ratio: 1; max-width: 100%; border-radius: 20px; background: var(--bone); display: grid; place-items: center; overflow: hidden; border: 4px solid var(--tc, var(--pumpkin)); }
+.draw-frame img { width: 100%; height: 100%; object-fit: contain; }
+.draw-frame .ph { color: #6b5a48; font: 800 1.3rem var(--f-body); text-align: center; padding: 20px; }
+.secret { font-family: var(--f-display); font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1; color: var(--candle); filter: blur(18px); transition: filter .15s; user-select: none; }
+.secret.show { filter: none; }
+/* Auksjonen */
+.coffins { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; max-width: 720px; width: 100%; margin-inline: auto; }
+.coffin { aspect-ratio: 1 / 1.35; max-width: 100%; clip-path: polygon(30% 0, 70% 0, 100% 22%, 80% 100%, 20% 100%, 0 22%); background: linear-gradient(160deg, #5a3a26, #2a180e); display: grid; place-items: center; font-family: var(--f-display); font-size: clamp(1rem, 2.4vw, 1.6rem); color: var(--candle); text-align: center; padding: 8px; }
+.coffin.cur { background: linear-gradient(160deg, var(--pumpkin), #8a3a08); color: var(--ink-on-bright); animation: float 2s ease-in-out infinite; }
+.coffin.open { background: var(--crypt-3); color: var(--bone); }
+.high { font-family: var(--f-display); font-size: clamp(2.6rem, 7vw, 4.6rem); line-height: 1; }
+.rtog { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.rtog input { width: 18px; height: 18px; accent-color: var(--pumpkin); margin: 0; }
+@media (max-width: 820px) { .draw-layout { grid-template-columns: minmax(0, 1fr); } .coffins { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
 /* Mobilspill */
 .icon-btn.online { border-color: var(--ghost); color: var(--ghost); }
 .icon-btn.online.live { background: var(--ghost); color: var(--ink-on-bright); }
@@ -399,20 +442,27 @@ const NAME_POOL = ["Gresskarhodene", "Vampyrklubben", "Heksegjengen", "Zombie-ek
 const ROUNDS = [
   { id: "board",    short: "Tavla",        name: "Skrekk-tavla",              desc: "Fem kategorier, 25 spørsmål. Feil svar koster poeng og ett shot. To ruter skjuler Djevelens dobbel." },
   { id: "emoji",    short: "Emoji",        name: "Emoji-krypten",             desc: "Gjett skrekkfilmen fra emojiene. Første lag som roper riktig tar 200." },
+  { id: "react",    short: "Refleks",      name: "Refleksen",                 desc: "Skjermen blir rød når du minst venter det. Raskest vinner. Tjuvstart koster ett shot." },
   { id: "tune",     short: "Lyd",          name: "Lyden fra krypten",         desc: "Showet spiller uhyggelige melodier. Hvilken er det?" },
   { id: "seance",   short: "Seanse",       name: "Seansen",                   desc: "Ånden staver svaret bokstav for bokstav på et ouijabrett. Jo tidligere dere buzzer, jo mer er det verdt." },
+  { id: "victim",   short: "Offeret",      name: "Kveldens offer",            desc: "Hvem i rommet dør først i en skrekkfilm? Alle stemmer. Den med flest stemmer drikker." },
   { id: "tf",       short: "Sant/skrøne",  name: "Sant eller skrøne",         desc: "Lynrunde. Alle lag svarer samtidig. Riktig gir 100." },
+  { id: "draw",     short: "Tegn",         name: "Tegn monsteret",            desc: "Ett lag tegner et hemmelig monster, de andre gjetter. Tegningen vises live på storskjermen." },
   { id: "potato",   short: "Gresskaret",   name: "Det forbannede gresskaret", desc: "Send en gjenstand rundt og si noe i kategorien. Gresskaret eksploderer når som helst." },
+  { id: "lie",      short: "Løgn",         name: "Løgn fra graven",           desc: "Alle dikter opp et falskt svar. Finn sannheten blant løgnene, og lur de andre." },
   { id: "wheel",    short: "Lotteriet",    name: "Gresskarlotteriet",         desc: "Snurr hjulet: bonuser, forbannelser, tyveri, shots og pinlige utfordringer." },
   { id: "costume",  short: "Kostyme",      name: "Kostymekåringen",           desc: "Hvert lag paraderer. Dødningehoder for skumlest, mest kreativt og beste innsats." },
+  { id: "auction",  short: "Auksjon",      name: "Gravrøverauksjonen",        desc: "By poeng på mystiske kister. Gull, forbannelser eller giftflasker." },
   { id: "roulette", short: "Ruletten",     name: "Shot-ruletten",             desc: "Tolv glass. Noen er vann. Noen er ikke. Lagene velger ett hver, på tur." },
+  { id: "survive",  short: "Overlevende",  name: "Siste overlevende",         desc: "Feil svar, og du er ute. Siste lag med folk i live vinner." },
   { id: "board2",   short: "Dobbel skrekk", name: "Dobbel skrekk",            desc: "Ny tavle med dobbel verdi, 200 til 1000. Nå begynner det å svi." },
   { id: "final",    short: "Finale",       name: "Den siste vandringen",      desc: "Sats poengene på ett siste spørsmål. Alt kan snu." }
 ];
 const roundName = id => id === "roulette" && !state.shotMode ? "Godteri-ruletten" : ROUNDS.find(r => r.id === id).name;
 const roundShort = id => id === "roulette" && !state.shotMode ? "Godteri" : ROUNDS.find(r => r.id === id).short;
-const nextOf = id => { const i = ROUNDS.findIndex(r => r.id === id); return ROUNDS[i + 1] ? ROUNDS[i + 1].id : "end"; };
-const roundNo = id => ROUNDS.findIndex(r => r.id === id) + 1;
+const activeRounds = () => ROUNDS.filter(r => !(state.off || {})[r.id]);
+const nextOf = id => { const a = activeRounds(), i = a.findIndex(r => r.id === id); return i >= 0 && a[i + 1] ? a[i + 1].id : i < 0 ? (a[0] ? a[0].id : "end") : "end"; };
+const roundNo = id => { const i = activeRounds().findIndex(r => r.id === id); return i >= 0 ? i + 1 : ROUNDS.findIndex(r => r.id === id) + 1; };
 
 const BOARD1 = [
   { cat: "Skrekkfilm", qs: [
@@ -636,6 +686,55 @@ const WITCH = [
   { t: "Gravøl: Laget på sisteplass utbringer en skål for laget som leder. Alle drikker, og sisteplass får 100 for innsatsen.", act: "lastbonus100" }
 ];
 
+const VICTIM = [
+  "Hvem blir drept først i en skrekkfilm?",
+  "Hvem ville gått ned i kjelleren alene for å «sjekke en lyd»?",
+  "Hvem ville blitt vampyr og elsket hvert sekund av det?",
+  "Hvem ville løpt fra zombiene uten å se seg tilbake etter de andre?",
+  "Hvem er egentlig morderen her i kveld?",
+  "Hvem ville skreket høyest i et spøkelseshus?",
+  "Hvem ville prøvd å bli venn med spøkelset?",
+  "Hvem har mest sannsynlig et lik i skapet?",
+  "Hvem ville lest høyt fra den forbannede boka?",
+  "Hvem ville overlevd lengst i en zombieapokalypse?"
+];
+const DRAW_WORDS = ["Varulv", "Mumie", "Heks på kost", "Zombie", "Spøkelse", "Skjelett", "Vampyr", "Gresskarlykt", "Edderkoppnett", "Gravstein", "Flaggermus", "Frankensteins monster", "Huldra", "Troll", "Kirkegård", "Svart katt", "Heksegryte", "Kiste", "Djevelen", "Klovn i kloakken", "Hodeløs rytter", "Ouijabrett", "Spøkelseshus", "Motorsag"];
+const LIES = [
+  { q: "På 1800-tallet solgte man «sikkerhetskister» med en ___ som den begravde kunne bruke hvis de våknet.", a: "bjelle", d: ["trompet", "luftslange med fløyte", "fyrstikkeske"] },
+  { q: "Mary Shelley oppbevarte ektemannens ___ i skrivepulten sin i nesten 30 år.", a: "hjerte", d: ["hodeskalle", "tunge", "venstre hånd"] },
+  { q: "Ordet «vampyr» ble vanlig i Europa på 1700-tallet etter rapporter fra ___.", a: "Serbia", d: ["Romania", "Island", "Portugal"] },
+  { q: "I middelalderens Europa hendte det at dyr ble ___.", a: "stilt for retten", d: ["gravlagt i kirker", "døpt som prester", "brent som hekser hver fullmåne"] },
+  { q: "Harry Houdini avtalte med kona at han skulle sende henne en hemmelig ___ fra de døde.", a: "kode", d: ["rose", "hvit due", "sang"] },
+  { q: "Edgar Allan Poe giftet seg med kusinen sin da hun var ___ år.", a: "13", d: ["16", "19", "23"] },
+  { q: "Frykt for klovner kalles ___.", a: "koulrofobi", d: ["klaunofobi", "pagliofobi", "bufonofobi"] },
+  { q: "I viktoriatiden var det vanlig å ___ døde familiemedlemmer.", a: "ta portrettbilder av", d: ["lage voksfigurer av", "synge for hver natt i et år", "gi nye navn til"] },
+  { q: "Lord Byron hadde en tam ___ på hybelen i Cambridge, fordi hunder var forbudt.", a: "bjørn", d: ["ulv", "rev", "ørn"] }
+];
+const COFFINS = {
+  gold:   { short: "+800",    title: "Gull!",               text: "Kisten er full av gull. +800." },
+  silver: { short: "+400",    title: "Sølvtøy",             text: "Gamle sølvskjeer. +400." },
+  empty:  { short: "TOM",     title: "Tom kiste",           text: "Bare støv og en død edderkopp." },
+  curse:  { short: "−300",    title: "Mumiens forbannelse", text: "Laget mister 300 poeng i tillegg til budet." },
+  shots:  { short: "2 SHOTS", title: "Gravøl",              text: "Laget tar {two}." },
+  give:   { short: "GIFT",    title: "Giftflaske",          text: "Laget velger et annet lag som må ta {two}." },
+  refund: { short: "×2",      title: "Djevelens refusjon",  text: "Laget får budet tilbake, doblet." },
+  zombie: { short: "ZOMBIE",  title: "En zombie!",          text: "Laget må gå som zombier til neste runde er over, men får +200 for innsatsen." }
+};
+const SURVIVE = [
+  { q: "Hvor mange bein har en edderkopp?", o: ["6", "8", "10"], c: 1 },
+  { q: "Hvilken farge har blodet til en blekksprut?", o: ["Rødt", "Blått", "Grønt"], c: 1 },
+  { q: "Hvilket maleri inspirerte Ghostface-masken i «Scream»?", o: ["Skrik", "Mona Lisa", "Nattevakten"], c: 0 },
+  { q: "Hva heter Frankensteins monster i boka?", o: ["Frankenstein", "Igor", "Det har ikke noe navn"], c: 2 },
+  { q: "Hvilken film kom først?", o: ["Halloween", "Psycho", "Scream"], c: 1 },
+  { q: "Hvilken høytid er dagen etter Halloween?", o: ["Allehelgensdag", "Mikkelsmess", "Sankthans"], c: 0 },
+  { q: "Hvilken heks smelter i «Trollmannen fra Oz»?", o: ["Heksa fra øst", "Heksa fra vest", "Heksa fra nord"], c: 1 },
+  { q: "Hvilken av disse soppene er giftig?", o: ["Kantarell", "Steinsopp", "Rød fluesopp"], c: 2 },
+  { q: "Hvor kommer Michael Myers fra?", o: ["Haddonfield", "Crystal Lake", "Springwood"], c: 0 },
+  { q: "Hvor mange liv har en katt, ifølge ordtaket?", o: ["Sju", "Ni", "Tretten"], c: 1 },
+  { q: "Hvilket land ligger Transilvania i?", o: ["Ungarn", "Bulgaria", "Romania"], c: 2 },
+  { q: "Hva skal man ifølge myten ikke gjøre med en gremlin etter midnatt?", o: ["Gi den mat", "Snakke til den", "Ta bilde av den"], c: 0 }
+];
+
 const FINALS = [
   { q: "Hvilken ungarskfødt skuespiller spilte grev Dracula i Universal-filmen fra 1931?", a: "Bela Lugosi", x: "Han ble gravlagt i Dracula-kappen sin." },
   { q: "Hvilken forfatter skrev diktet «Ravnen» (The Raven) fra 1845?", a: "Edgar Allan Poe", x: "«Quoth the Raven, Nevermore.»" },
@@ -655,6 +754,7 @@ function pickDevils() {
   const all = []; [0, 1, 2, 3, 4].forEach(c => [1, 2, 3, 4].forEach(i => all.push(c + "-" + i)));
   return shuffle(all).slice(0, 2);
 }
+function newCoffins() { return shuffle(Object.keys(COFFINS)).slice(0, 6); }
 function newGlasses() {
   const g = []; Object.entries(GLASS_KINDS).forEach(([k, v]) => { for (let i = 0; i < v.n; i++) g.push(k); });
   return shuffle(g);
@@ -680,7 +780,13 @@ const fresh = () => ({
   finalIdx: 0, finalStage: "wager", wagers: {}, finalMarks: {}, finalApplied: false,
   tieIdx: 0, tieOpen: false, tieReveal: false,
   witchDeck: [], witchCard: null,
-  buzzGen: 0, wheelSpin: 0, room: null,
+  buzzGen: 0, wheelSpin: 0, room: null, off: {},
+  rxHeat: 0, rxState: "ready",
+  vIdx: 0, vState: "vote", vResult: null,
+  dIdx: -1, dTeam: 0, dState: "ready", dUsed: [],
+  lIdx: 0, lState: "write", lOpts: null, lMarks: {}, lResult: null,
+  aRound: 0, aCoffins: newCoffins(), aIdx: 0, aState: "bid", aHigh: null, aGive: false,
+  sIdx: 0, sState: "ask", sUnits: null, sOut: {}, sAns: {}, sDone: false, sLast: null,
   muted: false
 });
 let state;
@@ -692,6 +798,7 @@ function load(seed) {
   st.teams.forEach(t => { if (typeof t.shots !== "number") t.shots = 0; });
   if (st.seState === "running") st.seState = "paused";
   if (st.potState === "live") st.potState = "ready";
+  if (st.rxState === "wait" || st.rxState === "go") st.rxState = "ready";
   return st;
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
@@ -966,7 +1073,7 @@ function render() {
 }
 function renderNav() {
   const nav = $("#nav");
-  nav.innerHTML = ROUNDS.map((r, k) => `<button class="tab" data-act="go" data-to="${r.id}" aria-current="${state.screen === r.id}" title="${esc(roundName(r.id))}"><span class="n">${k + 1}</span>${roundShort(r.id)}</button>`).join("")
+  nav.innerHTML = activeRounds().map((r, k) => `<button class="tab" data-act="go" data-to="${r.id}" aria-current="${state.screen === r.id}" title="${esc(roundName(r.id))}"><span class="n">${k + 1}</span>${roundShort(r.id)}</button>`).join("")
     + `<button class="tab" data-act="go" data-to="end" aria-current="${state.screen === "end"}">Kåring</button>`;
   const cur = nav.querySelector('[aria-current="true"]');
   if (cur) nav.scrollLeft = Math.max(0, cur.offsetLeft - nav.clientWidth / 2 + cur.offsetWidth / 2);
@@ -988,7 +1095,7 @@ function renderScores() {
 const nextBtn = (id, label) => { const n = nextOf(id); return `<button class="btn ghost" data-act="go" data-to="${n}">${label || (n === "end" ? "Til kåringen" : `Videre til runde ${roundNo(n)}`)}</button>`; };
 const head = (id, a, b, lede, extra = "") => `
   <div class="head">
-    <div class="eyebrow">Runde ${roundNo(id)} av ${ROUNDS.length}${extra}</div>
+    <div class="eyebrow">Runde ${roundNo(id)} av ${activeRounds().length}${extra}</div>
     <h2 class="round-title">${a}<span class="accent">${b}</span></h2>
     ${lede ? `<p class="lede">${lede}</p>` : ""}
   </div>`;
@@ -1007,7 +1114,7 @@ const VIEWS = {
     const confirming = state._confirmReset;
     return `
     <section class="hero">
-      <div class="eyebrow">Halloween · 31. oktober · ${ROUNDS.length} runder</div>
+      <div class="eyebrow">Halloween · 31. oktober · ${activeRounds().length} runder</div>
       <h1>Spøkelses&shy;showet<span>Gameshowet ingen overlever</span></h1>
       <p class="lede">Én vert, én skjerm og 2–6 lag. Verten styrer alt herfra, deler ut poeng og ${state.shotMode ? "shots" : "sure godterier"} i tavla nederst, trekker kort fra hekseklokka og trykker på skrekkknappen når ingen venter det.</p>
     </section>
@@ -1041,9 +1148,10 @@ const VIEWS = {
       ${onlinePanel()}
       <section class="panel" aria-labelledby="h-rounds">
         <h2 id="h-rounds">Kveldens program</h2>
-        <ol class="round-list">${ROUNDS.map((r, k) => `<li><span class="num">${k + 1}</span><div><b>${roundName(r.id)}</b><span>${T(r.desc)}</span></div></li>`).join("")}</ol>
+        <p class="note">Slå av runder dere vil hoppe over. Hele programmet tar 2–3 timer.</p>
+        <ol class="round-list">${ROUNDS.map(r => { const on = !(state.off || {})[r.id]; return `<li style="${on ? "" : "opacity:.45"}"><span class="num">${on ? roundNo(r.id) : "–"}</span><div><label class="rtog"><input type="checkbox" id="round-${r.id}" data-round="${r.id}" ${on ? "checked" : ""}><b>${roundName(r.id)}</b></label><span>${T(r.desc)}</span></div></li>`; }).join("")}</ol>
         <button class="btn big" data-act="start">Slipp skrekken løs</button>
-        <button class="btn ghost small" data-act="go" data-to="board">Hopp over åpningen</button>
+        <button class="btn ghost small" data-act="go" data-to="${activeRounds()[0]?.id || "end"}">Hopp over åpningen</button>
       </section>
       </div>
     </div>`;
@@ -1051,7 +1159,7 @@ const VIEWS = {
 
   intro() {
     return `<section class="intro"><div class="beam l"></div><div class="beam r"></div><div class="intro-stage" id="intro-stage"></div></section>
-      <div class="row center"><button class="btn ghost small" data-act="go" data-to="board">Hopp over</button></div>`;
+      <div class="row center"><button class="btn ghost small" data-act="go" data-to="${activeRounds()[0]?.id || "end"}">Hopp over</button></div>`;
   },
 
   board: () => boardView("board"),
@@ -1275,6 +1383,118 @@ const VIEWS = {
     </div>`;
   },
 
+  react() {
+    const st = state.rxState, live = onlinePlayersReady();
+    const presses = online.rx && online.rx.key === rxKey() ? online.rx.presses.slice() : [];
+    presses.sort((a, b) => (a.early - b.early) || ((a.ms ?? 1e9) - (b.ms ?? 1e9)));
+    let stage;
+    if (st === "ready") stage = `<div class="rx"><div class="rx-big" style="color:var(--pumpkin)">Klar?</div><p class="lede" style="margin:0 auto">Når skjermen blir rød: ${live ? "trykk på mobilen" : "slå i bordet"} så fort du kan. Trykker du før, er det tjuvstart${state.shotMode ? " og ett shot" : ""}.</p><button class="btn big" data-act="rxstart">Start heat ${state.rxHeat + 1}</button></div>`;
+    else if (st === "wait") stage = `<div class="rx rx-wait"><div class="rx-big">Vent …</div></div>`;
+    else stage = `<div class="rx rx-go"><div class="rx-big">${live ? "Trykk!" : "Slå!"}</div></div>`;
+    let after = "";
+    if (st === "go" || st === "done") {
+      if (live) after = `<div class="rx-list">${presses.length ? presses.map((p, i) => `<div class="rx-row ${p.early ? "early" : ""}" style="--tc:${tc(p.team)}"><span>${p.early ? "✗" : i + 1}</span><span><b>${esc(p.name)}</b> · ${esc(state.teams[p.team]?.name || "")}</span><span class="ms">${p.early ? "Tjuvstart" : p.ms + " ms"}</span></div>`).join("") : `<p class="lede">Venter på trykk …</p>`}</div>
+        <div class="row">${st === "go" ? `<button class="btn big" data-act="rxapply">Del ut poeng og straff</button>` : ""}</div>`;
+      else after = awardRow(200, { label: "Hvem slo først?" }) + `<div class="award"><div class="eyebrow">Tjuvstart?</div><div class="row">${state.teams.map((t, k) => `<button class="btn small blood" data-act="pour" data-i="${k}">${esc(t.name)} ${icon()}</button>`).join("")}</div></div>
+        <div class="row"><button class="btn" data-act="rxnext">Neste heat</button></div>`;
+    }
+    return head("react", "Reflek", "sen", `Fem heats. Raskeste lag får 200, nest raskeste 100.`, ` · heat ${state.rxHeat + 1}`) + stage + after + `<div class="row spread"><span class="progress">${state.rxHeat} heats spilt</span>${nextBtn("react")}</div>`;
+  },
+
+  victim() {
+    const prompt = VICTIM[state.vIdx % VICTIM.length], live = onlinePlayersReady();
+    const votes = Object.values(online.votes[vKey()] || {});
+    let body;
+    if (state.vState === "result" && state.vResult) {
+      const r = state.vResult;
+      body = `<div class="devil-tag" style="text-align:center">Offeret er …</div><div class="winner"><h2>${r.names.map(esc).join(" & ")}</h2></div>
+        ${r.tally && r.tally.length ? `<div class="tally">${r.tally.map(t => `<div><span>${esc(t.name)}</span><b>${t.n} ${t.n === 1 ? "stemme" : "stemmer"}</b></div>`).join("")}</div>` : ""}
+        <div class="row"><button class="btn" data-act="vnext">Neste spørsmål</button></div>`;
+    } else if (live) {
+      body = `<p class="lede">Alle stemmer på mobilen. Du kan ikke stemme på deg selv … jo, det kan du faktisk.</p>
+        <div class="value-big">${votes.length} av ${online.players.length} har stemt</div>
+        <div class="row"><button class="btn big" data-act="vreveal" ${votes.length ? "" : "disabled"}>Avslør offeret</button><button class="btn ghost small" data-act="vnext">Hopp over</button></div>`;
+    } else {
+      body = `<p class="lede">Verten teller ned. På «pek!» peker alle samtidig på den de mener. Den som får flest fingre, drikker.</p>
+        <div class="row"><button class="btn big" data-act="vcount">Tell ned 3 – 2 – 1</button></div>
+        <div class="award"><div class="eyebrow">Hvilket lag er offeret på?</div><div class="row">${state.teams.map((t, k) => `<button class="btn small" style="background:${tc(k)}" data-act="vpick" data-k="${k}">${esc(t.name)}</button>`).join("")}</div></div>`;
+    }
+    return head("victim", "Kveldens ", "offer", "", ` · ${state.vIdx % VICTIM.length + 1} av ${VICTIM.length}`) + `<div class="card"><p class="q">${esc(prompt)}</p>${body}</div><div class="row spread"><span></span>${nextBtn("victim")}</div>`;
+  },
+
+  draw() {
+    const st = state.dState, word = state.dIdx >= 0 ? DRAW_WORDS[state.dIdx] : "", dt = state.dTeam, img = (online.drawImg || {})[dt];
+    const pick = `<div class="team-pick">${state.teams.map((t, k) => `<button data-act="dteam" data-k="${k}" aria-pressed="${k === dt}" style="border-color:${tc(k)};${k === dt ? `background:${tc(k)}` : ""}">${esc(t.name)}</button>`).join("")}</div>`;
+    const live = onlinePlayersReady();
+    let side;
+    if (st === "ready") side = `<div class="eyebrow">Hvem tegner?</div>${pick}<p class="lede">${live ? "Laget som tegner får ordet og et lerret på mobilen. Tegningen dukker opp her mens de tegner. De andre lagene buzzer på mobilen." : "Laget som tegner bruker papir og penn. Tegneren ser ordet ved å holde inne knappen."} Ingen bokstaver eller tall!</p><button class="btn big" data-act="dstart">Trekk et monster</button>`;
+    else if (st === "drawing") side = `<div class="eyebrow">${esc(state.teams[dt]?.name || "")} tegner</div>
+      <div class="secret" id="secret">${esc(word)}</div>
+      <button class="btn ghost small" data-hold="secret">Hold inne for å se ordet (bare tegneren!)</button>
+      ${awardRow(200, { label: "Hvem gjettet riktig?" })}
+      <div class="row"><button class="btn slime small" data-act="adj" data-i="${dt}" data-d="100">Tegneren får +100</button><button class="btn" data-act="dreveal">Vis ordet</button></div>`;
+    else side = `<div class="eyebrow">Det var</div><div class="secret show">${esc(word)}</div>${pick}<button class="btn big" data-act="dstart">Neste monster</button>`;
+    return head("draw", "Tegn ", "monsteret", "60 sekunder. Tegneren får ikke snakke, peke eller lage lyder.") + `
+    <div class="draw-layout"><div class="draw-frame" style="--tc:${tc(dt)}">${img ? `<img id="draw-img" src="${img}" alt="Tegningen til ${esc(state.teams[dt]?.name || "")}">` : `<div class="ph">${st === "drawing" ? (live ? "Venter på den første streken …" : "Laget tegner på papir. Hold det opp!") : "Lerretet er tomt"}</div>`}</div>
+    <div style="display:grid;gap:14px;min-width:0">${side}</div></div>
+    <div class="row spread"><span></span>${nextBtn("draw")}</div>`;
+  },
+
+  lie() {
+    const L = LIES[state.lIdx % LIES.length], st = state.lState, live = onlinePlayersReady();
+    const qHtml = esc(L.q).replace("___", `<span class="blank">${st === "reveal" ? esc(L.a) : "&nbsp;"}</span>`);
+    let body = "";
+    if (st === "write") {
+      if (live) { const sub = Object.values(online.votes[lwKey()] || {}); body = `<p class="lede">Alle skriver et falskt svar på mobilen som høres sant ut. Lurer du noen, får laget ditt 100 per person.</p><div class="value-big">${sub.length} av ${online.players.length} løgner er inne</div><div class="row"><button class="btn big" data-act="lvote">Til avstemning</button></div>`; }
+      else body = `<p class="lede">Ett svar er sant. De andre er løgner. Lagene diskuterer og velger.</p><div class="row"><button class="btn big" data-act="lvote">Vis alternativene</button></div>`;
+    } else {
+      const res = state.lResult || {};
+      body = `<div class="opts">${state.lOpts.map((o, i) => {
+        const cls = st === "reveal" ? (o.real ? "real" : "fake") : "";
+        const who = st === "reveal" ? `${o.real ? "Sannheten" : o.author ? `Løgn av ${esc(o.author)}` : "Showets løgn"}${(res[o.id] || []).length ? ` · valgt av ${res[o.id].map(esc).join(", ")}` : ""}` : "";
+        return `<div class="opt ${cls}"><span class="letter">${"ABCDEFGHIJKLMNOP"[i]}</span><span class="lbl">${esc(o.label)}</span>${who ? `<span class="who">${who}</span>` : ""}</div>`;
+      }).join("")}</div>`;
+      if (st === "vote") body += live ? `<div class="value-big">${Object.keys(online.votes[lvKey()] || {}).length} har stemt</div><div class="row"><button class="btn big" data-act="lreveal">Avslør sannheten</button></div>`
+        : `<div class="vote-grid">${state.teams.map((t, k) => `<div class="vote" style="border-left:4px solid ${tc(k)};grid-template-columns:minmax(0,1fr) auto"><span class="nm">${esc(t.name)}</span><span class="row" style="gap:4px;flex-wrap:nowrap">${state.lOpts.map((o, i) => `<button class="${state.lMarks[k] === o.id ? "sel-t" : ""}" data-act="lmark" data-k="${k}" data-o="${esc(o.id)}">${"ABCDEFGH"[i]}</button>`).join("")}</span></div>`).join("")}</div><div class="row"><button class="btn big" data-act="lreveal">Avslør sannheten</button></div>`;
+      else body += `<div class="row"><button class="btn" data-act="lnext">Neste løgn</button></div>`;
+    }
+    return head("lie", "Løgn fra ", "graven", live ? "Finn sannheten: +200. Lur andre med løgnen din: +100 per person." : `Finn sannheten: +200. Velger dere en løgn, blir det ${shotWord(1)}.`, ` · ${state.lIdx % LIES.length + 1} av ${LIES.length}`) + `<div class="card"><p class="q">${qHtml}</p>${body}</div><div class="row spread"><span></span>${nextBtn("lie")}</div>`;
+  },
+
+  auction() {
+    const C = state.aCoffins, i = state.aIdx, cur = COFFINS[C[i]], H = state.aHigh;
+    const coffins = `<div class="coffins">${C.map((k, n) => `<div class="coffin ${n === i && state.aState === "bid" ? "cur" : n < i || (n === i && state.aState === "sold") ? "open" : ""}">${n < i || (n === i && state.aState === "sold") ? T(COFFINS[k].short) : n + 1}</div>`).join("")}</div>`;
+    let panel;
+    if (i >= C.length) panel = `<div class="card"><p class="q">Alle kistene er solgt.</p><div class="row"><button class="btn" data-act="arefill">Grav opp seks nye kister</button>${nextBtn("auction")}</div></div>`;
+    else if (state.aState === "bid") panel = `<div class="card">
+      <div class="meta"><span>Kiste ${i + 1} av ${C.length}</span><b>${H ? "Høyeste bud" : "Ingen bud ennå"}</b></div>
+      <div class="high" style="color:${H ? tc(H.team) : "var(--ash)"}">${H ? `${fmt(H.amount)} · ${esc(state.teams[H.team]?.name || "")}` : "Hvem byr?"}</div>
+      <p class="lede">${onlinePlayersReady() ? "Lagene byr fra mobilen. Verten kan også by for et lag her." : "Lagene roper ut bud. Verten fører dem inn."} Budet betales uansett hva som ligger i kista. Et lag kan by opptil poengsummen sin, minst 200.</p>
+      <div class="award-grid">${state.teams.map((t, k) => `<div class="award-team" style="border-left:4px solid ${tc(k)}"><span class="nm">${esc(t.name)}</span><button class="chipbtn plus" data-act="abid" data-k="${k}" data-d="50">+50</button><button class="chipbtn plus" data-act="abid" data-k="${k}" data-d="100">+100</button></div>`).join("")}</div>
+      <div class="row"><button class="btn big blood" data-act="asold" ${H ? "" : "disabled"}>Første … andre … solgt!</button><button class="btn ghost small" data-act="askip">Ingen vil ha den</button></div></div>`;
+    else panel = `<div class="card" style="border-color:${tc(H.team)}"><div class="eyebrow">${esc(state.teams[H.team]?.name || "")} kjøpte kiste ${i + 1} for ${fmt(H.amount)}</div><div class="devil-tag" style="color:var(--candle)">${esc(cur.title)}</div><p class="q" style="font-size:1.4rem">${esc(T(cur.text))}</p>
+      ${state.aGive ? `<div class="row">${state.teams.map((t, k) => k === H.team ? "" : `<button class="btn hex small" data-act="agive" data-k="${k}">${esc(t.name)}</button>`).join("")}</div>` : ""}
+      <div class="row"><button class="btn" data-act="anext" ${state.aGive ? "disabled" : ""}>Neste kiste</button></div></div>`;
+    return head("auction", "Gravrøver&shy;", "auksjonen", "Seks kister er gravd opp. Noen er fulle av gull, andre av forbannelser.") + coffins + panel;
+  },
+
+  survive() {
+    const units = state.sUnits, live = onlinePlayersReady();
+    if (!units) return head("survive", "Siste ", "overlevende", "") + `<div class="card"><p class="lede">${live ? "Alle spillerne svarer på mobilen. Feil svar eller ikke noe svar, og du er ute." : "Hvert lag svarer med fingrene: én, to eller tre. Feil svar, og laget er ute."} Svarer alle feil på samme spørsmål, overlever alle. Når bare ett lag har folk igjen, vinner det 300${state.shotMode ? ", og alle som ryker ut tar ett shot" : ""}.</p>
+      <div class="row"><button class="btn big" data-act="sbegin">Start</button></div></div><div class="row spread"><span></span>${nextBtn("survive")}</div>`;
+    const q = SURVIVE[state.sIdx % SURVIVE.length], rev = state.sState === "reveal";
+    const alive = units.filter(u => !state.sOut[u.id]);
+    const chips = `<div class="chips">${units.map(u => `<span class="chip ${state.sOut[u.id] ? "out" : ""}" style="--tc:${tc(u.team)}">${esc(u.name)}</span>`).join("")}</div>`;
+    const opts = `<div class="opts">${q.o.map((o, i) => `<div class="opt ${rev ? (i === q.c ? "real" : "fake") : ""}"><span class="letter">${"ABC"[i]}</span><span class="lbl">${esc(o)}</span></div>`).join("")}</div>`;
+    let ctl;
+    if (state.sDone) ctl = `<div class="devil-tag" style="color:var(--slime)">Overlevende: ${[...new Set(alive.map(u => u.team))].map(k => esc(state.teams[k]?.name || "")).join(" & ")}</div><div class="row"><button class="btn ghost" data-act="sreset">Spill på nytt</button>${nextBtn("survive")}</div>`;
+    else if (!rev) ctl = (live ? `<div class="value-big">${Object.keys(online.votes[sKey()] || {}).length} av ${alive.length} har svart</div>`
+      : `<div class="vote-grid">${alive.map(u => `<div class="vote" style="border-left:4px solid ${tc(u.team)};grid-template-columns:minmax(0,1fr) auto"><span class="nm">${esc(u.name)}</span><span class="row" style="gap:4px;flex-wrap:nowrap">${q.o.map((_, i) => `<button class="${state.sAns[u.id] === i ? "sel-t" : ""}" data-act="sans" data-u="${esc(u.id)}" data-v="${i}">${"ABC"[i]}</button>`).join("")}</span></div>`).join("")}</div>`)
+      + `<div class="row"><button class="btn big" data-act="sreveal">Lås svarene</button><button class="btn ghost" data-act="timer" data-s="10">10 sek</button></div>`;
+    else ctl = `<p class="lede">${state.sLast ? esc(state.sLast) : ""}</p><div class="row"><button class="btn" data-act="snext">Neste spørsmål</button></div>`;
+    return head("survive", "Siste ", "overlevende", "", ` · ${alive.length} i live`) + `<div class="card"><p class="q">${esc(q.q)}</p>${opts}${ctl}</div>${chips}`;
+  },
+
   end() {
     const ranked = state.teams.map((t, i) => ({ ...t, i })).sort((a, b) => b.score - a.score);
     const top = ranked[0], tie = ranked.filter(r => r.score === top.score), bottom = ranked[ranked.length - 1];
@@ -1369,7 +1589,7 @@ function runIntro() {
   state.teams.forEach((t, k) => add(esc(t.name), "intro-team", 9800 + k * 900, () => { sfx.buzz(); stage.lastChild.style.background = tc(k); }));
   later(() => {
     const el = document.createElement("div"); el.className = "row center";
-    el.innerHTML = `<button class="btn big" data-act="go" data-to="board">La showet begynne</button>`;
+    el.innerHTML = `<button class="btn big" data-act="go" data-to="${activeRounds()[0]?.id || "end"}">La showet begynne</button>`;
     stage.appendChild(el); sfx.fanfare(); rainCandy(50);
   }, 9800 + state.teams.length * 900 + 600);
 }
@@ -1593,6 +1813,24 @@ function onlineMsg(m) {
   if (m.t === "roster") { online.players = m.players || []; renderOnlineBtn(); if (online.showQR) renderOverlay(); if (state.screen === "setup") scheduleRender(); }
   if (m.t === "buzzed") { if (m.key === phaseNow().key) buzz(m.team, m.name); }
   if (m.t === "photo") { online.photos[m.team] = m.data; if (state.screen === "costume") scheduleRender(); if (m.name && state.teams[m.team]) banner(`${state.teams[m.team].name} sendte et bilde!`, tc(m.team), 1800); }
+  if (m.t === "pressed") {
+    if (!online.rx || online.rx.key !== m.key) return;
+    online.rx.presses.push(m);
+    if (m.early) banner(`${m.name} tjuvstartet!`, "var(--blood)", 1200);
+    if (state.rxState !== "wait") scheduleRender();
+    return;
+  }
+  if (m.t === "draw") {
+    online.drawImg = online.drawImg || {}; online.drawImg[m.team] = m.data;
+    const img = document.getElementById("draw-img");
+    if (img && m.team === state.dTeam) img.src = m.data; else if (state.screen === "draw") scheduleRender();
+    return;
+  }
+  if (m.t === "vote" && m.key && m.key.startsWith("a:")) {
+    const ph = phaseNow(); if (m.key !== ph.key) return;
+    if (takeBid(m.team, +m.value, m.name)) render();
+    return;
+  }
   if (m.t === "vote") {
     const id = m.pid + (m.sub != null ? ":" + m.sub : "");
     (online.votes[m.key] = online.votes[m.key] || {})[id] = { team: m.team, value: m.value, sub: m.sub, at: Date.now() };
@@ -1634,6 +1872,16 @@ function phaseNow() {
   if (s === "wheel" && state.wheelResult != null && !state.wheelApplied) { const w = wheelSegs()[state.wheelResult]; if (w && w.kind === "challenge") return P({ mode: "rate", key: `wheel:${state.wheelSpin || 0}`, team: state.wheelTeam, text: w.title }); }
   if (s === "costume" && !state.costumeApplied) return P({ mode: "costume", key: "costume" });
   if (s === "final") return state.finalStage === "wager" ? P({ mode: "wager", key: `final:${state.finalIdx}`, max: state.teams.map(t => Math.max(t.score, 300)) }) : P({ mode: "watch", text: FINALS[state.finalIdx].q });
+  if (s === "react") return P({ mode: "react", key: rxKey() });
+  if (s === "victim" && state.vState === "vote") return P({ mode: "choice", key: vKey(), text: VICTIM[state.vIdx % VICTIM.length], options: online.players.map(p => ({ id: p.pid, label: `${p.name} · ${state.teams[p.team]?.name || ""}` })) });
+  if (s === "victim" && state.vResult) return P({ mode: "watch", text: `Offeret: ${state.vResult.names.join(" & ")}` });
+  if (s === "draw" && state.dState === "drawing") return P({ mode: "draw", key: `d:${state.dIdx}:${g}`, team: state.dTeam, word: DRAW_WORDS[state.dIdx], buzz: true, text: "Gjett hva laget tegner!" });
+  if (s === "lie") { const L = LIES[state.lIdx % LIES.length];
+    if (state.lState === "write") return P({ mode: "write", key: lwKey(), text: L.q });
+    if (state.lState === "vote") return P({ mode: "choice", key: lvKey(), text: L.q, options: state.lOpts.map(o => ({ id: o.id, label: o.label, pid: o.pid })) });
+    return P({ mode: "watch", text: `Sannheten: ${L.a}` }); }
+  if (s === "auction" && state.aState === "bid" && state.aIdx < state.aCoffins.length) return P({ mode: "bid", key: `a:${state.aRound}:${state.aIdx}`, item: `Kiste ${state.aIdx + 1}`, high: state.aHigh, max: state.teams.map((_, k) => maxBid(k)) });
+  if (s === "survive" && state.sUnits && state.sState === "ask" && !state.sDone) { const q = SURVIVE[state.sIdx % SURVIVE.length]; return P({ mode: "choice", key: sKey(), text: q.q, options: q.o.map((o, i) => ({ id: i, label: `${"ABC"[i]}: ${o}` })), out: Object.keys(state.sOut) }); }
   if (s === "end") return P({ mode: "end" });
   return P({ mode: "watch" });
 }
@@ -1687,6 +1935,26 @@ function renderOnlineBtn() {
   b.hidden = !online.on;
   b.classList.toggle("live", online.connected);
   b.textContent = state.room ? `${state.room} · ${online.players.length}` : "Mobilspill";
+}
+
+/* ================================================================== Nye runder: hjelpere */
+const onlinePlayersReady = () => online.connected && online.players.length >= 2;
+const rxKey = () => `rx:${state.rxHeat}`;
+const vKey = () => `v:${state.vIdx}`;
+const lwKey = () => `lw:${state.lIdx}`;
+const lvKey = () => `lv:${state.lIdx}`;
+const sKey = () => `s:${state.sIdx}`;
+const playerName = pid => (online.players.find(p => p.pid === pid) || {}).name || "Ukjent";
+const maxBid = k => Math.max(state.teams[k]?.score || 0, 200);
+function gavel() { [0, .45, .9].forEach(at => { noise(.12, { vol: .9, freq: 600, at }); tone(110, .15, { at, vol: .2 }); }); }
+function takeBid(k, amount, who) {
+  if (!state.teams[k] || state.aState !== "bid") return false;
+  const min = (state.aHigh ? state.aHigh.amount : 0) + 50;
+  amount = Math.round(amount / 50) * 50;
+  if (amount < min || amount > maxBid(k)) return false;
+  state.aHigh = { team: k, amount, who: who || null }; sfx.click(); tone(660, .1, { type: "triangle" });
+  banner(`${fmt(amount)} fra ${who ? who + " · " : ""}${state.teams[k].name}`, tc(k), 1400);
+  save(); return true;
 }
 
 /* ================================================================== Handlinger */
@@ -1807,6 +2075,127 @@ const ACT = {
   tiewin: d => { addScore(+d.k, 100); state.tieOpen = false; state.tieReveal = false; state.tieIdx++; save(); render(); rainCandy(); sfx.fanfare(); },
   lastshot: d => pour(+d.i, 1, `Siste skål til ${state.teams[+d.i].name}!`),
   celebrate: () => { rainCandy(); sfx.fanfare(); },
+  /* Refleksen */
+  rxstart: () => {
+    const delay = 2000 + Math.random() * 4500, key = rxKey();
+    online.rx = { key, presses: [] };
+    state.rxState = "wait"; save(); render(); sfx.heartbeat(0); sfx.heartbeat(1.2);
+    osend({ t: "reactArm", key, delay });
+    later(() => { if (state.rxState !== "wait") return; state.rxState = "go"; save(); render(); sfx.boom(); lightning(); }, delay);
+  },
+  rxapply: () => {
+    const ps = (online.rx && online.rx.key === rxKey() ? online.rx.presses : []);
+    const ok = ps.filter(p => !p.early).sort((a, b) => a.ms - b.ms), early = ps.filter(p => p.early);
+    const teamsInOrder = [...new Set(ok.map(p => p.team))];
+    if (teamsInOrder[0] != null) addScore(teamsInOrder[0], 200);
+    if (teamsInOrder[1] != null) addScore(teamsInOrder[1], 100, true);
+    const byTeam = {}; early.forEach(p => byTeam[p.team] = (byTeam[p.team] || 0) + 1);
+    Object.entries(byTeam).forEach(([k, n], j) => setTimeout(() => pour(+k, n, `Tjuvstart! ${state.teams[+k].name}: ${shotWord(n)}`), 700 + j * 900));
+    if (ok[0]) banner(`${ok[0].name}: ${ok[0].ms} ms!`, tc(ok[0].team), 2200);
+    state.rxState = "done"; save(); render();
+    later(() => { state.rxHeat++; state.rxState = "ready"; save(); render(); }, 3500);
+  },
+  rxnext: () => { state.rxHeat++; state.rxState = "ready"; save(); render(); },
+  /* Kveldens offer */
+  vcount: () => { ["3", "2", "1", "PEK!"].forEach((t, i) => later(() => { banner(t, i === 3 ? "var(--blood)" : "var(--candle)", 900); (i === 3 ? sfx.boom : sfx.tick)(); if (i === 3) lightning(); }, i * 1000)); },
+  vpick: d => { const k = +d.k; pour(k, 1, `Offeret er på ${state.teams[k].name}!`); state.vResult = { names: [state.teams[k].name], tally: [] }; state.vState = "result"; save(); render(); },
+  vreveal: () => {
+    const votes = Object.values(online.votes[vKey()] || {}); if (!votes.length) return;
+    const count = {}; votes.forEach(v => count[v.value] = (count[v.value] || 0) + 1);
+    const tally = Object.entries(count).map(([pid, n]) => ({ pid, n, name: playerName(pid), team: (online.players.find(p => p.pid === pid) || {}).team })).sort((a, b) => b.n - a.n);
+    const top = tally.filter(t => t.n === tally[0].n);
+    state.vResult = { names: top.map(t => t.name), tally: tally.map(t => ({ name: t.name, n: t.n })) }; state.vState = "result"; save();
+    sfx.thunder(); lightning(); quake(); render();
+    const teams = [...new Set(top.map(t => t.team).filter(t => t != null))];
+    setTimeout(() => pour(teams, 1, `${top.map(t => t.name).join(" og ")} er kveldens offer!`), 1200);
+  },
+  vnext: () => { state.vIdx = (state.vIdx + 1) % VICTIM.length; state.vState = "vote"; state.vResult = null; save(); render(); },
+  /* Tegn monsteret */
+  dteam: d => { state.dTeam = +d.k; save(); render(); },
+  dstart: () => {
+    let pool = DRAW_WORDS.map((_, i) => i).filter(i => !state.dUsed.includes(i)); if (!pool.length) { state.dUsed = []; pool = DRAW_WORDS.map((_, i) => i); }
+    state.dIdx = pool[Math.floor(Math.random() * pool.length)]; state.dUsed.push(state.dIdx);
+    state.dState = "drawing"; state.buzzGen++; online.drawImg = {}; save(); render(); sfx.stinger(); startTimer(60);
+  },
+  dreveal: () => { state.dState = "done"; stopTimer(); sfx.reveal(); save(); render(); },
+  /* Løgn fra graven */
+  lvote: () => {
+    const L = LIES[state.lIdx % LIES.length], norm = x => String(x).trim().toLowerCase();
+    const opts = [{ id: "real", label: L.a, real: true }], seen = new Set([norm(L.a)]);
+    if (onlinePlayersReady()) Object.entries(online.votes[lwKey()] || {}).forEach(([pid, v]) => {
+      const txt = String(v.value || "").trim().slice(0, 60); if (!txt || seen.has(norm(txt))) return;
+      seen.add(norm(txt)); opts.push({ id: "p:" + pid, label: txt, pid, team: v.team, author: playerName(pid) });
+    });
+    for (const dcy of L.d) { if (opts.length >= 4 && onlinePlayersReady()) break; if (!seen.has(norm(dcy))) { seen.add(norm(dcy)); opts.push({ id: "d:" + dcy, label: dcy }); } }
+    state.lOpts = shuffle(opts); state.lState = "vote"; state.lMarks = {}; save(); sfx.reveal(); render();
+  },
+  lmark: d => { state.lMarks[+d.k] = d.o; save(); render(); },
+  lreveal: () => {
+    const res = {}, opt = id => state.lOpts.find(o => o.id === id);
+    if (onlinePlayersReady()) {
+      const gain = {};
+      Object.entries(online.votes[lvKey()] || {}).forEach(([pid, v]) => {
+        const o = opt(String(v.value)); if (!o) return;
+        (res[o.id] = res[o.id] || []).push(playerName(pid));
+        if (o.real) gain[v.team] = (gain[v.team] || 0) + 200;
+        else if (o.team != null && o.pid !== pid) gain[o.team] = (gain[o.team] || 0) + 100;
+      });
+      Object.entries(gain).forEach(([k, g]) => addScore(+k, g, true));
+    } else {
+      const fooled = [];
+      state.teams.forEach((t, k) => { const o = opt(state.lMarks[k]); if (!o) return; (res[o.id] = res[o.id] || []).push(t.name); if (o.real) addScore(k, 200, true); else fooled.push(k); });
+      if (fooled.length) setTimeout(() => pour(fooled, 1, "Svelget løgnen!"), 900);
+    }
+    state.lResult = res; state.lState = "reveal"; save(); sfx.correct(); lightning(); render();
+  },
+  lnext: () => { state.lIdx = (state.lIdx + 1) % LIES.length; state.lState = "write"; state.lOpts = null; state.lResult = null; state.lMarks = {}; save(); render(); },
+  /* Gravrøverauksjonen */
+  abid: d => { const k = +d.k, base = state.aHigh ? state.aHigh.amount : 0; if (!takeBid(k, base + +d.d)) banner(`${state.teams[k].name} har ikke råd`, "var(--blood)", 1200); render(); },
+  asold: () => {
+    const H = state.aHigh; if (!H) return;
+    gavel(); state.aState = "sold"; const kind = state.aCoffins[state.aIdx]; save();
+    setTimeout(() => {
+      addScore(H.team, -H.amount, true);
+      if (kind === "gold") addScore(H.team, 800);
+      else if (kind === "silver") addScore(H.team, 400);
+      else if (kind === "curse") { addScore(H.team, -300); sfx.thunder(); lightning(); }
+      else if (kind === "shots") pour(H.team, 2);
+      else if (kind === "refund") addScore(H.team, H.amount * 2);
+      else if (kind === "zombie") addScore(H.team, 200);
+      else if (kind === "give") state.aGive = true;
+      else sfx.wrong();
+      save(); render();
+    }, 1300);
+    render();
+  },
+  agive: d => { pour(+d.k, 2, `Giftflaske til ${state.teams[+d.k].name}!`); state.aGive = false; save(); render(); },
+  askip: () => { state.aIdx++; state.aHigh = null; state.aState = "bid"; save(); render(); },
+  anext: () => { state.aIdx++; state.aHigh = null; state.aState = "bid"; state.aGive = false; save(); render(); },
+  arefill: () => { state.aRound++; state.aCoffins = newCoffins(); state.aIdx = 0; state.aHigh = null; state.aState = "bid"; save(); render(); },
+  /* Siste overlevende */
+  sbegin: () => {
+    state.sUnits = onlinePlayersReady() ? online.players.filter(p => p.team >= 0).map(p => ({ id: p.pid, name: p.name, team: p.team })) : state.teams.map((t, k) => ({ id: "t" + k, name: t.name, team: k }));
+    state.sOut = {}; state.sAns = {}; state.sState = "ask"; state.sDone = false; state.sLast = null; save(); sfx.stinger(); render();
+  },
+  sans: d => { state.sAns[d.u] = +d.v; save(); render(); },
+  sreveal: () => {
+    const q = SURVIVE[state.sIdx % SURVIVE.length], alive = state.sUnits.filter(u => !state.sOut[u.id]);
+    const ans = {}; if (onlinePlayersReady()) Object.entries(online.votes[sKey()] || {}).forEach(([pid, v]) => ans[pid] = +v.value); else Object.assign(ans, state.sAns);
+    const wrong = alive.filter(u => ans[u.id] !== q.c);
+    stopTimer();
+    if (wrong.length === alive.length) { state.sLast = "Alle svarte feil, så alle overlever. Denne gangen."; sfx.wrong(); }
+    else {
+      wrong.forEach(u => state.sOut[u.id] = true);
+      state.sLast = wrong.length ? `Ute: ${wrong.map(u => u.name).join(", ")}` : "Alle svarte riktig!";
+      if (wrong.length) { sfx.thunder(); lightning(); const byTeam = {}; wrong.forEach(u => byTeam[u.team] = (byTeam[u.team] || 0) + 1); if (state.shotMode) Object.entries(byTeam).forEach(([k, n], j) => setTimeout(() => pour(+k, n, `${state.teams[+k].name} mistet ${n === 1 ? "en" : n}!`), 600 + j * 900)); }
+      else sfx.correct();
+    }
+    const left = state.sUnits.filter(u => !state.sOut[u.id]), teamsLeft = [...new Set(left.map(u => u.team))];
+    if (teamsLeft.length <= 1 || state.sIdx >= SURVIVE.length - 1) { state.sDone = true; teamsLeft.forEach(k => addScore(k, 300, true)); setTimeout(() => { sfx.fanfare(); rainCandy(50); }, 800); }
+    state.sState = "reveal"; save(); render();
+  },
+  snext: () => { state.sIdx++; state.sState = "ask"; state.sAns = {}; save(); render(); },
+  sreset: () => { state.sUnits = null; state.sIdx = (state.sIdx + 1) % SURVIVE.length; save(); render(); },
   witch: () => drawWitch(),
   online: () => { if (!state.room) { onlineCreate(); return; } online.showQR = !online.showQR; renderOverlay(); },
   onlinecreate: () => onlineCreate(),
@@ -1838,6 +2227,8 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
   const fn = ACT[b.dataset.act]; if (fn) fn(b.dataset, b, e);
 });
+document.addEventListener("pointerdown", e => { const h = e.target.closest("[data-hold]"); if (h) { const el = document.getElementById(h.dataset.hold); if (el) el.classList.add("show"); } });
+["pointerup", "pointercancel", "pointerleave"].forEach(ev => document.addEventListener(ev, () => { const el = document.getElementById("secret"); if (el && state.dState === "drawing") el.classList.remove("show"); }, true));
 document.addEventListener("input", e => {
   const t = e.target;
   if (t.dataset.team != null) { state.teams[+t.dataset.team].name = t.value || "Navnløse"; save(); renderScores(); }
@@ -1845,6 +2236,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => {
   const t = e.target;
+  if (t.dataset.round) { state.off = state.off || {}; if (t.checked) delete state.off[t.dataset.round]; else state.off[t.dataset.round] = true; save(); render(); return; }
   if (t.dataset.setting) { state[t.dataset.setting] = t.checked; if (t.dataset.setting === "shotMode") state.wheelResult = null; save(); render(); }
 });
 document.addEventListener("keydown", e => {
@@ -1862,6 +2254,7 @@ document.addEventListener("keydown", e => {
     else if (s === "seance" && state.seState === "idle") seStart();
     else if (s === "tf" && !state.tfReveal) ACT.tfreveal();
     else if (s === "potato" && state.potState === "ready") potStart();
+    else if (s === "react" && state.rxState === "ready") ACT.rxstart();
     else if (s === "wheel" && !spinning) spin();
     else if (s === "final" && state.finalStage === "question") ACT.finalreveal();
     return;

@@ -74,6 +74,25 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--candle); ou
 #drink p { font: 800 1.3rem/1.3 var(--f-body); margin: 12px 0 0; }
 #drink.on { animation: pulse .35s ease-in-out 6 alternate; }
 @keyframes pulse { to { background: #7a0018; } }
+.opt { font: 800 1.1rem/1.25 var(--f-body); text-align: left; padding: 16px; border-radius: 14px; border: 2px solid var(--line); background: var(--crypt-2); color: var(--bone); cursor: pointer; width: 100%; }
+.opt[aria-pressed="true"] { background: var(--tc); color: var(--ink); border-color: var(--tc); }
+.opts { display: grid; gap: 8px; }
+textarea { font: 600 1.15rem/1.35 var(--f-body); color: var(--bone); background: var(--crypt-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; width: 100%; min-height: 6.5em; resize: none; }
+.react { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; text-align: center; padding: 24px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.react.wait { background: #000; color: var(--ash); }
+.react.go { background: var(--blood); color: var(--bone); }
+.react.idle { background: var(--crypt); color: var(--bone); }
+.react .big { font-family: var(--f-display); font-size: 5rem; line-height: .9; }
+.react p { font: 700 1.2rem var(--f-body); margin: 10px 0 0; }
+.canvas-wrap { background: var(--bone); border-radius: 16px; overflow: hidden; touch-action: none; aspect-ratio: 1; max-width: 100%; }
+.canvas-wrap canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+.word { font-family: var(--f-display); font-size: 2.4rem; line-height: 1; color: var(--candle); text-align: center; }
+.tools { display: flex; gap: 8px; }
+.tools button { flex: 1; font: 700 .95rem var(--f-body); padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--crypt-2); color: var(--bone); }
+.high { font-family: var(--f-display); font-size: 2.8rem; line-height: 1; text-align: center; }
+.bids { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bids button { font: 600 1.1rem var(--f-mono); padding: 18px 4px; border-radius: 12px; border: 0; background: var(--slime); color: var(--ink); }
+.bids button:disabled { opacity: .35; }
 #scare { position: fixed; inset: 0; z-index: 11; display: grid; place-items: center; background: #000; font-size: 60vw; line-height: 1; animation: strobe .1s steps(2) infinite; }
 @keyframes strobe { 50% { background: #6a0010; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -106,7 +125,7 @@ const S = {
   team: -1,
   joined: false,
   teams: [], phase: { mode: "watch" }, buzz: null,
-  myVotes: {}, editing: false
+  myVotes: {}, editing: false, react: null
 };
 store.set("pid", S.pid);
 const savedTeam = store.get("team-" + code);
@@ -142,6 +161,8 @@ function handle(m) {
   }
   if (m.t === "pour" && S.joined && (m.teams || []).includes(S.team)) drink(m);
   if (m.t === "scare") scare();
+  if (m.t === "react") { S.react = { key: m.key, state: m.state, result: null }; if (m.state === "go") vibrate(120); render(); }
+  if (m.t === "pressAck") { if (S.react && S.react.key === m.key) { S.react.result = m; render(); } }
 }
 
 /* Lyd og vibrasjon (lyd fungerer etter første trykk) */
@@ -184,7 +205,9 @@ function render() {
   const main = $("#main");
   if (!S.joined) { main.innerHTML = joinView(); return; }
   const p = S.phase, v = VIEWS[p.mode] || VIEWS.watch;
+  if (p.mode === "draw" && S.team === p.team && $("#pad") && pad.key === padId(p)) { renderMe(); return; }
   main.innerHTML = v(p);
+  if (p.mode === "draw") setupPad();
 }
 function renderCode() {
   $("#main").innerHTML = `<div class="card"><div class="eyebrow">Bli med</div><h1>Skriv romkoden</h1><p class="lede">Koden står på storskjermen.</p>
@@ -206,6 +229,49 @@ function board() {
   return `<div class="list">${ranked.map((t, i) => `<div class="li ${t.k === S.team ? "mine" : ""}" style="--c:${COLORS[t.k]}"><span class="n">${i + 1}</span><span class="nm">${esc(t.name)}</span><span class="sc">${fmt(t.score)}${t.shots ? ` · 🥃${t.shots}` : ""}</span></div>`).join("")}</div>`;
 }
 const VIEWS = {
+  choice(p) {
+    if ((p.out || []).includes(S.pid)) return `<div class="card" style="text-align:center"><div class="big-msg" style="color:var(--blood)">Du er ute!</div><p class="lede">Hei hei. Hei hei! Heie på laget ditt.</p></div>${board()}`;
+    const mine = S.myVotes[p.key];
+    const opts = (p.options || []).filter(o => o.pid !== S.pid);
+    return `<div class="card"><div class="eyebrow">${esc(p.round || "")}</div><p class="q">${esc(p.text || "")}</p></div>
+      <div class="opts">${opts.map(o => `<button class="opt" data-act="choose" data-id="${esc(String(o.id))}" data-num="${typeof o.id === "number" ? 1 : 0}" aria-pressed="${String(mine) === String(o.id)}">${esc(o.label)}</button>`).join("")}</div>
+      <p class="note">Du kan ombestemme deg helt til verten avslører.</p>`;
+  },
+  write(p) {
+    const mine = S.myVotes[p.key];
+    return `<div class="card"><div class="eyebrow">Løgn fra graven</div><p class="q">${esc(p.text || "").replace("___", "<u>&nbsp;?&nbsp;</u>")}</p>
+      <p class="lede">Skriv et svar som høres sant ut. Lurer du andre, får laget poeng.</p>
+      <textarea id="lie" maxlength="60" placeholder="Din løgn">${esc(mine || "")}</textarea>
+      <button class="btn" data-act="lie">${mine ? "Oppdater løgnen" : "Send løgnen"}</button>${mine ? `<p class="note">Sendt: «${esc(mine)}»</p>` : ""}</div>`;
+  },
+  react(p) {
+    const r = S.react && S.react.key === p.key ? S.react : null;
+    if (r && r.result) return `<div class="react idle"><div><div class="big" style="color:${r.result.early ? "var(--blood)" : "var(--slime)"}">${r.result.early ? "Tjuvstart!" : r.result.ms + " ms"}</div><p>${r.result.early ? "Det blir straff." : "Sjekk storskjermen."}</p></div></div>`;
+    if (r && r.state === "wait") return `<div class="react wait" data-act="press"><div><div class="big">Vent …</div><p>Ikke trykk ennå!</p></div></div>`;
+    if (r && r.state === "go") return `<div class="react go" data-act="press"><div><div class="big">Trykk!</div></div></div>`;
+    return `<div class="card" style="text-align:center"><div class="eyebrow">Refleksen</div><div class="big-msg">Gjør deg klar</div><p class="lede">Når skjermen blir rød: trykk hvor som helst. Trykker du før, er det tjuvstart.</p></div>`;
+  },
+  draw(p) {
+    if (p.team !== S.team) {
+      const w = S.buzz && S.buzz.key === p.key ? S.buzz.winner : null;
+      let status = "Gjett hva de tegner, og buzz!";
+      if (w) status = w.pid === S.pid ? "Du var først! Si svaret!" : `${esc(S.teams[w.team]?.name || "Et lag")} var først`;
+      return `<div class="card"><div class="eyebrow">Tegn monsteret</div><p class="q">${esc(S.teams[p.team]?.name || "Et lag")} tegner. Se storskjermen!</p></div>
+        <button class="buzzer" data-act="buzz" ${w ? "disabled" : ""}>Buzz!</button><div class="status">${status}</div>`;
+    }
+    return `<div class="card"><div class="eyebrow">Du tegner! Ikke si ordet.</div><div class="word">${esc(p.word || "")}</div>
+      <div class="canvas-wrap"><canvas id="pad" width="360" height="360"></canvas></div>
+      <div class="tools"><button data-act="pen" data-c="#1a0f06">Svart</button><button data-act="pen" data-c="#c4213a">Blod</button><button data-act="pen" data-c="#e86a10">Oransje</button><button data-act="clear">Visk ut</button></div></div>`;
+  },
+  bid(p) {
+    const max = (p.max || [])[S.team] || 0, h = p.high, mine = h && h.team === S.team;
+    const min = (h ? h.amount : 0) + 50;
+    return `<div class="card"><div class="eyebrow">Gravrøverauksjonen · ${esc(p.item || "")}</div>
+      <div class="high" style="color:${h ? COLORS[h.team] : "var(--ash)"}">${h ? fmt(h.amount) : "Ingen bud"}</div>
+      <p class="lede" style="text-align:center">${h ? (mine ? "Laget ditt leder!" : `${esc(S.teams[h.team]?.name || "")} leder`) : "Vær først!"} · dere kan by opptil ${fmt(max)}</p>
+      <div class="bids">${[min, min + 50, min + 150].map(v => `<button data-act="bid" data-v="${v}" ${v > max ? "disabled" : ""}>${fmt(v)}</button>`).join("")}</div>
+      <p class="note">Budet betales uansett hva som ligger i kista.</p></div>${board()}`;
+  },
   watch(p) {
     return `<div class="card"><div class="eyebrow">Nå på scenen</div><h1>${esc(p.round || "Spøkelsesshowet")}</h1>${p.text ? `<p class="q">${esc(p.text)}</p>` : `<p class="lede">Følg med på storskjermen. Buzzeren våkner når det trengs.</p>`}</div>${board()}`;
   },
@@ -263,6 +329,8 @@ const VIEWS = {
 
 /* Handlinger */
 document.addEventListener("pointerdown", e => {
+  const r = e.target.closest('[data-act="press"]');
+  if (r && S.react && !S.react.pressed) { e.preventDefault(); S.react.pressed = true; send({ t: "press", key: S.react.key }); vibrate(30); return; }
   const b = e.target.closest('[data-act="buzz"]'); if (!b || b.disabled) return;
   e.preventDefault(); send({ t: "buzz" }); vibrate(40); tone(440, .08);
   b.disabled = true; $(".status").textContent = "Sendt …";
@@ -280,13 +348,44 @@ document.addEventListener("click", e => {
   if (a === "tf") { const v = b.dataset.v === "1"; S.myVotes[p.key] = v; send({ t: "vote", key: p.key, value: v }); vibrate(20); render(); }
   if (a === "rate") { const v = +b.dataset.v; S.myVotes[p.key] = v; send({ t: "vote", key: p.key, value: v }); vibrate(20); render(); }
   if (a === "skull") { const k = +b.dataset.k, n = +b.dataset.n; S.myVotes[p.key + ":" + k] = n; send({ t: "vote", key: p.key, sub: k, value: n }); vibrate(20); render(); }
+  if (a === "choose") { const v = b.dataset.num === "1" ? +b.dataset.id : b.dataset.id; S.myVotes[p.key] = v; send({ t: "vote", key: p.key, value: v }); vibrate(20); render(); }
+  if (a === "lie") { const v = ($("#lie").value || "").trim().slice(0, 60); if (!v) return; S.myVotes[p.key] = v; S.editing = false; send({ t: "vote", key: p.key, value: v }); vibrate(30); render(); }
+  if (a === "bid") { send({ t: "vote", key: p.key, value: +b.dataset.v }); vibrate(30); tone(660, .08); }
+  if (a === "pen") pad.color = b.dataset.c;
+  if (a === "clear") { const c = $("#pad"); if (c) { c.getContext("2d").fillStyle = "#f2e8d5"; c.getContext("2d").fillRect(0, 0, c.width, c.height); pad.dirty = true; } }
   if (a === "wager") {
     const max = +b.dataset.max, v = Math.max(0, Math.min(max, Math.round(+$("#wager").value || 0)));
     S.myVotes[p.key] = v; S.editing = false; send({ t: "vote", key: p.key, value: v }); vibrate(30); render();
   }
 });
-document.addEventListener("focusin", e => { if (e.target.id === "wager" || e.target.id === "name") S.editing = true; });
-document.addEventListener("focusout", e => { if (e.target.id === "wager" || e.target.id === "name") setTimeout(() => { S.editing = false; }, 200); });
+const EDIT_IDS = ["wager", "name", "lie"];
+document.addEventListener("focusin", e => { if (EDIT_IDS.includes(e.target.id)) S.editing = true; });
+document.addEventListener("focusout", e => { if (EDIT_IDS.includes(e.target.id)) setTimeout(() => { S.editing = false; }, 200); });
+
+/* Tegneflaten: tegnes lokalt, sendes som bilde til storskjermen et par ganger i sekundet */
+const padId = p => `${p.team}:${p.word}`;
+const pad = { color: "#1a0f06", drawing: false, last: null, dirty: false, key: null };
+function setupPad() {
+  const c = $("#pad"); if (!c || c.dataset.ready) return;
+  c.dataset.ready = "1";
+  const x = c.getContext("2d");
+  const id = padId(S.phase);
+  if (pad.key !== id || !pad.snapshot) { x.fillStyle = "#f2e8d5"; x.fillRect(0, 0, c.width, c.height); pad.key = id; pad.snapshot = null; }
+  else { const im = new Image(); im.onload = () => x.drawImage(im, 0, 0); im.src = pad.snapshot; }
+  const pt = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
+  c.addEventListener("pointerdown", e => { e.preventDefault(); c.setPointerCapture(e.pointerId); pad.drawing = true; pad.last = pt(e); });
+  c.addEventListener("pointermove", e => {
+    if (!pad.drawing) return; const p = pt(e);
+    x.strokeStyle = pad.color; x.lineWidth = 7; x.lineCap = "round"; x.lineJoin = "round";
+    x.beginPath(); x.moveTo(pad.last[0], pad.last[1]); x.lineTo(p[0], p[1]); x.stroke(); pad.last = p; pad.dirty = true;
+  });
+  ["pointerup", "pointercancel"].forEach(ev => c.addEventListener(ev, () => { pad.drawing = false; }));
+}
+setInterval(() => {
+  const c = $("#pad"); if (!c || !pad.dirty) return;
+  pad.dirty = false; const data = c.toDataURL("image/jpeg", .6); pad.snapshot = data;
+  send({ t: "draw", data });
+}, 450);
 document.addEventListener("change", e => {
   if (e.target.id !== "photo" || !e.target.files[0]) return;
   const st = $("#photo-status"); st.textContent = "Krymper bildet …";
