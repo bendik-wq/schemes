@@ -20,6 +20,7 @@
   --ghost: #6fd0ea;
   --candle: #f2c94c;
   --line: rgba(242, 232, 213, .13);
+  --glass: rgba(242, 232, 213, .14);
   --ink-on-bright: #1a0f06;
   --f-display: "Creepster", "Impact", "Haettenschweiler", fantasy;
   --f-body: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
@@ -45,25 +46,26 @@ body {
 
 /* Topplinje */
 header.top { border-bottom: 1px solid var(--line); background: rgba(13, 8, 16, .75); backdrop-filter: blur(6px); }
-.top-inner { display: flex; align-items: center; gap: 12px; padding-block: 10px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
-.brand { font-family: var(--f-display); font-size: 1.6rem; color: var(--pumpkin); letter-spacing: .04em; white-space: nowrap; background: none; border: 0; cursor: pointer; padding: 0; line-height: 1; }
-nav.rounds { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; }
+.top-inner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand . tools" "nav nav nav"; align-items: center; gap: 8px 12px; padding-block: 10px 8px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
+.brand { grid-area: brand; justify-self: start; font-family: var(--f-display); font-size: 1.6rem; color: var(--pumpkin); letter-spacing: .04em; white-space: nowrap; background: none; border: 0; cursor: pointer; padding: 0; line-height: 1; }
+nav.rounds { grid-area: nav; display: flex; gap: 4px; overflow-x: auto; min-width: 0; scrollbar-width: none; }
 nav.rounds::-webkit-scrollbar { display: none; }
-.tab { font: 600 .85rem/1 var(--f-body); color: var(--ash); background: transparent; border: 1px solid transparent; border-radius: 999px; padding: 8px 12px; cursor: pointer; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+.tab { font: 600 .85rem/1 var(--f-body); color: var(--ash); background: transparent; border: 1px solid transparent; border-radius: 999px; padding: 8px 11px; cursor: pointer; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
 .tab .n { font-family: var(--f-mono); font-size: .75rem; opacity: .7; }
 .tab:hover { color: var(--bone); border-color: var(--line); }
 .tab[aria-current="true"] { color: var(--ink-on-bright); background: var(--pumpkin); }
-.tools { display: flex; gap: 6px; align-items: center; }
+.tools { grid-area: tools; display: flex; gap: 6px; align-items: center; }
 .icon-btn { font: 500 .8rem/1 var(--f-mono); color: var(--bone); background: var(--crypt-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer; white-space: nowrap; }
 .icon-btn:hover { background: var(--crypt-3); }
 .icon-btn[aria-pressed="true"] { border-color: var(--slime); color: var(--slime); }
+.icon-btn.witch { border-color: var(--hex); color: var(--hex); }
 .timer-pill { font: 500 1rem/1 var(--f-mono); padding: 8px 12px; border-radius: 8px; background: var(--crypt-2); border: 1px solid var(--line); font-variant-numeric: tabular-nums; min-width: 4.5ch; text-align: center; }
 .timer-pill.low { background: var(--blood); color: var(--bone); border-color: var(--blood); animation: pulse .5s ease-in-out infinite alternate; }
 @keyframes pulse { to { transform: scale(1.08); } }
 
 /* Scenen */
 main.stage { overflow-y: auto; overflow-x: hidden; }
-.stage-inner { grid-template-columns: minmax(0, 1fr); max-width: 1180px; margin: 0 auto; padding-block: 28px 40px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); display: grid; gap: 24px; }
+.stage-inner { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; max-width: 1180px; margin: 0 auto; padding-block: 28px 40px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
 .eyebrow { font: 500 .75rem/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--slime); }
 h1, h2, h3 { margin: 0; text-wrap: balance; }
 .round-title { font-family: var(--f-display); font-weight: 400; font-size: clamp(2.4rem, 6vw, 4.2rem); line-height: .95; color: var(--bone); letter-spacing: .02em; }
@@ -71,6 +73,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .lede { color: var(--ash); max-width: 62ch; margin: 0; }
 .head { display: grid; gap: 10px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.spread { justify-content: space-between; }
 
 .btn { font: 700 1rem/1 var(--f-body); border-radius: 12px; padding: 14px 20px; cursor: pointer; border: 2px solid transparent; color: var(--ink-on-bright); background: var(--pumpkin); transition: transform .12s ease, filter .12s; }
 .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
@@ -79,16 +82,18 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .btn.ghost:hover { border-color: var(--bone); }
 .btn.slime { background: var(--slime); }
 .btn.blood { background: var(--blood); color: var(--bone); }
+.btn.hex { background: var(--hex); }
 .btn.small { font-size: .85rem; padding: 9px 12px; border-radius: 9px; }
 .btn.big { font-size: 1.2rem; padding: 18px 28px; }
 .btn[disabled] { opacity: .4; cursor: not-allowed; transform: none; }
-button:focus-visible, input:focus-visible { outline: 3px solid var(--candle); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, label.toggle:focus-within { outline: 3px solid var(--candle); outline-offset: 2px; }
 
 /* Oppsett */
 .hero { display: grid; gap: 14px; padding-block: 12px; }
 .hero h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(3.4rem, 11vw, 8rem); line-height: .85; color: var(--pumpkin); text-shadow: 0 0 40px rgba(255, 123, 28, .35); letter-spacing: .02em; }
 .hero h1 span { display: block; color: var(--bone); font-size: .42em; text-shadow: none; letter-spacing: .08em; }
 .setup-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.stack { display: grid; gap: 24px; min-width: 0; }
 .panel { background: rgba(25, 17, 32, .85); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
 .panel h2 { font-size: 1.1rem; font-weight: 800; }
 .team-row { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
@@ -99,8 +104,16 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--candle); ou
 .round-list .num { font-family: var(--f-display); font-size: 1.8rem; color: var(--pumpkin); line-height: 1; }
 .round-list b { display: block; }
 .round-list span { color: var(--ash); font-size: .92rem; }
-.keys { font: .8rem/1.6 var(--f-mono); color: var(--ash); }
+.keys { font: .8rem/1.7 var(--f-mono); color: var(--ash); margin: 0; }
 .keys kbd { font: inherit; color: var(--bone); background: var(--crypt-3); border-radius: 5px; padding: 1px 6px; border: 1px solid var(--line); }
+.toggle { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; cursor: pointer; padding: 10px 12px; border-radius: 12px; background: var(--crypt-2); border: 1px solid var(--line); }
+.toggle input { appearance: none; width: 42px; height: 24px; border-radius: 999px; background: var(--crypt-3); position: relative; cursor: pointer; margin: 0; border: 1px solid var(--line); transition: background .15s; }
+.toggle input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--ash); transition: transform .15s, background .15s; }
+.toggle input:checked { background: var(--pumpkin); }
+.toggle input:checked::after { transform: translateX(18px); background: var(--bone); }
+.toggle b { display: block; font-weight: 700; }
+.toggle span { color: var(--ash); font-size: .88rem; }
+.note { font-size: .85rem; color: var(--ash); margin: 0; }
 
 /* Skrekk-tavla */
 .board-wrap { overflow-x: auto; padding-bottom: 6px; }
@@ -113,7 +126,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--candle); ou
 .progress { font: .85rem var(--f-mono); color: var(--ash); }
 
 /* Spørsmålskort */
-.card { background: linear-gradient(180deg, rgba(36, 26, 45, .95), rgba(25, 17, 32, .95)); border: 1px solid var(--line); border-radius: 22px; padding: clamp(20px, 4vw, 40px); display: grid; gap: 22px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+.card { background: linear-gradient(180deg, rgba(36, 26, 45, .95), rgba(25, 17, 32, .95)); border: 1px solid var(--line); border-radius: 22px; padding: clamp(20px, 4vw, 40px); display: grid; gap: 22px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); min-width: 0; }
+.card.devil { border-color: var(--blood); box-shadow: 0 0 0 1px var(--blood), 0 0 80px rgba(224, 67, 90, .35); }
+.devil-tag { font-family: var(--f-display); font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1; color: var(--blood); animation: rise .4s ease-out; }
 .card .meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font: 500 .85rem var(--f-mono); color: var(--ash); letter-spacing: .08em; text-transform: uppercase; }
 .card .meta b { color: var(--pumpkin); font-weight: 500; }
 .q { font: 800 clamp(1.5rem, 3.6vw, 2.6rem)/1.15 var(--f-body); text-wrap: balance; margin: 0; }
@@ -121,13 +136,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--candle); ou
 .answer small { display: block; font: 400 .95rem/1.45 var(--f-body); color: var(--ash); margin-top: 6px; }
 @keyframes rise { from { opacity: .2; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .award { display: grid; gap: 10px; }
-.award-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.award-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
 .award-team { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; padding: 8px 8px 8px 12px; border-radius: 12px; background: var(--crypt); border: 1px solid var(--line); }
 .award-team .nm { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chipbtn { font: 600 .85rem/1 var(--f-mono); border-radius: 8px; padding: 9px 10px; border: 0; cursor: pointer; }
+.chipbtn { font: 600 .85rem/1 var(--f-mono); border-radius: 8px; padding: 9px 10px; border: 0; cursor: pointer; white-space: nowrap; }
 .chipbtn.plus { background: var(--slime); color: var(--ink-on-bright); }
 .chipbtn.minus { background: var(--crypt-3); color: var(--bone); }
-.chipbtn.on { outline: 2px solid var(--bone); }
 
 /* Emoji */
 .emoji-stage { font-size: clamp(3.4rem, 12vw, 8rem); line-height: 1.1; text-align: center; letter-spacing: .08em; padding-block: 10px; filter: drop-shadow(0 0 30px rgba(167, 123, 255, .35)); animation: float 4s ease-in-out infinite; }
@@ -138,11 +152,23 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--candle); ou
 .dot.done { background: var(--hex); }
 .dot.cur { background: var(--pumpkin); transform: scale(1.3); }
 
+/* Lyden fra krypten */
+.speaker { display: grid; place-items: center; gap: 18px; padding-block: 10px; }
+.play { width: clamp(120px, 22vw, 170px); aspect-ratio: 1; max-width: 100%; border-radius: 50%; border: 0; background: var(--pumpkin); color: var(--ink-on-bright); cursor: pointer; display: grid; place-items: center; box-shadow: 0 0 0 10px rgba(255, 123, 28, .15), 0 0 60px rgba(255, 123, 28, .35); transition: transform .15s; }
+.play:hover { transform: scale(1.05); }
+.play svg { width: 42%; height: 42%; }
+.eq { display: flex; gap: 6px; align-items: end; height: 56px; }
+.eq i { width: 10px; height: 10%; border-radius: 3px; background: var(--hex); }
+.eq.on i { animation: eq .5s ease-in-out infinite alternate; }
+.eq.on i:nth-child(2n) { animation-duration: .38s; background: var(--pumpkin); }
+.eq.on i:nth-child(3n) { animation-duration: .62s; background: var(--slime); }
+@keyframes eq { from { height: 12%; } to { height: 100%; } }
+
 /* Sant eller skrøne */
 .verdict { font-family: var(--f-display); font-size: clamp(3rem, 9vw, 6rem); line-height: 1; text-align: center; animation: rise .35s ease-out; }
 .verdict.true { color: var(--slime); }
 .verdict.false { color: var(--blood); }
-.vote-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.vote-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
 .vote { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; padding: 8px 8px 8px 12px; border-radius: 12px; background: var(--crypt); border: 1px solid var(--line); }
 .vote .nm { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vote button { font: 600 .85rem/1 var(--f-body); border-radius: 8px; padding: 9px 10px; border: 1px solid var(--line); background: var(--crypt-2); color: var(--bone); cursor: pointer; }
@@ -159,9 +185,28 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--candle); ou
 .team-pick { display: flex; gap: 6px; flex-wrap: wrap; }
 .team-pick button { font: 700 .9rem/1 var(--f-body); padding: 10px 14px; border-radius: 999px; border: 2px solid var(--line); background: transparent; color: var(--bone); cursor: pointer; }
 .team-pick button[aria-pressed="true"] { color: var(--ink-on-bright); }
-.result { display: grid; gap: 12px; padding: 20px; border-radius: 18px; background: var(--crypt); border: 1px solid var(--line); animation: rise .35s ease-out; }
+.result { display: grid; gap: 12px; padding: 20px; border-radius: 18px; background: var(--crypt); border: 1px solid var(--line); animation: rise .35s ease-out; min-width: 0; }
 .result h3 { font-family: var(--f-display); font-weight: 400; font-size: 2.2rem; line-height: 1; color: var(--pumpkin); }
 .result p { margin: 0; color: var(--bone); }
+
+/* Shot-ruletten */
+.roulette { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.glasses { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.glass { aspect-ratio: 3 / 4; max-width: 100%; perspective: 700px; border: 0; background: none; padding: 0; cursor: pointer; color: inherit; font: inherit; }
+.glass[disabled] { cursor: default; }
+.glass-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .8s cubic-bezier(.3, 1.4, .5, 1); }
+.glass.flipped .glass-inner { transform: rotateY(180deg); }
+.glass.shaking .glass-inner { animation: shake .09s linear infinite; }
+@keyframes shake { 25% { transform: translate(-3px, 1px) rotate(-2deg); } 75% { transform: translate(3px, -1px) rotate(2deg); } }
+.face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 14px; display: grid; place-items: center; }
+.face.front { background: radial-gradient(80% 60% at 50% 100%, rgba(255, 123, 28, .12), transparent 70%); }
+.shotglass { position: relative; width: 62%; height: 74%; clip-path: polygon(4% 0, 96% 0, 82% 100%, 18% 100%); background: linear-gradient(to top, var(--glass) 0 14%, var(--liq, var(--pumpkin)) 14% 70%, var(--glass) 70% 100%); box-shadow: inset 0 0 0 2px rgba(242, 232, 213, .3); }
+.shotglass::after { content: ""; position: absolute; top: 4%; left: 18%; width: 9%; height: 60%; background: rgba(255, 255, 255, .28); border-radius: 4px; }
+.glass .num { position: absolute; bottom: 4%; font: 500 .85rem var(--f-mono); color: var(--ash); }
+.glass:not([disabled]):hover .shotglass { filter: brightness(1.2); }
+.face.back { transform: rotateY(180deg); background: var(--k); color: var(--ink-on-bright); font-family: var(--f-display); font-size: clamp(1.1rem, 2.6vw, 1.8rem); line-height: 1; text-align: center; padding: 6px; }
+.whose { display: grid; gap: 10px; padding: 18px; border-radius: 18px; background: var(--crypt); border: 1px solid var(--line); }
+.whose .big { font-family: var(--f-display); font-size: clamp(2rem, 5vw, 3rem); line-height: 1; }
 
 /* Finale */
 .wager-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
@@ -176,22 +221,28 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--candle); ou
 .winner { text-align: center; display: grid; gap: 8px; padding-block: 10px; }
 .winner .crown { font-size: 3.4rem; animation: float 3s ease-in-out infinite; }
 .winner h2 { font-family: var(--f-display); font-weight: 400; font-size: clamp(3rem, 10vw, 6.5rem); line-height: .9; color: var(--pumpkin); text-shadow: 0 0 50px rgba(255, 123, 28, .45); overflow-wrap: anywhere; }
-.rank { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 18px; border-radius: 14px; background: var(--crypt); border: 1px solid var(--line); }
+.rank { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 14px 18px; border-radius: 14px; background: var(--crypt); border: 1px solid var(--line); }
 .rank .pos { font-family: var(--f-display); font-size: 2rem; color: var(--ash); }
 .rank .nm { font-weight: 800; font-size: 1.15rem; overflow-wrap: anywhere; }
 .rank .sc { font: 500 1.4rem var(--f-mono); font-variant-numeric: tabular-nums; }
+.rank .sh { font: .9rem var(--f-mono); color: var(--ash); }
 .rank:first-child { border-color: var(--pumpkin); }
 .rank:first-child .pos { color: var(--pumpkin); }
+.awards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.awards div { padding: 14px 16px; border-radius: 14px; background: var(--crypt-2); border: 1px solid var(--line); display: grid; gap: 4px; }
+.awards b { font-family: var(--f-display); font-weight: 400; font-size: 1.5rem; color: var(--candle); line-height: 1.1; overflow-wrap: anywhere; }
 
 /* Poengtavla */
 footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .9); backdrop-filter: blur(6px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-.scores-inner { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(170px, 1fr); gap: 8px; overflow-x: auto; padding-block: 10px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
-.score { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: 2px 8px; padding: 8px 10px 8px 14px; border-radius: 12px; background: var(--crypt); border: 1px solid var(--line); overflow: visible; }
+.scores-inner { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); gap: 8px; overflow-x: auto; padding-block: 10px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
+.score { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 8px 10px 8px 14px; border-radius: 12px; background: var(--crypt); border: 1px solid var(--line); }
 .score::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 0 4px 4px 0; background: var(--tc); }
 .score .nm { font: 700 .85rem/1.2 var(--f-body); color: var(--ash); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
-.score .pts { font: 500 1.6rem/1.1 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--bone); }
-.score .adj { grid-row: 1 / span 2; grid-column: 2; display: grid; gap: 4px; align-content: center; }
-.score .adj button { font: 500 .75rem/1 var(--f-mono); border: 1px solid var(--line); background: var(--crypt-2); color: var(--bone); border-radius: 6px; padding: 5px 7px; cursor: pointer; }
+.score .pts { font: 500 1.6rem/1.1 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--bone); display: flex; align-items: baseline; gap: 10px; }
+.score .pts small { font: .8rem var(--f-mono); color: var(--ash); }
+.score .adj { grid-row: 1 / span 2; grid-column: 2; display: grid; grid-template-columns: auto auto; gap: 4px; align-content: center; }
+.score .adj button { font: 500 .75rem/1 var(--f-mono); border: 1px solid var(--line); background: var(--crypt-2); color: var(--bone); border-radius: 6px; padding: 6px 7px; cursor: pointer; }
+.score .adj .full { grid-column: 1 / -1; }
 .score.leader .pts { color: var(--candle); }
 .score.buzzed { border-color: var(--tc); box-shadow: 0 0 0 2px var(--tc), 0 0 30px var(--tc); }
 .score.up { animation: bumpUp .6s ease-out; }
@@ -201,16 +252,28 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
 .floater { position: absolute; right: 12px; top: -8px; font: 500 1.1rem var(--f-mono); pointer-events: none; animation: floatUp 1.1s ease-out forwards; }
 .floater.pos { color: var(--slime); }
 .floater.neg { color: var(--blood); }
+.floater.shot { color: var(--candle); }
 @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-34px); } }
 
-/* Buzz-banner */
-.buzz-banner { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 40; padding: 18px 30px; border-radius: 18px; font-family: var(--f-display); font-size: clamp(2rem, 7vw, 4.4rem); line-height: 1; color: var(--ink-on-bright); box-shadow: 0 20px 60px rgba(0, 0, 0, .6); animation: slam .35s cubic-bezier(.2, 1.6, .4, 1); text-align: center; max-width: calc(100% - 32px); overflow-wrap: anywhere; }
+/* Buzz-banner og hekseklokka */
+.buzz-banner { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 40; padding: 18px 30px; border-radius: 18px; font-family: var(--f-display); font-size: clamp(2rem, 7vw, 4.4rem); line-height: 1; color: var(--ink-on-bright); box-shadow: 0 20px 60px rgba(0, 0, 0, .6); animation: slam .35s cubic-bezier(.2, 1.6, .4, 1); text-align: center; max-width: calc(100% - 32px); overflow-wrap: anywhere; pointer-events: none; }
 @keyframes slam { from { transform: translateX(-50%) scale(.4) rotate(-6deg); opacity: 0; } }
+.overlay { position: fixed; inset: 0; z-index: 30; background: rgba(8, 4, 10, .78); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 20px max(16px, env(safe-area-inset-right, 0px)) 20px max(16px, env(safe-area-inset-left, 0px)); }
+.witch-card { width: min(520px, 100%); background: linear-gradient(160deg, #2c1d3a, var(--crypt)); border: 2px solid var(--hex); border-radius: 24px; padding: clamp(22px, 5vw, 38px); display: grid; gap: 18px; text-align: center; box-shadow: 0 0 80px rgba(167, 123, 255, .35); animation: deal .5s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes deal { from { transform: rotate(-12deg) scale(.6); opacity: 0; } }
+.witch-card .title { font-family: var(--f-display); font-size: clamp(2rem, 6vw, 3rem); line-height: 1; color: var(--hex); }
+.witch-card p { font: 700 clamp(1.15rem, 3vw, 1.5rem)/1.35 var(--f-body); margin: 0; text-wrap: balance; }
 
 @media (max-width: 820px) {
-  .setup-grid, .wheel-layout { grid-template-columns: minmax(0, 1fr); }
+  .setup-grid, .wheel-layout, .roulette { grid-template-columns: minmax(0, 1fr); }
   .brand { font-size: 1.3rem; }
   .tools .hide-sm { display: none; }
+}
+@media (max-width: 520px) {
+  .glasses { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rank { grid-template-columns: 2.2rem minmax(0, 1fr) auto; }
+  .rank .sh { display: none; }
+  .scores-inner { grid-auto-columns: minmax(215px, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition: none !important; }
@@ -226,6 +289,7 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
       <nav class="rounds" id="nav" aria-label="Runder"></nav>
       <div class="tools">
         <span class="timer-pill" id="timer" hidden>0:20</span>
+        <button class="icon-btn witch" data-act="witch" title="Trekk et kort fra hekseklokka (H)">Hekseklokka</button>
         <button class="icon-btn" id="btn-sound" data-act="mute" aria-pressed="true" title="Lydeffekter (M)">Lyd</button>
         <button class="icon-btn hide-sm" id="btn-drone" data-act="drone" aria-pressed="false" title="Uhyggelig bakgrunnslyd">Stemning</button>
         <button class="icon-btn hide-sm" data-act="fullscreen" title="Fullskjerm (F)">Fullskjerm</button>
@@ -235,6 +299,7 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
   <main class="stage" id="stage"><div class="stage-inner" id="view"></div></main>
   <footer class="scores"><div class="scores-inner" id="scores" aria-live="polite"></div></footer>
 </div>
+<div id="overlay-root"></div>
 
 <script>
 (() => {
@@ -242,15 +307,18 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
 
 /* ------------------------------------------------------------------ Innhold */
 const TEAM_COLORS = ["var(--pumpkin)", "var(--slime)", "var(--hex)", "var(--blood)", "var(--ghost)", "var(--candle)"];
-const NAME_POOL = ["Gresskarhodene", "Vampyrklubben", "Heksegjengen", "Zombie-ekspressen", "Spøkelsesjegerne", "Varulvene fra Valdres", "Huldrelaget", "Fossegrimene", "Draugen & co", "Nøkkens nevøer", "Benrangel-bandet", "De udøde revisorene", "Kostebil-kartellet", "Sølvkule-sjappa"];
+const NAME_POOL = ["Gresskarhodene", "Vampyrklubben", "Heksegjengen", "Zombie-ekspressen", "Spøkelsesjegerne", "Varulvene fra Valdres", "Huldrelaget", "Fossegrimene", "Draugen & co", "Nøkkens nevøer", "Benrangel-bandet", "De udøde revisorene", "Kostebil-kartellet", "Sølvkule-sjappa", "Shots fra graven", "Tørste trollene"];
 
 const ROUNDS = [
-  { id: "board", n: 1, name: "Skrekk-tavla", desc: "Fem kategorier, 25 spørsmål. Velg en rute, svar riktig og ta poengene. Feil svar koster like mye." },
-  { id: "emoji", n: 2, name: "Emoji-krypten", desc: "Gjett skrekkfilmen fra emojiene. Første lag som roper riktig tar 200. Hint halverer." },
-  { id: "tf", n: 3, name: "Sant eller skrøne", desc: "Lynrunde. Alle lag svarer samtidig. Riktig gir 100." },
-  { id: "wheel", n: 4, name: "Gresskarlotteriet", desc: "Snurr hjulet. Bonuser, forbannelser, tyveri og pinlige utfordringer." },
-  { id: "final", n: 5, name: "Den siste vandringen", desc: "Sats poengene på ett siste spørsmål. Alt kan snu." }
+  { id: "board", name: "Skrekk-tavla", desc: "Fem kategorier, 25 spørsmål. Riktig svar gir poengene, feil koster. To ruter skjuler Djevelens dobbel." },
+  { id: "emoji", name: "Emoji-krypten", desc: "Gjett skrekkfilmen fra emojiene. Første lag som roper riktig tar 200." },
+  { id: "tune", name: "Lyden fra krypten", desc: "Hvilken uhyggelig melodi er dette? Spilles av rett fra showet." },
+  { id: "tf", name: "Sant eller skrøne", desc: "Lynrunde. Alle lag svarer samtidig. Riktig gir 100." },
+  { id: "wheel", name: "Gresskarlotteriet", desc: "Snurr hjulet: bonuser, forbannelser, tyveri, shots og pinlige utfordringer." },
+  { id: "roulette", name: "Shot-ruletten", desc: "Tolv glass. Noen er vann. Noen er ikke. Lagene velger ett hver, på tur." },
+  { id: "final", name: "Den siste vandringen", desc: "Sats poengene på ett siste spørsmål. Alt kan snu." }
 ];
+const roundName = id => id === "roulette" && !state.shotMode ? "Godteri-ruletten" : ROUNDS.find(r => r.id === id).name;
 
 const BOARD = [
   { cat: "Skrekkfilm", qs: [
@@ -309,6 +377,18 @@ const EMOJI = [
   { e: "🧟‍♂️🛒🏬", a: "Dawn of the Dead", h: "Zombier på kjøpesenter" }
 ];
 
+/* Melodier: [midi-tone | null (pause) | "snap", sekunder] */
+const TUNES = [
+  { a: "Haisommer (Jaws)", x: "John Williams. To toner, og en hel generasjon sluttet å bade.", inst: "bass", seq: [[40,.6],[41,.5],[null,.9],[40,.6],[41,.5],[null,.7],[40,.35],[41,.35],[40,.3],[41,.3],[40,.25],[41,.25],[40,.2],[41,.2],[40,.18],[41,.18],[40,.16],[41,.16],[40,.15],[41,.15],[40,.15],[41,.15],[40,.15],[41,.8]] },
+  { a: "Halloween (1978)", x: "Regissør John Carpenter skrev temaet selv, i uvanlig 5/4-takt.", inst: "piano", seq: [].concat(...[0, 0, 1, 1].map(lo => [85 - lo, 78, 78, 85 - lo, 78, 78, 85 - lo, 78, 86 - lo, 78].map(m => [m, .17]))) },
+  { a: "Psycho – dusjscenen", x: "Bernard Herrmann brukte bare strykere. Hitchcock ville egentlig ha scenen helt uten musikk.", inst: "strings", seq: [[89,.22],[null,.05],[90,.22],[null,.05],[89,.22],[null,.05],[91,.22],[null,.05],[89,.22],[null,.05],[90,.22],[null,.05],[89,.22],[null,.05],[91,.5]] },
+  { a: "Toccata og fuge i d-moll (Bach)", x: "Orgelstykket alle forbinder med vampyrer og spøkelsesslott.", inst: "organ", seq: [[81,.12],[79,.12],[81,.8],[null,.35],[79,.12],[77,.12],[76,.12],[74,.12],[73,.55],[74,1],[null,.5],[69,.12],[67,.12],[69,.8],[null,.35],[67,.12],[65,.12],[64,.12],[62,.12],[61,.55],[62,1.2]] },
+  { a: "Begravelsesmarsjen (Chopin)", x: "Fra pianosonate nr. 2 i b-moll, 1839.", inst: "piano", seq: [[58,.6],[58,.45],[58,.15],[58,.6],[61,.45],[60,.15],[60,.45],[58,.15],[58,.45],[57,.15],[58,1]] },
+  { a: "The Twilight Zone", x: "TV-serien fra 1959. Den kjente kjenningsmelodien er skrevet av Marius Constant.", inst: "bell", seq: [].concat(...[0, 0, 0, 0].map(() => [[80,.17],[81,.17],[80,.17],[76,.17]])) },
+  { a: "Familien Addams", x: "Snap, snap! Kjenningsmelodien til TV-serien fra 1964.", inst: "harpsi", seq: [[60,.22],[62,.22],[64,.22],[65,.4],["snap",.35],["snap",.55],[62,.22],[64,.22],[66,.22],[67,.4],["snap",.35],["snap",.55],[62,.22],[64,.22],[66,.22],[67,.22],[62,.22],[64,.22],[66,.22],[67,.22],[60,.22],[62,.22],[64,.22],[65,.4],["snap",.35],["snap",.5]] },
+  { a: "I Dovregubbens hall (Grieg)", x: "Fra Peer Gynt, 1875. Norges skumleste troll-låt.", inst: "pizz", seq: [[59,.2],[61,.2],[62,.2],[64,.2],[66,.2],[62,.2],[66,.4],[65,.2],[61,.2],[65,.4],[64,.2],[60,.2],[64,.4],[59,.2],[61,.2],[62,.2],[64,.2],[66,.2],[62,.2],[66,.2],[71,.2],[69,.2],[66,.2],[62,.2],[66,.2],[69,.7]] }
+];
+
 const TF = [
   { s: "Gresskar er botanisk sett et bær.", t: true, x: "Gresskar er en såkalt pepo, en bærtype med hardt skall." },
   { s: "Edderkopper er insekter.", t: false, x: "De er edderkoppdyr: åtte bein, ikke seks." },
@@ -327,7 +407,7 @@ const TF = [
   { s: "Et voksent menneske har 206 bein.", t: true }
 ];
 
-const WHEEL = [
+const WHEEL_BASE = [
   { label: "+300", color: "#a6e05a", kind: "bonus", v: 300, title: "Godteriregn!", text: "Laget får 300 poeng helt gratis." },
   { label: "ZOMBIE", color: "#6fd0ea", kind: "challenge", title: "Zombie-gange", text: "Hele laget går som zombier tvers over rommet. Publikum jubler, verten gir 0–300." },
   { label: "−200", color: "#e0435a", kind: "bonus", v: -200, title: "Forbannet!", text: "En svart katt krysset veien. Laget mister 200 poeng." },
@@ -341,35 +421,93 @@ const WHEEL = [
   { label: "−100", color: "#e0435a", kind: "bonus", v: -100, title: "Heksa så deg", text: "Laget mister 100 poeng." },
   { label: "HVISK", color: "#a77bff", kind: "challenge", title: "Hvisking fra graven", text: "Verten hvisker et ord til første person. Det sendes hviskende gjennom laget. Riktig til slutt gir 200." }
 ];
+const WHEEL_SHOTS = [
+  { at: 2, label: "TIL DEG", color: "#d0a2ff", kind: "giveshot", title: "Et shot til deg", text: "Laget peker ut et annet lag som må ta {shot}." },
+  { at: 6, label: "2 SHOTS", color: "#ff5d73", kind: "shots", n: 2, title: "To shots!", text: "Laget tar {two}. Skål for de døde!" },
+  { at: 11, label: "SKÅL", color: "#ffb15e", kind: "all", title: "Skål i blod", text: "Alle lag tar {shot}. Ingen slipper unna." }
+];
+function wheelSegs() {
+  if (!state.shotMode) return WHEEL_BASE;
+  const out = WHEEL_BASE.slice();
+  WHEEL_SHOTS.slice().sort((a, b) => b.at - a.at).forEach(s => out.splice(s.at, 0, s));
+  return out;
+}
+
+const GLASS_KINDS = {
+  safe:    { n: 4, color: "var(--ghost)",  short: "VANN",    title: "Bare vann", text: "Du slapp unna. 100 poeng for nervene." },
+  give:    { n: 3, color: "var(--hex)",    short: "TIL DEG", title: "Et shot til deg", text: "Pek ut et annet lag som må ta {shot}." },
+  two:     { n: 2, color: "var(--blood)",  short: "2 SHOTS", title: "To shots", text: "Laget tar {two}. Skål!" },
+  all:     { n: 1, color: "var(--pumpkin)", short: "ALLE",   title: "Giftbegeret", text: "Alle lag tar {shot}." },
+  others:  { n: 1, color: "var(--candle)", short: "ANDRE",   title: "Skål for de andre", text: "Alle andre lag tar {shot}. Dere ser på og smiler." },
+  jackpot: { n: 1, color: "var(--slime)",  short: "+500",    title: "Djevelens jackpot", text: "500 poeng! Men djevelen vil ha {shot} tilbake." }
+};
+const LIQUIDS = ["#ff7b1c", "#a6e05a", "#e0435a", "#a77bff", "#6fd0ea", "#f2c94c"];
+
+const WITCH = [
+  { t: "Alle som har noe svart på seg tar {shot}." },
+  { t: "Den med best kostyme peker ut én person som tar {shot}." },
+  { t: "Siste person som tar seg på nesa tar {shot}. Nå!" },
+  { t: "Vampyrregel: Ingen får si «ja» før neste runde er ferdig. Den som sier det, tar {shot}." },
+  { t: "Snakk som Dracula til neste runde er over. Den som glemmer det, tar {shot}." },
+  { t: "Zombietid: Alle som reiser seg må gå som zombier. Glemmer du deg, tar du {shot}." },
+  { t: "Stillhet i graven: 30 sekunder total stillhet. Den som lager en lyd, tar {shot}.", timer: 30 },
+  { t: "Rim på «grav», én om gangen rundt bordet. Den som ikke finner et rim, tar {shot}." },
+  { t: "Varulvhyl! Alle hyler samtidig. Verten peker ut det dårligste hylet, som tar {shot}." },
+  { t: "Sannhetens time: Verten stiller ett pinlig spørsmål til en valgfri spiller. Svar, eller ta {two}." },
+  { t: "Skål for spøkelsene! Alle tar {shot}." },
+  { t: "Tommel-heksa: Laget som leder kan når som helst legge tommelen på bordet. Siste som følger etter tar {shot}." },
+  { t: "Heksens hevn: Laget på sisteplass får 200 poeng gratis.", act: "lastbonus" },
+  { t: "Skatt til graven: Laget som leder gir 100 poeng til laget på sisteplass.", act: "robin" },
+  { t: "Kategori-kirkegården: Nevn skrekkfilmer, én om gangen. Den som gjentar eller står fast, tar {shot}." },
+  { t: "Bytt plass: To lag bytter én spiller frem til finalen. Verten bestemmer hvem." },
+  { t: "Gjenferdet: Velg en person som er usynlig til neste runde. Den som snakker med gjenferdet, tar {shot}." },
+  { t: "Skrekkfjes: Alle lag lager sitt skumleste fjes. Verten gir 200 til det beste.", act: "award200" }
+];
 
 const FINALS = [
   { q: "Hvilken ungarskfødt skuespiller spilte grev Dracula i Universal-filmen fra 1931?", a: "Bela Lugosi", x: "Han ble gravlagt i Dracula-kappen sin." },
-  { q: "Hvilken forfatter skrev novellen «Ravnen» (The Raven) fra 1845?", a: "Edgar Allan Poe", x: "«Quoth the Raven, Nevermore.»" },
+  { q: "Hvilken forfatter skrev diktet «Ravnen» (The Raven) fra 1845?", a: "Edgar Allan Poe", x: "«Quoth the Raven, Nevermore.»" },
   { q: "Hva heter hotellet i «The Shining»?", a: "The Overlook Hotel" }
 ];
 
 /* ------------------------------------------------------------------ Tilstand */
-const KEY = "spokelsesshowet-v1";
+const KEY = "spokelsesshowet-v2";
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function pickDevils() {
+  const all = []; BOARD.forEach((_, c) => VALUES.forEach((_, i) => { if (i >= 1) all.push(c + "-" + i); }));
+  return shuffle(all).slice(0, 2);
+}
+function newGlasses() {
+  const g = []; Object.entries(GLASS_KINDS).forEach(([k, v]) => { for (let i = 0; i < v.n; i++) g.push(k); });
+  return shuffle(g);
+}
 const fresh = () => ({
   screen: "setup",
+  shotMode: true, wrongShot: true, devilOn: true,
   teams: [
-    { name: "Gresskarhodene", score: 0 },
-    { name: "Vampyrklubben", score: 0 },
-    { name: "Heksegjengen", score: 0 }
+    { name: "Gresskarhodene", score: 0, shots: 0 },
+    { name: "Vampyrklubben", score: 0, shots: 0 },
+    { name: "Heksegjengen", score: 0, shots: 0 }
   ],
-  used: {},
-  current: null,          // { c, i, reveal }
+  used: {}, devils: pickDevils(),
+  current: null,
   emojiIdx: 0, emojiReveal: false, emojiHint: false, emojiDone: {},
+  tuneIdx: 0, tuneReveal: false, tuneDone: {},
   tfIdx: 0, tfReveal: false, tfVotes: {},
   wheelTeam: 0, wheelRot: 0, wheelResult: null, wheelApplied: false,
+  roul: { glasses: newGlasses(), flipped: {}, team: 0, last: null, resolved: true },
   finalIdx: 0, finalStage: "wager", wagers: {}, finalMarks: {}, finalApplied: false,
+  witchDeck: [], witchCard: null,
   muted: false
 });
 let state;
 function load(seed) {
-  if (seed && seed.teams) return Object.assign(fresh(), seed);
-  try { const raw = localStorage.getItem(KEY); if (raw) return Object.assign(fresh(), JSON.parse(raw)); } catch (e) {}
-  return fresh();
+  let s = null;
+  if (seed && seed.teams) s = seed;
+  else { try { const raw = localStorage.getItem(KEY); if (raw) s = JSON.parse(raw); } catch (e) {} }
+  const st = Object.assign(fresh(), s || {});
+  st.teams.forEach(t => { if (typeof t.shots !== "number") t.shots = 0; });
+  return st;
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 
@@ -377,66 +515,104 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const tc = i => TEAM_COLORS[i % TEAM_COLORS.length];
 const fmt = n => (n < 0 ? "−" : "") + Math.abs(n).toLocaleString("nb-NO");
+const icon = () => state.shotMode ? "🥃" : "🍬";
+const shotWord = n => state.shotMode ? (n === 1 ? "ett shot" : `${n} shots`) : (n === 1 ? "én sur godteri" : `${n} sure godterier`);
+const T = s => s.replace(/\{shot\}/g, shotWord(1)).replace(/\{two\}/g, shotWord(2)).replace(/\bshots?\b/gi, m => state.shotMode ? m : (m.toLowerCase() === "shot" ? "godteri" : "godterier"));
 
 /* ------------------------------------------------------------------ Lyd */
-let ac = null, droneNodes = null;
+let ac = null, droneNodes = null, tuneBus = null, tuneEnd = 0;
 function audio() {
   if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); }
   if (ac.state === "suspended") ac.resume();
   return ac;
 }
-function tone(f, dur, { type = "sine", vol = .18, at = 0, to = null, vib = 0 } = {}) {
+function tone(f, dur, { type = "sine", vol = .18, at = 0, to = null, vib = 0, dest = null, attack = .02 } = {}) {
   if (state.muted) return; const a = audio(); if (!a) return;
   const t = a.currentTime + at, o = a.createOscillator(), g = a.createGain();
   o.type = type; o.frequency.setValueAtTime(f, t);
   if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
   if (vib) { const l = a.createOscillator(), lg = a.createGain(); l.frequency.value = 6; lg.gain.value = vib; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + dur); }
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .05);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(dest || a.destination); o.start(t); o.stop(t + dur + .05);
 }
-function noise(dur, vol = .5, freq = 400) {
+function noise(dur, { vol = .5, freq = 400, type = "lowpass", at = 0, dest = null } = {}) {
   if (state.muted) return; const a = audio(); if (!a) return;
-  const len = a.sampleRate * dur, buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+  const len = Math.max(1, Math.floor(a.sampleRate * dur)), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
   const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
-  f.type = "lowpass"; f.frequency.value = freq; g.gain.value = vol;
-  s.buffer = buf; s.connect(f).connect(g).connect(a.destination); s.start();
+  f.type = type; f.frequency.value = freq; g.gain.value = vol;
+  s.buffer = buf; s.connect(f).connect(g).connect(dest || a.destination); s.start(a.currentTime + at);
 }
 const sfx = {
   correct() { [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, { type: "triangle", at: i * .08, vol: .16 })); },
   wrong() { tone(150, .55, { type: "sawtooth", to: 60, vol: .14 }); tone(155, .55, { type: "sawtooth", to: 62, vol: .1 }); },
   buzz() { tone(330, .12, { type: "square", vol: .1 }); tone(330, .14, { type: "square", vol: .1, at: .16 }); },
   stinger() { tone(260, 1.4, { to: 780, vib: 18, vol: .14 }); tone(780, 1, { at: 1.3, to: 220, vib: 22, vol: .12 }); },
-  thunder() { noise(2.2, .9, 300); },
+  thunder() { noise(2.2, { vol: .9, freq: 300 }); },
   tick() { tone(1400, .04, { type: "square", vol: .05 }); },
   click() { tone(900, .03, { type: "square", vol: .04 }); },
   gong() { tone(98, 2.4, { vol: .25 }); tone(147, 2, { vol: .12 }); tone(196, 1.6, { type: "triangle", vol: .06 }); },
   reveal() { tone(392, .18, { type: "triangle" }); tone(587, .4, { type: "triangle", at: .12 }); },
-  fanfare() { [392, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .32, { type: "sawtooth", at: i * .14, vol: .07 })); }
+  fanfare() { [392, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .32, { type: "sawtooth", at: i * .14, vol: .07 })); },
+  pour() {
+    [0, 1, 2, 3, 4].forEach(i => tone(320 - i * 25, .07, { at: i * .08, vol: .14, to: 180 - i * 15 }));
+    tone(2600, .25, { type: "triangle", at: .5, vol: .1 }); tone(3300, .2, { type: "triangle", at: .52, vol: .07 });
+  },
+  drumroll(dur) { let t = 0, gap = .09; while (t < dur) { noise(.05, { vol: .25 + .4 * t / dur, freq: 900, type: "bandpass", at: t }); t += gap; gap = Math.max(.035, gap * .95); } },
+  bell() { [0, .9].forEach(at => { tone(660, 1.8, { at, vol: .12 }); tone(990, 1.4, { at, vol: .06 }); tone(1650, .6, { at, vol: .04 }); }); }
 };
+function midi(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+function voice(inst, m, d, at, dest) {
+  const f = midi(m);
+  switch (inst) {
+    case "bass": tone(f, d * .9, { type: "sawtooth", vol: .2, at, dest }); tone(f * 2, d * .9, { type: "triangle", vol: .1, at, dest }); break;
+    case "piano": tone(f, Math.max(d, .5), { type: "triangle", vol: .2, at, dest, attack: .005 }); tone(f * 2, Math.max(d, .3), { vol: .05, at, dest, attack: .005 }); break;
+    case "strings": tone(f, d * .9, { type: "sawtooth", vol: .1, at, to: f * .93, dest, attack: .005 }); tone(f * 1.005, d * .9, { type: "sawtooth", vol: .07, at, to: f * .92, dest, attack: .005 }); break;
+    case "organ": tone(f, d * .95, { type: "square", vol: .05, at, dest }); tone(f / 2, d * .95, { vol: .12, at, dest }); tone(f * 2, d * .95, { vol: .04, at, dest }); break;
+    case "bell": tone(f, d * 1.4, { vol: .14, at, dest, vib: 6, attack: .005 }); break;
+    case "harpsi": tone(f, d * .8, { type: "square", vol: .07, at, dest, attack: .003 }); tone(f / 2, d * .8, { type: "triangle", vol: .1, at, dest, attack: .003 }); break;
+    case "pizz": tone(f, Math.min(d, .18), { type: "triangle", vol: .22, at, dest, attack: .003 }); tone(f / 2, Math.min(d, .18), { vol: .1, at, dest, attack: .003 }); break;
+  }
+}
+function playTune(t) {
+  stopTune();
+  if (state.muted) { banner("Lyden er av", "var(--blood)"); return 0; }
+  const a = audio(); if (!a) return 0;
+  tuneBus = a.createGain(); tuneBus.gain.value = 1; tuneBus.connect(a.destination);
+  let at = .05;
+  for (const [m, d] of t.seq) {
+    if (m === "snap") noise(.06, { vol: .9, freq: 2500, type: "highpass", at, dest: tuneBus });
+    else if (m != null) voice(t.inst, m, d, at, tuneBus);
+    at += d;
+  }
+  tuneEnd = Date.now() + at * 1000;
+  return at;
+}
+function stopTune() { if (tuneBus) { try { tuneBus.disconnect(); } catch (e) {} tuneBus = null; } tuneEnd = 0; const eq = $(".eq"); if (eq) eq.classList.remove("on"); }
 function toggleDrone() {
   const a = audio(); if (!a) return;
-  if (droneNodes) { droneNodes.g.gain.setTargetAtTime(0, a.currentTime, .4); const n = droneNodes; setTimeout(() => n.oscs.forEach(o => o.stop()), 1500); droneNodes = null; return false; }
+  if (droneNodes) { droneNodes.g.gain.setTargetAtTime(0, a.currentTime, .4); const n = droneNodes; setTimeout(() => n.oscs.forEach(o => o.stop()), 1500); droneNodes = null; return; }
   const g = a.createGain(), f = a.createBiquadFilter(); g.gain.value = 0; f.type = "lowpass"; f.frequency.value = 380;
   const oscs = [55, 55.6, 82.4, 110.9].map((fr, i) => { const o = a.createOscillator(); o.type = i < 2 ? "sawtooth" : "sine"; o.frequency.value = fr; o.connect(f); o.start(); return o; });
   const l = a.createOscillator(), lg = a.createGain(); l.frequency.value = .08; lg.gain.value = 220; l.connect(lg).connect(f.frequency); l.start(); oscs.push(l);
   f.connect(g).connect(a.destination); g.gain.setTargetAtTime(.07, a.currentTime, 1.2);
-  droneNodes = { g, oscs }; return true;
+  droneNodes = { g, oscs };
 }
 
 /* ------------------------------------------------------------------ Effekter */
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 function lightning() {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (reduced()) return;
   const el = $("#flash"); el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
 }
 let bannerTimer;
-function banner(text, color) {
+function banner(text, color, ms = 2400) {
   document.querySelectorAll(".buzz-banner").forEach(n => n.remove());
   const b = document.createElement("div"); b.className = "buzz-banner"; b.style.background = color; b.textContent = text;
-  document.body.appendChild(b); clearTimeout(bannerTimer); bannerTimer = setTimeout(() => b.remove(), 2400);
+  document.body.appendChild(b); clearTimeout(bannerTimer); bannerTimer = setTimeout(() => b.remove(), ms);
 }
 
-/* Bakgrunn: tåke, flaggermus og (ved seier) fallende gresskar */
+/* Bakgrunn: tåke, flaggermus og fallende godteri */
 const fx = { c: $("#fx"), parts: [], bats: [], confetti: [] };
 function fxInit() {
   const ctx = fx.c.getContext("2d");
@@ -444,7 +620,7 @@ function fxInit() {
   resize(); addEventListener("resize", resize);
   for (let i = 0; i < 26; i++) fx.parts.push({ x: Math.random() * innerWidth, y: innerHeight * (.55 + Math.random() * .5), r: 80 + Math.random() * 180, vx: .1 + Math.random() * .25, a: .03 + Math.random() * .05 });
   for (let i = 0; i < 4; i++) fx.bats.push(newBat());
-  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const still = reduced();
   let t = 0;
   function frame() {
     t += 1; ctx.clearRect(0, 0, innerWidth, innerHeight);
@@ -478,10 +654,10 @@ function fxInit() {
   frame();
 }
 function newBat() { const left = Math.random() < .5; return { x: left ? -30 : innerWidth + 30, y: 60 + Math.random() * innerHeight * .4, vx: (left ? 1 : -1) * (1.2 + Math.random() * 1.6), s: 8 + Math.random() * 10, ph: Math.random() * 10 }; }
-function rainCandy(n = 90) {
-  const set = ["🎃", "🦇", "👻", "🍬", "💀", "🕷️", "🍭"];
+function rain(set, n = 90) {
   for (let i = 0; i < n; i++) fx.confetti.push({ ch: set[i % set.length], x: Math.random() * innerWidth, y: -40 - Math.random() * innerHeight, vy: 1.5 + Math.random() * 3, s: 18 + Math.random() * 22, rot: 0, vr: (Math.random() - .5) * .1, ph: Math.random() * 100 });
 }
+const rainCandy = n => rain(["🎃", "🦇", "👻", "🍬", "💀", "🕷️", "🍭"], n);
 
 /* ------------------------------------------------------------------ Timer */
 const timer = { end: 0, id: 0, onEnd: null };
@@ -494,25 +670,37 @@ function startTimer(sec, onEnd) {
     el.classList.toggle("low", left <= 5 && left > 0);
     const bt = $("#bigtimer"); if (bt) bt.textContent = el.textContent;
     if (left !== last) { if (left <= 5 && left > 0) sfx.tick(); last = left; }
-    if (left === 0) { stopTimer(true); sfx.gong(); lightning(); if (timer.onEnd) timer.onEnd(); return; }
+    if (left === 0) { stopTimer(true); sfx.gong(); lightning(); if (timer.onEnd) timer.onEnd(); }
   };
   step(); timer.id = setInterval(step, 200);
 }
 function stopTimer(keep) { clearInterval(timer.id); timer.id = 0; const el = $("#timer"); el.classList.remove("low"); if (!keep) el.hidden = true; }
 
-/* ------------------------------------------------------------------ Poeng */
+/* ------------------------------------------------------------------ Poeng og shots */
+function floater(i, text, cls) {
+  const chip = document.querySelector(`.score[data-i="${i}"]`); if (!chip) return null;
+  const f = document.createElement("span"); f.className = "floater " + cls; f.textContent = text;
+  chip.appendChild(f); setTimeout(() => f.remove(), 1200); return chip;
+}
 function addScore(i, d, quiet) {
   if (!state.teams[i] || !d) return;
   state.teams[i].score += d; save(); renderScores();
-  const chip = document.querySelector(`.score[data-i="${i}"]`);
-  if (chip) {
-    chip.classList.remove("up", "down"); void chip.offsetWidth; chip.classList.add(d > 0 ? "up" : "down");
-    const f = document.createElement("span"); f.className = "floater " + (d > 0 ? "pos" : "neg"); f.textContent = (d > 0 ? "+" : "") + fmt(d);
-    chip.appendChild(f); setTimeout(() => f.remove(), 1200);
-  }
+  const chip = floater(i, (d > 0 ? "+" : "") + fmt(d), d > 0 ? "pos" : "neg");
+  if (chip) { chip.classList.remove("up", "down"); void chip.offsetWidth; chip.classList.add(d > 0 ? "up" : "down"); }
   if (!quiet) (d > 0 ? sfx.correct : sfx.wrong)();
 }
-function leaderIdx() { let b = -1, bi = -1; state.teams.forEach((t, i) => { if (t.score > b) { b = t.score; bi = i; } }); return bi; }
+/* Gi shots. who = lagindeks eller liste. Viser ett banner. */
+function pour(who, n = 1, headline) {
+  const list = Array.isArray(who) ? who : [who];
+  list.forEach(i => { if (state.teams[i]) { state.teams[i].shots = (state.teams[i].shots || 0) + n; } });
+  save(); renderScores();
+  list.forEach(i => floater(i, `+${n} ${icon()}`, "shot"));
+  sfx.pour();
+  const txt = headline || (list.length === 1 ? `${state.teams[list[0]].name}: ${shotWord(n)}!` : `${shotWord(n)} til ${list.length} lag!`);
+  banner(state.shotMode ? txt.toUpperCase() : txt, list.length === 1 ? tc(list[0]) : "var(--candle)", 2800);
+}
+function leaderIdx() { let b = -Infinity, bi = -1; state.teams.forEach((t, i) => { if (t.score > b) { b = t.score; bi = i; } }); return bi; }
+function lastIdx() { let b = Infinity, bi = -1; state.teams.forEach((t, i) => { if (t.score < b) { b = t.score; bi = i; } }); return bi; }
 function buzz(i) {
   if (!state.teams[i]) return;
   sfx.buzz(); banner(state.teams[i].name + "!", tc(i));
@@ -522,7 +710,7 @@ function buzz(i) {
 
 /* ------------------------------------------------------------------ Visninger */
 function go(screen) {
-  state.screen = screen; stopTimer(); save(); render();
+  stopTune(); state.screen = screen; stopTimer(); save(); render();
   $("#stage").scrollTop = 0;
   if (screen === "end") { rainCandy(); sfx.fanfare(); }
 }
@@ -533,26 +721,42 @@ function render() {
   if (state.screen === "wheel") drawWheel();
   $("#btn-sound").setAttribute("aria-pressed", String(!state.muted));
   $("#btn-sound").textContent = state.muted ? "Lyd av" : "Lyd på";
+  renderOverlay();
 }
 function renderNav() {
-  $("#nav").innerHTML = ROUNDS.map(r => `<button class="tab" data-act="go" data-to="${r.id}" aria-current="${state.screen === r.id}"><span class="n">${r.n}</span>${r.name}</button>`).join("")
+  const nav = $("#nav");
+  nav.innerHTML = ROUNDS.map((r, k) => `<button class="tab" data-act="go" data-to="${r.id}" aria-current="${state.screen === r.id}"><span class="n">${k + 1}</span>${roundName(r.id)}</button>`).join("")
     + `<button class="tab" data-act="go" data-to="end" aria-current="${state.screen === "end"}">Kåring</button>`;
+  const cur = nav.querySelector('[aria-current="true"]');
+  if (cur) nav.scrollLeft = Math.max(0, cur.offsetLeft - nav.clientWidth / 2 + cur.offsetWidth / 2);
 }
 function renderScores() {
   const L = leaderIdx(), any = state.teams.some(t => t.score !== 0);
   $("#scores").innerHTML = state.teams.map((t, i) => `
     <div class="score ${any && i === L ? "leader" : ""}" data-i="${i}" style="--tc:${tc(i)}">
       <button class="nm" data-act="buzz" data-i="${i}" title="Buzz (tast ${i + 1})">${i + 1} · ${esc(t.name)}</button>
-      <div class="pts">${fmt(t.score)}</div>
-      <div class="adj"><button data-act="adj" data-i="${i}" data-d="100" aria-label="Gi ${esc(t.name)} 100 poeng">+100</button><button data-act="adj" data-i="${i}" data-d="-100" aria-label="Trekk ${esc(t.name)} 100 poeng">−100</button></div>
+      <div class="pts">${fmt(t.score)}${state.shotMode || t.shots ? `<small>${icon()} ${t.shots || 0}</small>` : ""}</div>
+      <div class="adj">
+        <button data-act="adj" data-i="${i}" data-d="100" aria-label="Gi ${esc(t.name)} 100 poeng">+100</button>
+        <button data-act="adj" data-i="${i}" data-d="-100" aria-label="Trekk ${esc(t.name)} 100 poeng">−100</button>
+        <button class="full" data-act="pour" data-i="${i}" aria-label="Gi ${esc(t.name)} ${shotWord(1)}">+${icon()} ${state.shotMode ? "shot" : "godteri"}</button>
+      </div>
     </div>`).join("");
 }
 const nextBtn = (to, label) => `<button class="btn ghost" data-act="go" data-to="${to}">${label}</button>`;
-function awardRow(value, { both = true } = {}) {
+const roundNo = id => ROUNDS.findIndex(r => r.id === id) + 1;
+const head = (id, a, b, lede, extra = "") => `
+  <div class="head">
+    <div class="eyebrow">Runde ${roundNo(id)}${extra}</div>
+    <h2 class="round-title">${a}<span class="accent">${b}</span></h2>
+    ${lede ? `<p class="lede">${lede}</p>` : ""}
+  </div>`;
+function awardRow(values, { minus = 0, shotOnMinus = 0 } = {}) {
+  const vals = [].concat(values);
   return `<div class="award"><div class="eyebrow">Hvem tok den?</div><div class="award-grid">${state.teams.map((t, i) => `
     <div class="award-team" style="border-left:4px solid ${tc(i)}"><span class="nm">${esc(t.name)}</span>
-      <button class="chipbtn plus" data-act="adj" data-i="${i}" data-d="${value}">+${value}</button>
-      ${both ? `<button class="chipbtn minus" data-act="adj" data-i="${i}" data-d="${-value}">−${value}</button>` : ""}
+      <span class="row" style="gap:6px;flex-wrap:nowrap">${vals.map(v => `<button class="chipbtn plus" data-act="adj" data-i="${i}" data-d="${v}">+${v}</button>`).join("")}</span>
+      ${minus ? `<button class="chipbtn minus" data-act="wrong" data-i="${i}" data-d="${minus}" data-s="${shotOnMinus}">−${minus}${shotOnMinus ? " " + icon().repeat(shotOnMinus) : ""}</button>` : ""}
     </div>`).join("")}</div></div>`;
 }
 
@@ -561,30 +765,39 @@ const VIEWS = {
     const confirming = state._confirmReset;
     return `
     <section class="hero">
-      <div class="eyebrow">Halloween · 31. oktober · fem runder</div>
+      <div class="eyebrow">Halloween · 31. oktober · sju runder</div>
       <h1>Spøkelses&shy;showet<span>Gameshowet ingen overlever</span></h1>
-      <p class="lede">Én vert, én skjerm og 2–6 lag. Verten styrer alt herfra, deler ut poeng i tavla nederst og bestemmer hvem som roper først. Navngi lagene og start når alle har kostymet på.</p>
+      <p class="lede">Én vert, én skjerm og 2–6 lag. Verten styrer alt herfra, deler ut poeng og ${state.shotMode ? "shots" : "sure godterier"} i tavla nederst, og trekker kort fra hekseklokka når stemningen trenger et puff.</p>
     </section>
     <div class="setup-grid">
-      <section class="panel" aria-labelledby="h-teams">
-        <h2 id="h-teams">Lagene</h2>
-        ${state.teams.map((t, i) => `
-          <div class="team-row">
-            <span class="swatch" style="background:${tc(i)}"></span>
-            <input id="team-${i}" data-team="${i}" value="${esc(t.name)}" maxlength="28" aria-label="Navn på lag ${i + 1}">
-            <button class="btn ghost small" data-act="randname" data-i="${i}" title="Tilfeldig navn">Nytt navn</button>
-            <button class="btn ghost small" data-act="rmteam" data-i="${i}" ${state.teams.length <= 2 ? "disabled" : ""} aria-label="Fjern lag">Fjern</button>
-          </div>`).join("")}
-        <div class="row">
-          <button class="btn ghost small" data-act="addteam" ${state.teams.length >= 6 ? "disabled" : ""}>Legg til lag</button>
-          <button class="btn ghost small" data-act="zero">Nullstill poeng</button>
-          <button class="btn ${confirming ? "blood" : "ghost"} small" data-act="reset">${confirming ? "Sikker? Trykk igjen" : "Start helt på nytt"}</button>
-        </div>
-        <p class="keys">Hurtigtaster: <kbd>1</kbd>–<kbd>6</kbd> buzz for lag · <kbd>Mellomrom</kbd> vis svar · <kbd>T</kbd> 20 sek nedtelling · <kbd>M</kbd> lyd · <kbd>F</kbd> fullskjerm · <kbd>Esc</kbd> lukk spørsmål</p>
-      </section>
+      <div class="stack">
+        <section class="panel" aria-labelledby="h-teams">
+          <h2 id="h-teams">Lagene</h2>
+          ${state.teams.map((t, i) => `
+            <div class="team-row">
+              <span class="swatch" style="background:${tc(i)}"></span>
+              <input id="team-${i}" data-team="${i}" value="${esc(t.name)}" maxlength="28" aria-label="Navn på lag ${i + 1}">
+              <button class="btn ghost small" data-act="randname" data-i="${i}" title="Tilfeldig navn">Nytt navn</button>
+              <button class="btn ghost small" data-act="rmteam" data-i="${i}" ${state.teams.length <= 2 ? "disabled" : ""} aria-label="Fjern lag">Fjern</button>
+            </div>`).join("")}
+          <div class="row">
+            <button class="btn ghost small" data-act="addteam" ${state.teams.length >= 6 ? "disabled" : ""}>Legg til lag</button>
+            <button class="btn ghost small" data-act="zero">Nullstill poeng og shots</button>
+            <button class="btn ${confirming ? "blood" : "ghost"} small" data-act="reset">${confirming ? "Sikker? Trykk igjen" : "Start helt på nytt"}</button>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="h-rules">
+          <h2 id="h-rules">Husregler</h2>
+          <label class="toggle"><input type="checkbox" id="set-shot" data-setting="shotMode" ${state.shotMode ? "checked" : ""}><div><b>Shot-modus</b><span>Shots på hjulet, Shot-ruletten og hekseklokka. Slå av for familieversjon med sure godterier.</span></div></label>
+          <label class="toggle"><input type="checkbox" id="set-wrong" data-setting="wrongShot" ${state.wrongShot ? "checked" : ""}><div><b>Feil svar på tavla gir ${shotWord(1)}</b><span>Djevelens dobbel gir ${shotWord(2)}.</span></div></label>
+          <label class="toggle"><input type="checkbox" id="set-devil" data-setting="devilOn" ${state.devilOn ? "checked" : ""}><div><b>Djevelens dobbel</b><span>To skjulte ruter på tavla gir dobbel verdi og dobbel straff.</span></div></label>
+          <p class="note">Fyll glassene med det dere vil. Vann, saft og alkoholfritt teller like mye i showet, og ingen skal måtte drikke.</p>
+          <p class="keys">Hurtigtaster: <kbd>1</kbd>–<kbd>6</kbd> buzz · <kbd>Mellomrom</kbd> vis svar / spill av · <kbd>H</kbd> hekseklokka · <kbd>T</kbd> 20 sek · <kbd>M</kbd> lyd · <kbd>F</kbd> fullskjerm · <kbd>Esc</kbd> lukk</p>
+        </section>
+      </div>
       <section class="panel" aria-labelledby="h-rounds">
         <h2 id="h-rounds">Kveldens program</h2>
-        <ol class="round-list">${ROUNDS.map(r => `<li><span class="num">${r.n}</span><div><b>${r.name}</b><span>${r.desc}</span></div></li>`).join("")}</ol>
+        <ol class="round-list">${ROUNDS.map((r, k) => `<li><span class="num">${k + 1}</span><div><b>${roundName(r.id)}</b><span>${T(r.desc)}</span></div></li>`).join("")}</ol>
         <button class="btn big" data-act="start">Slipp skrekken løs</button>
       </section>
     </div>`;
@@ -593,33 +806,23 @@ const VIEWS = {
   board() {
     if (state.current) return questionView();
     const done = Object.keys(state.used).length;
-    return `
-    <div class="head">
-      <div class="eyebrow">Runde 1</div>
-      <h2 class="round-title">Skrekk-<span class="accent">tavla</span></h2>
-      <p class="lede">Laget som har tur velger kategori og verdi. Riktig svar gir poengene, feil svar koster like mye. Andre lag kan stjele med buzzeren.</p>
-    </div>
-    <div class="board-wrap"><div class="board" role="grid">
+    return head("board", "Skrekk-", "tavla", `Laget som har tur velger kategori og verdi. Riktig svar gir poengene, feil svar koster like mye${state.shotMode && state.wrongShot ? " pluss ett shot" : ""}. To ruter skjuler Djevelens dobbel.`) + `
+    <div class="board-wrap"><div class="board">
       ${BOARD.map(c => `<div class="cat">${c.cat}</div>`).join("")}
       ${VALUES.map((v, i) => BOARD.map((c, ci) => {
         const used = state.used[ci + "-" + i];
         return `<button class="tile ${used ? "used" : ""}" ${used ? "disabled aria-label='Brukt'" : `data-act="open" data-c="${ci}" data-q="${i}" aria-label="${c.cat} for ${v}"`}>${v}</button>`;
       }).join("")).join("")}
     </div></div>
-    <div class="row" style="justify-content:space-between">
+    <div class="row spread">
       <span class="progress">${done} av 25 spørsmål brukt</span>
-      ${nextBtn("emoji", "Videre til runde 2: Emoji-krypten")}
+      ${nextBtn("emoji", "Videre til runde 2")}
     </div>`;
   },
 
   emoji() {
     const i = state.emojiIdx, item = EMOJI[i], val = state.emojiHint ? 100 : 200;
-    return `
-    <div class="head">
-      <div class="eyebrow">Runde 2 · film ${i + 1} av ${EMOJI.length}</div>
-      <h2 class="round-title">Emoji-<span class="accent">krypten</span></h2>
-      <p class="lede">Hvilken skrekkfilm skjuler seg her? Første lag som buzzer og svarer riktig tar ${val} poeng.</p>
-    </div>
+    return head("emoji", "Emoji-", "krypten", `Hvilken skrekkfilm skjuler seg her? Første lag som buzzer og svarer riktig tar ${val} poeng.`, ` · film ${i + 1} av ${EMOJI.length}`) + `
     <div class="card">
       <div class="emoji-stage" aria-label="Emoji-gåte">${item.e}</div>
       ${state.emojiHint ? `<div class="hint">Hint: ${esc(item.h)}</div>` : ""}
@@ -629,97 +832,140 @@ const VIEWS = {
         ${!state.emojiReveal ? `<button class="btn" data-act="emojireveal">Vis svar</button>` : ""}
         <button class="btn ghost" data-act="timer" data-s="20">20 sek</button>
       </div>
-      ${awardRow(val, { both: false })}
+      ${awardRow(val)}
       <div class="dots">${EMOJI.map((_, k) => `<button class="dot ${k === i ? "cur" : state.emojiDone[k] ? "done" : ""}" data-act="emojigo" data-k="${k}" aria-label="Film ${k + 1}"></button>`).join("")}</div>
-      <div class="row" style="justify-content:space-between">
+      <div class="row spread">
         <button class="btn ghost" data-act="emojistep" data-d="-1" ${i === 0 ? "disabled" : ""}>Forrige</button>
-        ${i < EMOJI.length - 1 ? `<button class="btn" data-act="emojistep" data-d="1">Neste film</button>` : nextBtn("tf", "Videre til runde 3")}
+        ${i < EMOJI.length - 1 ? `<button class="btn" data-act="emojistep" data-d="1">Neste film</button>` : nextBtn("tune", "Videre til runde 3")}
+      </div>
+    </div>`;
+  },
+
+  tune() {
+    const i = state.tuneIdx, item = TUNES[i];
+    return head("tune", "Lyden fra ", "krypten", "Skru opp lyden. Hvilken uhyggelig melodi er dette? Riktig svar gir 200. Klarer laget også å si hvor den kommer fra eller hvem som laget den, gir verten 100 ekstra.", ` · melodi ${i + 1} av ${TUNES.length}`) + `
+    <div class="card">
+      <div class="speaker">
+        <button class="play" data-act="playtune" aria-label="Spill av melodien"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg></button>
+        <div class="eq" aria-hidden="true">${"<i></i>".repeat(11)}</div>
+      </div>
+      ${state.tuneReveal ? `<div class="answer">${esc(item.a)}<small>${esc(item.x)}</small></div>` : ""}
+      <div class="row">
+        ${!state.tuneReveal ? `<button class="btn" data-act="tunereveal">Vis svar</button>` : ""}
+        <button class="btn ghost" data-act="stoptune">Stopp lyden</button>
+      </div>
+      ${awardRow([200, 100])}
+      <div class="dots">${TUNES.map((_, k) => `<button class="dot ${k === i ? "cur" : state.tuneDone[k] ? "done" : ""}" data-act="tunego" data-k="${k}" aria-label="Melodi ${k + 1}"></button>`).join("")}</div>
+      <div class="row spread">
+        <button class="btn ghost" data-act="tunestep" data-d="-1" ${i === 0 ? "disabled" : ""}>Forrige</button>
+        ${i < TUNES.length - 1 ? `<button class="btn" data-act="tunestep" data-d="1">Neste melodi</button>` : nextBtn("tf", "Videre til runde 4")}
       </div>
     </div>`;
   },
 
   tf() {
     const i = state.tfIdx, item = TF[i], rev = state.tfReveal;
-    return `
-    <div class="head">
-      <div class="eyebrow">Runde 3 · påstand ${i + 1} av ${TF.length}</div>
-      <h2 class="round-title">Sant eller <span class="accent">skrøne</span></h2>
-      <p class="lede">Alle lag svarer samtidig: tommel opp for sant, ned for skrøne. Verten registrerer svarene, så vises fasiten og poengene deles ut automatisk.</p>
-    </div>
+    return head("tf", "Sant eller ", "skrøne", "Alle lag svarer samtidig: tommel opp for sant, ned for skrøne. Verten registrerer svarene, så vises fasiten og poengene deles ut automatisk.", ` · påstand ${i + 1} av ${TF.length}`) + `
     <div class="card">
       <p class="q">«${esc(item.s)}»</p>
       ${rev ? `<div class="verdict ${item.t ? "true" : "false"}">${item.t ? "Sant!" : "Skrøne!"}</div>${item.x ? `<p class="lede" style="text-align:center;margin:0 auto">${esc(item.x)}</p>` : ""}` : ""}
       <div class="vote-grid">${state.teams.map((t, k) => {
         const v = state.tfVotes[k];
-        const cls = rev && v !== undefined ? (v === item.t ? "right" : "wrong") : "";
+        const cls = rev && v != null ? (v === item.t ? "right" : "wrong") : "";
         return `<div class="vote ${cls}" style="border-left:4px solid ${tc(k)}"><span class="nm">${esc(t.name)}</span>
           <button class="${v === true ? "sel-t" : ""}" data-act="tfvote" data-k="${k}" data-v="1" ${rev ? "disabled" : ""}>Sant</button>
           <button class="${v === false ? "sel-f" : ""}" data-act="tfvote" data-k="${k}" data-v="0" ${rev ? "disabled" : ""}>Skrøne</button></div>`;
       }).join("")}</div>
-      <div class="row" style="justify-content:space-between">
+      <div class="row spread">
         <div class="row">
           ${!rev ? `<button class="btn" data-act="tfreveal">Vis fasit og gi poeng</button><button class="btn ghost" data-act="timer" data-s="10">10 sek</button>` : ""}
         </div>
-        ${i < TF.length - 1 ? `<button class="btn ${rev ? "" : "ghost"}" data-act="tfnext">Neste påstand</button>` : nextBtn("wheel", "Videre til runde 4")}
+        ${i < TF.length - 1 ? `<button class="btn ${rev ? "" : "ghost"}" data-act="tfnext">Neste påstand</button>` : nextBtn("wheel", "Videre til runde 5")}
       </div>
     </div>`;
   },
 
   wheel() {
-    const r = state.wheelResult, w = r != null ? WHEEL[r] : null, ti = state.wheelTeam;
+    const segs = wheelSegs(), r = state.wheelResult, w = r != null ? segs[r] : null, ti = state.wheelTeam;
     let actions = "";
     if (w && !state.wheelApplied) {
       if (w.kind === "challenge") actions = [0, 100, 200, 300].map(v => `<button class="btn ${v ? "slime" : "ghost"} small" data-act="wheelaward" data-v="${v}">${v ? "+" + v : "Ingen poeng"}</button>`).join("");
       else if (w.kind === "swap") actions = state.teams.map((t, k) => k === ti ? "" : `<button class="btn ghost small" data-act="wheelswap" data-k="${k}">Bytt med ${esc(t.name)}</button>`).join("");
+      else if (w.kind === "giveshot") actions = state.teams.map((t, k) => k === ti ? "" : `<button class="btn hex small" data-act="wheelgive" data-k="${k}">${esc(t.name)}</button>`).join("");
       else actions = `<button class="btn" data-act="wheelapply">Utfør</button>`;
     }
-    return `
-    <div class="head">
-      <div class="eyebrow">Runde 4</div>
-      <h2 class="round-title">Gresskar&shy;<span class="accent">lotteriet</span></h2>
-      <p class="lede">Velg laget som skal snurre. Hjulet bestemmer: gratis poeng, forbannelser, tyveri eller en utfordring publikum dømmer.</p>
-    </div>
+    return head("wheel", "Gresskar&shy;", "lotteriet", "Velg laget som skal snurre. Hjulet bestemmer: gratis poeng, forbannelser, tyveri, shots eller en utfordring publikum dømmer.") + `
     <div class="wheel-layout">
       <div class="wheel-box"><div class="pointer"></div><canvas id="wheel" width="920" height="920" aria-label="Lykkehjul"></canvas></div>
       <div style="display:grid;gap:16px;min-width:0">
         <div class="eyebrow">Hvem snurrer?</div>
         <div class="team-pick">${state.teams.map((t, k) => `<button data-act="wheelteam" data-k="${k}" aria-pressed="${k === ti}" style="border-color:${tc(k)};${k === ti ? `background:${tc(k)}` : ""}">${esc(t.name)}</button>`).join("")}</div>
         <button class="btn big" id="spin" data-act="spin">Snurr hjulet</button>
-        ${w ? `<div class="result" style="border-color:${w.color}"><div class="eyebrow">${esc(state.teams[ti]?.name || "")} fikk</div><h3>${esc(w.title)}</h3><p>${esc(w.text)}</p>${actions ? `<div class="row">${actions}</div>` : `<p class="progress">Utført.</p>`}</div>` : ""}
-        <div class="row">${nextBtn("final", "Videre til finalen")}</div>
+        ${w ? `<div class="result" style="border-color:${w.color}"><div class="eyebrow">${esc(state.teams[ti]?.name || "")} fikk</div><h3>${esc(w.title)}</h3><p>${esc(T(w.text))}</p>${actions ? `<div class="row">${actions}</div>` : `<p class="progress">Utført.</p>`}</div>` : ""}
+        <div class="row">${nextBtn("roulette", "Videre til runde 6")}</div>
+      </div>
+    </div>`;
+  },
+
+  roulette() {
+    const R = state.roul, ti = R.team, t = state.teams[ti] || state.teams[0];
+    const left = R.glasses.length - Object.keys(R.flipped).length;
+    const last = R.last != null ? GLASS_KINDS[R.glasses[R.last]] : null;
+    let actions = "";
+    if (last && !R.resolved && R.glasses[R.last] === "give") actions = state.teams.map((x, k) => k === R.lastTeam ? "" : `<button class="btn hex small" data-act="glassgive" data-k="${k}">${esc(x.name)}</button>`).join("");
+    const name = roundName("roulette").split("-");
+    return head("roulette", name[0] + "-", name[1], state.shotMode
+      ? "Tolv glass står på bordet. Noen er bare vann. Laget som har tur peker på et glass, og showet avslører hva som var i det. Laget som får «Et shot til deg» velger selv hvem som skal drikke."
+      : "Tolv glass står på bordet. Noen er trygge, andre gir sure godterier. Laget som har tur peker på et glass.") + `
+    <div class="roulette">
+      <div class="glasses">${R.glasses.map((k, n) => { const g = GLASS_KINDS[k], f = R.flipped[n]; return `
+        <button class="glass ${f ? "flipped" : ""}" data-act="glass" data-n="${n}" ${f || !R.resolved ? "disabled" : ""} aria-label="${f ? T(g.title) : "Glass " + (n + 1)}">
+          <div class="glass-inner">
+            <div class="face front"><div class="shotglass" style="--liq:${LIQUIDS[n % LIQUIDS.length]}"></div><span class="num">${n + 1}</span></div>
+            <div class="face back" style="--k:${g.color}">${T(g.short)}</div>
+          </div>
+        </button>`; }).join("")}</div>
+      <div style="display:grid;gap:16px;min-width:0">
+        <div class="whose" style="border-color:${tc(ti)}">
+          <div class="eyebrow">Neste til å velge</div>
+          <div class="big" style="color:${tc(ti)}">${esc(t.name)}</div>
+          <div class="team-pick">${state.teams.map((x, k) => `<button data-act="roulteam" data-k="${k}" aria-pressed="${k === ti}" style="border-color:${tc(k)};${k === ti ? `background:${tc(k)}` : ""}">${esc(x.name)}</button>`).join("")}</div>
+          <span class="progress">${left} av ${R.glasses.length} glass igjen</span>
+        </div>
+        ${last ? `<div class="result" style="border-color:${last.color}"><div class="eyebrow">${esc(state.teams[R.lastTeam]?.name || "")} drakk glass ${R.last + 1}</div><h3 style="color:${last.color}">${esc(T(last.title))}</h3><p>${esc(T(last.text))}</p>${actions ? `<div class="row">${actions}</div>` : ""}</div>` : ""}
+        <div class="row">
+          ${left === 0 ? `<button class="btn" data-act="refill">Fyll glassene på nytt</button>` : `<button class="btn ghost small" data-act="refill">Fyll på nytt og stokk</button>`}
+          ${nextBtn("final", "Videre til finalen")}
+        </div>
       </div>
     </div>`;
   },
 
   final() {
     const F = FINALS[state.finalIdx], st = state.finalStage;
-    const head = `
-    <div class="head">
-      <div class="eyebrow">Runde 5 · finalen</div>
-      <h2 class="round-title">Den siste <span class="accent">vandringen</span></h2>
-    </div>`;
-    if (st === "wager") return head + `
+    const h = head("final", "Den siste ", "vandringen", "");
+    if (st === "wager") return h + `
     <div class="card">
-      <p class="lede">Hvert lag skriver i hemmelighet ned hvor mye de satser, og verten fører det inn her. Du kan satse opptil hele poengsummen din. Lag med under 300 poeng kan likevel satse 300.</p>
+      <p class="lede">Hvert lag skriver i hemmelighet ned hvor mye de satser, og verten fører det inn her. Du kan satse opptil hele poengsummen din. Lag med under 300 poeng kan likevel satse 300.${state.shotMode ? " Lag som svarer feil tar i tillegg ett shot." : ""}</p>
       <div class="wager-grid">${state.teams.map((t, k) => { const max = Math.max(t.score, 300); return `
         <label class="wager" style="border-top:4px solid ${tc(k)}"><span class="nm">${esc(t.name)}</span><span class="sub">Har ${fmt(t.score)} · maks ${fmt(max)}</span>
         <input id="wager-${k}" type="number" inputmode="numeric" min="0" max="${max}" step="50" data-wager="${k}" value="${state.wagers[k] ?? 0}"></label>`; }).join("")}</div>
       <div class="row"><button class="btn big" data-act="finalq">Vis finalespørsmålet</button>
         <button class="btn ghost small" data-act="finalswap">Bytt spørsmål (${state.finalIdx + 1}/${FINALS.length})</button></div>
     </div>`;
-    if (st === "question") return head + `
+    if (st === "question") return h + `
     <div class="card">
       <div class="meta"><span>Finalespørsmål</span><span>45 sekunder</span></div>
       <p class="q">${esc(F.q)}</p>
       <div class="big-timer" id="bigtimer">0:45</div>
       <div class="row"><button class="btn" data-act="finalreveal">Vis svaret</button><button class="btn ghost" data-act="finaltimer">Start klokka på nytt</button></div>
     </div>`;
-    return head + `
+    return h + `
     <div class="card">
       <p class="q">${esc(F.q)}</p>
       <div class="answer">${esc(F.a)}${F.x ? `<small>${esc(F.x)}</small>` : ""}</div>
       <div class="eyebrow">Hvem svarte riktig?</div>
-      <div class="vote-grid">${state.teams.map((t, k) => { const m = state.finalMarks[k], w = Math.min(+state.wagers[k] || 0, Math.max(t.score, 300)); return `
+      <div class="vote-grid">${state.teams.map((t, k) => { const m = state.finalMarks[k], w = wagerOf(k); return `
         <div class="vote" style="border-left:4px solid ${tc(k)}"><span class="nm">${esc(t.name)} · ${fmt(w)}</span>
         <button class="${m === true ? "sel-t" : ""}" data-act="finalmark" data-k="${k}" data-v="1" ${state.finalApplied ? "disabled" : ""}>Riktig</button>
         <button class="${m === false ? "sel-f" : ""}" data-act="finalmark" data-k="${k}" data-v="0" ${state.finalApplied ? "disabled" : ""}>Feil</button></div>`; }).join("")}</div>
@@ -729,7 +975,9 @@ const VIEWS = {
 
   end() {
     const ranked = state.teams.map((t, i) => ({ ...t, i })).sort((a, b) => b.score - a.score);
-    const top = ranked[0], tie = ranked.filter(r => r.score === top.score);
+    const top = ranked[0], tie = ranked.filter(r => r.score === top.score), bottom = ranked[ranked.length - 1];
+    const thirsty = state.teams.map((t, i) => ({ ...t, i })).sort((a, b) => (b.shots || 0) - (a.shots || 0))[0];
+    const totalShots = state.teams.reduce((s, t) => s + (t.shots || 0), 0);
     return `
     <div class="winner">
       <div class="eyebrow">Kveldens vinner${tie.length > 1 ? "e" : ""}</div>
@@ -737,15 +985,26 @@ const VIEWS = {
       <h2>${tie.map(t => esc(t.name)).join(" & ")}</h2>
       <p class="lede" style="margin:0 auto">${tie.length > 1 ? "Uavgjort! Avgjør med en skrikekonkurranse." : `Med ${fmt(top.score)} poeng. De får velge først fra godteskåla.`}</p>
     </div>
-    <div class="podium">${ranked.map((t, k) => `<div class="rank" style="border-left:4px solid ${tc(t.i)}"><span class="pos">${k + 1}</span><span class="nm">${esc(t.name)}</span><span class="sc">${fmt(t.score)}</span></div>`).join("")}</div>
-    <div class="row" style="justify-content:center"><button class="btn" data-act="celebrate">Mer godteriregn</button><button class="btn ghost" data-act="go" data-to="setup">Tilbake til oppsett</button></div>`;
+    <div class="podium">${ranked.map((t, k) => `<div class="rank" style="border-left:4px solid ${tc(t.i)}"><span class="pos">${k + 1}</span><span class="nm">${esc(t.name)}</span><span class="sh">${icon()} ${t.shots || 0}</span><span class="sc">${fmt(t.score)}</span></div>`).join("")}</div>
+    <div class="awards">
+      <div><span class="eyebrow">${state.shotMode ? "Tørsteste lag" : "Søteste tann"}</span><b>${esc(thirsty.name)}</b><span class="progress">${shotWord(thirsty.shots || 0)}</span></div>
+      <div><span class="eyebrow">Totalt i kveld</span><b>${shotWord(totalShots)}</b><span class="progress">fordelt på ${state.teams.length} lag</span></div>
+      ${ranked.length > 1 ? `<div><span class="eyebrow">Siste skål</span><b>${esc(bottom.name)}</b><span class="progress">Sisteplass avslutter kvelden med ${shotWord(1)}.</span></div>` : ""}
+    </div>
+    <div class="row" style="justify-content:center">
+      ${ranked.length > 1 ? `<button class="btn blood" data-act="lastshot" data-i="${bottom.i}">Server siste skål</button>` : ""}
+      <button class="btn" data-act="celebrate">Mer godteriregn</button>
+      <button class="btn ghost" data-act="go" data-to="setup">Tilbake til oppsett</button>
+    </div>`;
   }
 };
 
 function questionView() {
-  const { c, i, reveal } = state.current, cat = BOARD[c], item = cat.qs[i], v = VALUES[i];
+  const { c, i, reveal, devil } = state.current, cat = BOARD[c], item = cat.qs[i], v = VALUES[i] * (devil ? 2 : 1);
+  const shots = state.shotMode && state.wrongShot ? (devil ? 2 : 1) : 0;
   return `
-  <div class="card" role="dialog" aria-label="Spørsmål">
+  <div class="card ${devil ? "devil" : ""}" role="dialog" aria-label="Spørsmål">
+    ${devil ? `<div class="devil-tag">Djevelens dobbel!</div><p class="lede" style="margin:0">Dobbel verdi. Feil svar koster ${fmt(v)}${shots ? ` og ${shotWord(shots)}` : ""}.</p>` : ""}
     <div class="meta"><span>${cat.cat}</span><b>${v} poeng</b></div>
     <p class="q">${esc(item.q)}</p>
     ${reveal ? `<div class="answer">${esc(item.a)}${item.x ? `<small>${esc(item.x)}</small>` : ""}</div>` : ""}
@@ -753,32 +1012,57 @@ function questionView() {
       ${!reveal ? `<button class="btn" data-act="reveal">Vis svar</button>` : ""}
       <button class="btn ghost" data-act="timer" data-s="20">20 sek</button>
     </div>
-    ${awardRow(v)}
+    ${awardRow(v, { minus: v, shotOnMinus: shots })}
     <div class="row"><button class="btn ${reveal ? "" : "ghost"}" data-act="closeq">Tilbake til tavla</button></div>
   </div>`;
 }
+const wagerOf = k => { const t = state.teams[k]; return Math.max(0, Math.min(+state.wagers[k] || 0, Math.max(t.score, 300))); };
+
+/* Hekseklokka */
+function renderOverlay() {
+  const root = $("#overlay-root");
+  if (!state.witchCard) { root.innerHTML = ""; return; }
+  const c = state.witchCard;
+  const extra = c.act === "lastbonus" ? `<button class="btn slime" data-act="witchact">Gi 200 til ${esc(state.teams[lastIdx()]?.name || "")}</button>`
+    : c.act === "robin" ? `<button class="btn slime" data-act="witchact">Flytt 100 poeng</button>`
+    : c.act === "award200" ? state.teams.map((t, k) => `<button class="btn ghost small" data-act="witchaward" data-k="${k}">${esc(t.name)}</button>`).join("")
+    : c.timer ? `<button class="btn ghost" data-act="timer" data-s="${c.timer}">Start ${c.timer} sek</button>` : "";
+  root.innerHTML = `<div class="overlay" data-act="witchclose-bg"><div class="witch-card" role="dialog" aria-label="Hekseklokka">
+    <div class="eyebrow" style="color:var(--hex)">Klokka slår tolv</div>
+    <div class="title">Hekseklokka</div>
+    <p>${esc(T(c.t))}</p>
+    ${extra && !c.done ? `<div class="row" style="justify-content:center">${extra}</div>` : ""}
+    <div class="row" style="justify-content:center"><button class="btn hex" data-act="witch">Trekk nytt kort</button><button class="btn ghost" data-act="witchclose">Lukk</button></div>
+  </div></div>`;
+}
+function drawWitch() {
+  if (!state.witchDeck || !state.witchDeck.length) state.witchDeck = shuffle(WITCH.map((_, i) => i));
+  const idx = state.witchDeck.pop();
+  state.witchCard = { ...WITCH[idx] };
+  sfx.bell(); save(); renderOverlay();
+}
 
 /* ------------------------------------------------------------------ Hjulet */
-const SEG = Math.PI * 2 / WHEEL.length;
 function drawWheel() {
   const cv = $("#wheel"); if (!cv) return;
+  const segs = wheelSegs(), SEG = Math.PI * 2 / segs.length;
   const x = cv.getContext("2d"), W = cv.width, R = W / 2 - 10, cx = W / 2, cy = W / 2;
   x.clearRect(0, 0, W, W);
   x.save(); x.translate(cx, cy); x.rotate(state.wheelRot);
-  WHEEL.forEach((s, i) => {
+  segs.forEach((s, i) => {
     x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, R, i * SEG, (i + 1) * SEG); x.closePath();
     x.fillStyle = s.color; x.globalAlpha = i % 2 ? .85 : 1; x.fill(); x.globalAlpha = 1;
     x.strokeStyle = "#0d0810"; x.lineWidth = 6; x.stroke();
     x.save(); x.rotate(i * SEG + SEG / 2); x.textAlign = "right"; x.textBaseline = "middle";
-    x.fillStyle = "#1a0f06"; x.font = "64px Creepster, Impact, fantasy"; x.fillText(s.label, R - 34, 0); x.restore();
+    x.fillStyle = "#1a0f06"; x.font = `${segs.length > 12 ? 50 : 64}px Creepster, Impact, fantasy`; x.fillText(T(s.label), R - 30, 0); x.restore();
   });
   x.beginPath(); x.arc(0, 0, R, 0, Math.PI * 2); x.lineWidth = 14; x.strokeStyle = "#0d0810"; x.stroke();
   x.restore();
-  // Gresskar i midten
   x.beginPath(); x.arc(cx, cy, 78, 0, Math.PI * 2); x.fillStyle = "#0d0810"; x.fill();
   x.font = "92px serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("🎃", cx, cy + 6);
 }
-function segmentAtPointer(rot) {
+function segmentAtPointer(rot, n) {
+  const SEG = Math.PI * 2 / n;
   const a = ((-Math.PI / 2 - rot) % (Math.PI * 2) + Math.PI * 4) % (Math.PI * 2);
   return Math.floor(a / SEG);
 }
@@ -787,43 +1071,81 @@ function spin() {
   if (spinning) return; spinning = true;
   state.wheelResult = null; state.wheelApplied = false; render();
   const btn = $("#spin"); if (btn) btn.disabled = true;
+  const n = wheelSegs().length;
   const start = state.wheelRot, target = start + Math.PI * 2 * (5 + Math.random() * 3) + Math.random() * Math.PI * 2;
-  const dur = matchMedia("(prefers-reduced-motion: reduce)").matches ? 300 : 5200, t0 = performance.now();
-  let lastSeg = segmentAtPointer(start);
+  const dur = reduced() ? 300 : 5200, t0 = performance.now();
+  let lastSeg = segmentAtPointer(start, n);
   const ease = t => 1 - Math.pow(1 - t, 4);
   const step = now => {
     const p = Math.min(1, (now - t0) / dur);
     state.wheelRot = start + (target - start) * ease(p); drawWheel();
-    const s = segmentAtPointer(state.wheelRot); if (s !== lastSeg) { sfx.click(); lastSeg = s; }
+    const s = segmentAtPointer(state.wheelRot, n); if (s !== lastSeg) { sfx.click(); lastSeg = s; }
     if (p < 1) return requestAnimationFrame(step);
     spinning = false; state.wheelRot %= Math.PI * 2;
-    state.wheelResult = segmentAtPointer(state.wheelRot); save();
-    const w = WHEEL[state.wheelResult];
-    if (w.v < 0) { sfx.thunder(); lightning(); } else sfx.reveal();
+    state.wheelResult = segmentAtPointer(state.wheelRot, n); save();
+    const w = wheelSegs()[state.wheelResult];
+    if ((w.v || 0) < 0 || ["shots", "all", "giveshot"].includes(w.kind)) { sfx.thunder(); lightning(); } else sfx.reveal();
     render();
   };
   requestAnimationFrame(step);
 }
 
+/* ------------------------------------------------------------------ Shot-ruletten */
+let glassBusy = false;
+function pickGlass(n) {
+  const R = state.roul; if (glassBusy || R.flipped[n] || !R.resolved) return;
+  glassBusy = true;
+  const el = document.querySelector(`.glass[data-n="${n}"]`);
+  const wait = reduced() ? 200 : 1500;
+  if (el) el.classList.add("shaking");
+  document.querySelectorAll(".glass").forEach(g => g.disabled = true);
+  sfx.drumroll(wait / 1000);
+  setTimeout(() => {
+    glassBusy = false;
+    const team = R.team, kind = R.glasses[n];
+    R.flipped[n] = true; R.last = n; R.lastTeam = team; R.resolved = kind !== "give";
+    const others = state.teams.map((_, k) => k).filter(k => k !== team);
+    render();
+    lightning();
+    if (kind === "safe") { addScore(team, 100); banner("Bare vann!", "var(--ghost)"); }
+    else if (kind === "two") { sfx.thunder(); pour(team, 2); }
+    else if (kind === "all") { sfx.thunder(); pour(state.teams.map((_, k) => k), 1, state.shotMode ? "Giftbegeret! Alle drikker!" : "Alle tar en sur godteri!"); }
+    else if (kind === "others") pour(others, 1, `${state.teams[team].name} slapp unna. Alle andre: ${shotWord(1)}!`);
+    else if (kind === "jackpot") { addScore(team, 500, true); sfx.fanfare(); rainCandy(40); setTimeout(() => pour(team, 1), 900); }
+    else { sfx.reveal(); banner("Et shot til deg!".replace("shot", state.shotMode ? "shot" : "godteri"), "var(--hex)"); }
+    if (R.resolved) advanceRoulTeam();
+    save();
+  }, wait);
+}
+function advanceRoulTeam() { state.roul.team = (state.roul.lastTeam + 1) % state.teams.length; save(); render(); }
+
 /* ------------------------------------------------------------------ Handlinger */
 const ACT = {
   go: d => go(d.to),
   start: () => { sfx.stinger(); setTimeout(() => { sfx.thunder(); lightning(); }, 900); go("board"); },
-  mute: () => { state.muted = !state.muted; save(); render(); if (state.muted && droneNodes) { toggleDrone(); syncDrone(); } },
+  mute: () => { state.muted = !state.muted; if (state.muted) { stopTune(); if (droneNodes) toggleDrone(); } save(); render(); syncDrone(); },
   drone: () => { toggleDrone(); syncDrone(); },
   fullscreen: () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); } catch (e) {} },
   buzz: d => buzz(+d.i),
   adj: d => addScore(+d.i, +d.d),
+  pour: d => pour(+d.i, 1),
+  wrong: d => { addScore(+d.i, -(+d.d)); if (+d.s) setTimeout(() => pour(+d.i, +d.s), 350); },
   timer: d => startTimer(+d.s),
-  addteam: () => { const used = new Set(state.teams.map(t => t.name)); state.teams.push({ name: NAME_POOL.find(n => !used.has(n)) || "Lag " + (state.teams.length + 1), score: 0 }); save(); render(); },
-  rmteam: d => { state.teams.splice(+d.i, 1); state.wagers = {}; state.tfVotes = {}; state.finalMarks = {}; if (state.wheelTeam >= state.teams.length) state.wheelTeam = 0; save(); render(); },
+  addteam: () => { const used = new Set(state.teams.map(t => t.name)); state.teams.push({ name: NAME_POOL.find(n => !used.has(n)) || "Lag " + (state.teams.length + 1), score: 0, shots: 0 }); save(); render(); },
+  rmteam: d => { state.teams.splice(+d.i, 1); state.wagers = {}; state.tfVotes = {}; state.finalMarks = {}; if (state.wheelTeam >= state.teams.length) state.wheelTeam = 0; if (state.roul.team >= state.teams.length) state.roul.team = 0; save(); render(); },
   randname: d => { const used = new Set(state.teams.map(t => t.name)); const pool = NAME_POOL.filter(n => !used.has(n)); state.teams[+d.i].name = pool[Math.floor(Math.random() * pool.length)] || state.teams[+d.i].name; save(); render(); },
-  zero: () => { state.teams.forEach(t => t.score = 0); save(); render(); },
+  zero: () => { state.teams.forEach(t => { t.score = 0; t.shots = 0; }); save(); render(); },
   reset: () => {
     if (!state._confirmReset) { state._confirmReset = true; render(); setTimeout(() => { if (state._confirmReset) { state._confirmReset = false; if (state.screen === "setup") render(); } }, 4000); return; }
-    const muted = state.muted; state = fresh(); state.muted = muted; save(); render();
+    const keep = { muted: state.muted, shotMode: state.shotMode, wrongShot: state.wrongShot, devilOn: state.devilOn };
+    state = Object.assign(fresh(), keep); save(); render();
   },
-  open: d => { state.current = { c: +d.c, i: +d.q, reveal: false }; state.used[d.c + "-" + d.q] = true; save(); sfx.stinger(); render(); },
+  open: d => {
+    const key = d.c + "-" + d.q, devil = state.devilOn && state.devils.includes(key);
+    state.current = { c: +d.c, i: +d.q, reveal: false, devil }; state.used[key] = true; save();
+    if (devil) { sfx.thunder(); lightning(); banner("Djevelens dobbel!", "var(--blood)"); } else sfx.stinger();
+    render();
+  },
   reveal: () => { if (state.current) { state.current.reveal = true; stopTimer(); sfx.reveal(); save(); render(); } },
   closeq: () => {
     state.current = null; stopTimer(); save(); render();
@@ -831,9 +1153,17 @@ const ACT = {
   },
   emojihint: () => { state.emojiHint = true; save(); render(); },
   emojireveal: () => { state.emojiReveal = true; state.emojiDone[state.emojiIdx] = true; stopTimer(); sfx.reveal(); save(); render(); },
-  emojistep: d => { emojiGo(state.emojiIdx + +d.d); },
+  emojistep: d => emojiGo(state.emojiIdx + +d.d),
   emojigo: d => emojiGo(+d.k),
-  tfvote: d => { const k = +d.k, v = d.v === "1"; state.tfVotes[k] = state.tfVotes[k] === v ? undefined : v; save(); render(); },
+  playtune: () => {
+    const len = playTune(TUNES[state.tuneIdx]); const eq = $(".eq");
+    if (len && eq) { eq.classList.add("on"); clearTimeout(ACT._eqT); ACT._eqT = setTimeout(() => { if (Date.now() >= tuneEnd - 50) eq.classList.remove("on"); }, len * 1000 + 100); }
+  },
+  stoptune: () => stopTune(),
+  tunereveal: () => { state.tuneReveal = true; state.tuneDone[state.tuneIdx] = true; sfx.reveal(); save(); render(); },
+  tunestep: d => tuneGo(state.tuneIdx + +d.d),
+  tunego: d => tuneGo(+d.k),
+  tfvote: d => { const k = +d.k, v = d.v === "1"; state.tfVotes[k] = state.tfVotes[k] === v ? null : v; save(); render(); },
   tfreveal: () => {
     const item = TF[state.tfIdx]; state.tfReveal = true; stopTimer();
     let any = false;
@@ -844,73 +1174,102 @@ const ACT = {
   wheelteam: d => { if (spinning) return; state.wheelTeam = +d.k; state.wheelResult = null; save(); render(); },
   spin,
   wheelapply: () => {
-    const w = WHEEL[state.wheelResult], ti = state.wheelTeam, t = state.teams[ti]; if (!w || !t) return;
+    const w = wheelSegs()[state.wheelResult], ti = state.wheelTeam, t = state.teams[ti]; if (!w || !t) return;
     if (w.kind === "bonus") addScore(ti, w.v);
-    else if (w.kind === "double") addScore(ti, Math.max(0, Math.min(t.score, 500)) || 0, false);
+    else if (w.kind === "double") { const g = Math.max(0, Math.min(t.score, 500)); if (g) addScore(ti, g); else banner("Ingenting å doble!", "var(--blood)"); }
     else if (w.kind === "steal") {
       let L = -1, best = -Infinity; state.teams.forEach((x, k) => { if (k !== ti && x.score > best) { best = x.score; L = k; } });
       if (L >= 0) { addScore(L, -w.v, true); addScore(ti, w.v); banner(`${t.name} rana ${state.teams[L].name}`, "var(--hex)"); }
     }
+    else if (w.kind === "shots") pour(ti, w.n);
+    else if (w.kind === "all") pour(state.teams.map((_, k) => k), 1, state.shotMode ? "Skål! Alle drikker!" : "Alle tar en sur godteri!");
     state.wheelApplied = true; save(); render();
   },
+  wheelgive: d => { pour(+d.k, 1); state.wheelApplied = true; save(); render(); },
   wheelaward: d => { if (+d.v) addScore(state.wheelTeam, +d.v); state.wheelApplied = true; save(); render(); },
   wheelswap: d => {
     const a = state.teams[state.wheelTeam], b = state.teams[+d.k]; const tmp = a.score; a.score = b.score; b.score = tmp;
     state.wheelApplied = true; sfx.stinger(); banner("Sjelene er byttet!", "var(--ghost)"); save(); render();
   },
+  glass: d => pickGlass(+d.n),
+  glassgive: d => { pour(+d.k, 1, `${state.teams[state.roul.lastTeam].name} gir ${shotWord(1)} til ${state.teams[+d.k].name}!`); state.roul.resolved = true; advanceRoulTeam(); },
+  roulteam: d => { state.roul.team = +d.k; save(); render(); },
+  refill: () => { state.roul = { glasses: newGlasses(), flipped: {}, team: state.roul.team, last: null, resolved: true }; sfx.pour(); save(); render(); },
   finalswap: () => { state.finalIdx = (state.finalIdx + 1) % FINALS.length; save(); render(); },
-  finalq: () => { state.finalStage = "question"; save(); sfx.thunder(); lightning(); render(); startTimer(45, () => {}); },
+  finalq: () => { state.finalStage = "question"; save(); sfx.thunder(); lightning(); render(); startTimer(45); },
   finaltimer: () => startTimer(45),
   finalreveal: () => { state.finalStage = "reveal"; stopTimer(); sfx.reveal(); save(); render(); },
-  finalmark: d => { const k = +d.k, v = d.v === "1"; state.finalMarks[k] = state.finalMarks[k] === v ? undefined : v; save(); render(); },
+  finalmark: d => { const k = +d.k, v = d.v === "1"; state.finalMarks[k] = state.finalMarks[k] === v ? null : v; save(); render(); },
   finalapply: () => {
+    const losers = [];
     state.teams.forEach((t, k) => {
-      const w = Math.max(0, Math.min(+state.wagers[k] || 0, Math.max(t.score, 300)));
-      if (state.finalMarks[k] === true) addScore(k, w, true); else if (state.finalMarks[k] === false) addScore(k, -w, true);
+      const w = wagerOf(k);
+      if (state.finalMarks[k] === true) addScore(k, w, true);
+      else if (state.finalMarks[k] === false) { addScore(k, -w, true); losers.push(k); }
     });
     state.finalApplied = true; sfx.fanfare(); save(); render();
+    if (state.shotMode && losers.length) setTimeout(() => pour(losers, 1, "Feil i finalen: skål for tapet!"), 900);
   },
-  celebrate: () => { rainCandy(); sfx.fanfare(); }
+  lastshot: d => pour(+d.i, 1, `Siste skål til ${state.teams[+d.i].name}!`),
+  celebrate: () => { rainCandy(); sfx.fanfare(); },
+  witch: () => drawWitch(),
+  witchclose: () => { state.witchCard = null; save(); renderOverlay(); },
+  "witchclose-bg": (d, el, e) => { if (e.target === el) ACT.witchclose(); },
+  witchact: () => {
+    const c = state.witchCard; if (!c) return;
+    if (c.act === "lastbonus") addScore(lastIdx(), 200);
+    if (c.act === "robin") { const L = leaderIdx(), B = lastIdx(); if (L !== B) { addScore(L, -100, true); addScore(B, 100); } }
+    c.done = true; save(); renderOverlay();
+  },
+  witchaward: d => { addScore(+d.k, 200); state.witchCard.done = true; save(); renderOverlay(); }
 };
-function emojiGo(k) {
-  state.emojiIdx = Math.max(0, Math.min(EMOJI.length - 1, k)); state.emojiReveal = false; state.emojiHint = false; stopTimer(); save(); render();
-}
-function syncDrone() { const b = $("#btn-drone"); b.setAttribute("aria-pressed", String(!!droneNodes)); }
+function emojiGo(k) { state.emojiIdx = Math.max(0, Math.min(EMOJI.length - 1, k)); state.emojiReveal = false; state.emojiHint = false; stopTimer(); save(); render(); }
+function tuneGo(k) { stopTune(); state.tuneIdx = Math.max(0, Math.min(TUNES.length - 1, k)); state.tuneReveal = false; save(); render(); }
+function syncDrone() { $("#btn-drone").setAttribute("aria-pressed", String(!!droneNodes)); }
 
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
-  const fn = ACT[b.dataset.act]; if (fn) fn(b.dataset, b);
+  const fn = ACT[b.dataset.act]; if (fn) fn(b.dataset, b, e);
 });
 document.addEventListener("input", e => {
   const t = e.target;
   if (t.dataset.team != null) { state.teams[+t.dataset.team].name = t.value || "Navnløse"; save(); renderScores(); }
   if (t.dataset.wager != null) { state.wagers[+t.dataset.wager] = t.value === "" ? 0 : +t.value; save(); }
 });
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.setting) { state[t.dataset.setting] = t.checked; if (t.dataset.setting === "shotMode") { state.wheelResult = null; } save(); render(); }
+});
 document.addEventListener("keydown", e => {
   if (e.target.matches("input, textarea")) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
+  if (k === "escape") { if (state.witchCard) ACT.witchclose(); else if (state.current) ACT.closeq(); return; }
   if (/^[1-6]$/.test(k)) { buzz(+k - 1); return; }
   if (k === " ") {
     e.preventDefault();
     if (state.screen === "board" && state.current && !state.current.reveal) ACT.reveal();
     else if (state.screen === "emoji" && !state.emojiReveal) ACT.emojireveal();
+    else if (state.screen === "tune") ACT.playtune();
     else if (state.screen === "tf" && !state.tfReveal) ACT.tfreveal();
     else if (state.screen === "final" && state.finalStage === "question") ACT.finalreveal();
     return;
   }
+  if (k === "h") drawWitch();
   if (k === "t") startTimer(20);
   if (k === "m") ACT.mute();
   if (k === "f") ACT.fullscreen();
-  if (k === "escape" && state.current) ACT.closeq();
   if (k === "arrowright" && state.screen === "emoji") emojiGo(state.emojiIdx + 1);
   if (k === "arrowleft" && state.screen === "emoji") emojiGo(state.emojiIdx - 1);
+  if (k === "arrowright" && state.screen === "tune") tuneGo(state.tuneIdx + 1);
+  if (k === "arrowleft" && state.screen === "tune") tuneGo(state.tuneIdx - 1);
 });
 
 /* ------------------------------------------------------------------ Oppstart */
 function start(seed) {
   state = load(seed && seed.state);
   state._confirmReset = false;
+  if (!state.roul || !state.roul.glasses) state.roul = fresh().roul;
   fxInit(); render();
   if (state.screen === "end") rainCandy(60);
   window.claude?.hot?.snapshot?.(() => ({ state }));
