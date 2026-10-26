@@ -374,6 +374,60 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
 .freq button[aria-pressed="true"] { background: var(--hex); color: var(--ink-on-bright); border-color: var(--hex); }
 @media (max-width: 720px) { .dr-card { grid-template-columns: minmax(0, 1fr); } }
 
+/* Dødskasinoet */
+:root { --felt: #0f3a2a; --felt-2: #0a2a1e; --gold: #e2b94a; --card: #f6f1e7; --card-ink: #16110f; --rred: #b3122e; --rblack: #141014; --rgreen: #1f8a4c; }
+.casino { background: radial-gradient(120% 100% at 50% 0%, var(--felt), var(--felt-2)); border: 3px solid var(--gold); border-radius: 28px; padding: clamp(16px, 3vw, 28px); display: grid; gap: 20px; box-shadow: inset 0 0 80px rgba(0, 0, 0, .55), 0 30px 80px rgba(0, 0, 0, .5); }
+.casino-top { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pot { display: grid; justify-items: end; }
+.pot b { font-family: var(--f-display); font-weight: 400; font-size: clamp(2rem, 5vw, 3rem); line-height: 1; color: var(--gold); text-shadow: 0 0 30px rgba(226, 185, 74, .5); }
+.pot span { font: 500 .75rem var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--bone); opacity: .8; }
+.games { display: flex; gap: 6px; flex-wrap: wrap; }
+.games button { font: 800 .95rem/1 var(--f-body); padding: 12px 16px; border-radius: 999px; border: 2px solid var(--gold); background: transparent; color: var(--gold); cursor: pointer; }
+.games button[aria-pressed="true"] { background: var(--gold); color: var(--ink-on-bright); }
+.table2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; align-items: start; }
+.rwheel { width: min(100%, 520px); aspect-ratio: 1; max-width: 100%; margin: 0 auto; display: block; }
+.hist { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.hist span { font: 600 .85rem var(--f-mono); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
+.rnum { font-family: var(--f-display); font-size: clamp(3rem, 8vw, 5rem); line-height: 1; padding: 6px 26px; border-radius: 18px; color: #fff; display: inline-block; animation: slamIn .4s cubic-bezier(.2, 1.6, .4, 1); }
+.bets { display: grid; gap: 8px; }
+.bet { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: rgba(0, 0, 0, .35); border-left: 4px solid var(--tc); }
+.bet .nm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bet .ed { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.bet select, .bet input { font: 600 .9rem var(--f-body); color: var(--bone); background: var(--crypt-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; min-width: 0; }
+.bet input { width: 5.5em; font-family: var(--f-mono); }
+.bet .out { font: 600 .9rem var(--f-mono); }
+.bet .out.win { color: var(--slime); } .bet .out.lose { color: var(--blood); }
+.pcards { display: flex; gap: 6px; flex-wrap: wrap; min-height: 76px; }
+.pcard { width: 54px; aspect-ratio: 5 / 7; border-radius: 8px; background: var(--card); color: var(--card-ink); display: grid; place-items: center; font: 700 1.15rem/1 var(--f-mono); box-shadow: 0 6px 14px rgba(0, 0, 0, .45); animation: dealIn .35s ease-out both; }
+.pcard.red { color: var(--rred); }
+.pcard.back { background: repeating-linear-gradient(45deg, var(--pumpkin) 0 6px, #8a3a08 6px 12px); border: 3px solid var(--card); }
+@keyframes dealIn { from { opacity: 0; transform: translateY(-24px) rotate(-12deg); } }
+.hand { padding: 12px 14px; border-radius: 16px; background: rgba(0, 0, 0, .3); border: 2px solid transparent; display: grid; gap: 8px; }
+.hand.turn { border-color: var(--gold); box-shadow: 0 0 30px rgba(226, 185, 74, .35); }
+.hand .hd { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.hand .tot { font: 600 1.1rem var(--f-mono); }
+.pill { font: 700 .75rem/1 var(--f-body); padding: 5px 9px; border-radius: 999px; background: var(--crypt-3); color: var(--bone); text-transform: uppercase; letter-spacing: .06em; }
+.pill.win { background: var(--slime); color: var(--ink-on-bright); } .pill.lose { background: var(--blood); } .pill.push { background: var(--ghost); color: var(--ink-on-bright); } .pill.bj { background: var(--gold); color: var(--ink-on-bright); }
+.hands { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.death { display: flex; gap: 14px; align-items: center; }
+.death .reaper { font-size: 3rem; }
+.slot-machine { width: min(100%, 560px); margin: 0 auto; background: linear-gradient(180deg, #3a2350, #1b1024); border: 4px solid var(--gold); border-radius: 28px 28px 18px 18px; padding: 18px; display: grid; gap: 14px; box-shadow: 0 0 60px rgba(226, 185, 74, .25); }
+.slot-title { font-family: var(--f-display); font-size: 2.2rem; color: var(--gold); text-align: center; line-height: 1; }
+.reels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.reel { height: 130px; border-radius: 14px; background: var(--card); overflow: hidden; position: relative; box-shadow: inset 0 10px 20px rgba(0, 0, 0, .35), inset 0 -10px 20px rgba(0, 0, 0, .35); }
+.reel .strip { position: absolute; left: 0; right: 0; top: 0; display: grid; }
+.reel .strip span { height: 130px; display: grid; place-items: center; font-size: 4.2rem; line-height: 1; }
+.payline { height: 3px; background: var(--blood); border-radius: 2px; opacity: .8; }
+.paytable { font-size: .85rem; color: var(--bone); opacity: .85; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; }
+.ladder-card { width: clamp(110px, 18vw, 160px); aspect-ratio: 5 / 7; max-width: 100%; border-radius: 14px; background: var(--card); color: var(--card-ink); display: grid; place-items: center; font: 700 clamp(2.4rem, 6vw, 3.6rem)/1 var(--f-mono); box-shadow: 0 10px 30px rgba(0, 0, 0, .5); animation: dealIn .35s ease-out both; }
+.ladder-card.red { color: var(--rred); }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; }
+.steps span { font: 600 .9rem var(--f-mono); padding: 6px 10px; border-radius: 10px; background: rgba(0, 0, 0, .35); }
+.steps span.on { background: var(--gold); color: var(--ink-on-bright); }
+.give { padding: 14px 16px; border-radius: 16px; background: var(--hex); color: var(--ink-on-bright); display: grid; gap: 10px; animation: rise .3s ease-out; }
+.give b { font-size: 1.15rem; }
+@media (max-width: 860px) { .table2 { grid-template-columns: minmax(0, 1fr); } }
+
 /* Mobilspill */
 .icon-btn.online { border-color: var(--ghost); color: var(--ghost); }
 .icon-btn.online.live { background: var(--ghost); color: var(--ink-on-bright); }
@@ -420,7 +474,8 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
         <span class="timer-pill" id="timer" hidden>0:20</span>
         <button class="icon-btn online" id="btn-online" data-act="online" hidden title="Mobilspill: vis QR-kode og spillere">Mobilspill</button>
         <button class="icon-btn scare" data-act="scare" title="Skrekkknappen (J). Advarsel: høyt!">Skrekk!</button>
-        <button class="icon-btn drink hide-sm" data-act="droulette" title="Drikkeruletten (D)" id="btn-dr">Drikkeruletten</button>
+        <button class="icon-btn drink" data-act="opencasino" title="Dødskasinoet: rulett, blackjack og gravautomat (K)">Kasino</button>
+        <button class="icon-btn hide-sm" data-act="droulette" title="Skjebnehjulet: hvem drikker? (D)" id="btn-dr">Skjebnehjulet</button>
         <button class="icon-btn witch" data-act="witch" title="Trekk et kort fra hekseklokka (H)">Hekseklokka</button>
         <button class="icon-btn" id="btn-sound" data-act="mute" aria-pressed="true" title="Lydeffekter (M)">Lyd</button>
         <button class="icon-btn hide-sm" id="btn-drone" data-act="drone" aria-pressed="false" title="Uhyggelig bakgrunnslyd">Stemning</button>
@@ -455,6 +510,7 @@ const ROUNDS = [
   { id: "costume",  short: "Kostyme",      name: "Kostymekåringen",           desc: "Hvert lag paraderer. Dødningehoder for skumlest, mest kreativt og beste innsats." },
   { id: "auction",  short: "Auksjon",      name: "Gravrøverauksjonen",        desc: "By poeng på mystiske kister. Gull, forbannelser eller giftflasker." },
   { id: "roulette", short: "Ruletten",     name: "Shot-ruletten",             desc: "Tolv glass. Noen er vann. Noen er ikke. Lagene velger ett hver, på tur." },
+  { id: "casino",   short: "Kasino",       name: "Dødskasinoet",              desc: "Ekte rulett, blackjack mot Døden, gravautomaten og Dødsstigen. Sats poeng og shots. Taper du, drikker du." },
   { id: "survive",  short: "Overlevende",  name: "Siste overlevende",         desc: "Feil svar, og du er ute. Siste lag med folk i live vinner." },
   { id: "board2",   short: "Dobbel skrekk", name: "Dobbel skrekk",            desc: "Ny tavle med dobbel verdi, 200 til 1000. Nå begynner det å svi." },
   { id: "final",    short: "Finale",       name: "Den siste vandringen",      desc: "Sats poengene på ett siste spørsmål. Alt kan snu." }
@@ -740,6 +796,13 @@ function pickDevils() {
   const all = []; [0, 1, 2, 3, 4].forEach(c => [1, 2, 3, 4].forEach(i => all.push(c + "-" + i)));
   return shuffle(all).slice(0, 2);
 }
+function freshCasino() {
+  return { game: "roulette", pot: 0, give: [],
+    r: { round: 0, bets: {}, state: "bet", result: null, hist: [], out: null },
+    bj: { round: 0, state: "bet", bets: {}, deck: [], dealer: [], hands: {}, turn: -1, out: null },
+    sl: { team: 0, pts: 100, reels: ["🎃", "👻", "💀"], state: "ready", out: null },
+    ld: { team: 0, deck: [], cards: [], steps: 0, pot: 0, state: "ready" } };
+}
 function newCoffins() { return shuffle(Object.keys(COFFINS)).slice(0, 6); }
 function newGlasses() {
   const g = []; Object.entries(GLASS_KINDS).forEach(([k, v]) => { for (let i = 0; i < v.n; i++) g.push(k); });
@@ -771,6 +834,7 @@ const fresh = () => ({
   dIdx: -1, dTeam: 0, dState: "ready", dUsed: [],
   lIdx: 0, lState: "write", lOpts: null, lMarks: {}, lResult: null,
   aRound: 0, aCoffins: newCoffins(), aIdx: 0, aState: "bid", aHigh: null, aGive: false,
+  casino: freshCasino(),
   sIdx: 0, sState: "ask", sUnits: null, sOut: {}, sAns: {}, sDone: false, sLast: null,
   muted: false
 });
@@ -783,6 +847,10 @@ function load(seed) {
   st.teams.forEach(t => { if (typeof t.shots !== "number") t.shots = 0; });
   if (st.potState === "live") st.potState = "ready";
   if (st.rxState === "wait" || st.rxState === "go") st.rxState = "ready";
+  if (!st.casino || !st.casino.r) st.casino = freshCasino();
+  if (st.casino.r.state === "spin") st.casino.r.state = "bet";
+  if (st.casino.sl.state === "spin") st.casino.sl.state = "ready";
+  if (st.casino.bj.state === "dealer") st.casino.bj.state = "play";
   return st;
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
@@ -1047,6 +1115,7 @@ function render() {
   const v = VIEWS[state.screen] || VIEWS.setup;
   $("#view").innerHTML = v();
   if (state.screen === "wheel") drawWheel();
+  if (state.screen === "casino" && state.casino.game === "roulette") drawRoulette();
   $("#btn-sound").setAttribute("aria-pressed", String(!state.muted));
   $("#btn-sound").textContent = state.muted ? "Lyd av" : "Lyd på";
   renderOverlay(); renderOnlineBtn(); syncOnline();
@@ -1123,7 +1192,7 @@ const VIEWS = {
           <div class="toggle" style="cursor:default"><span style="font-size:1.4rem">👻</span><div><b>Spøkelsesbesøk</b><span>Spøkelset dukker opp når det vil med drikkeoppgaver, skåler og drikkeruletten.</span>
             <div class="freq" style="margin-top:8px">${[["off", "Av"], ["rare", "Sjelden"], ["normal", "Vanlig"], ["chaos", "Kaos"]].map(([k, l]) => `<button data-act="ghostfreq" data-f="${k}" aria-pressed="${state.ghostFreq === k}">${l}</button>`).join("")}<button data-act="ghostnow">Prøv nå</button></div></div></div>
           <p class="note">Fyll glassene med det dere vil. Vann, saft og alkoholfritt teller like mye i showet, og ingen skal måtte drikke.</p>
-          <p class="keys">Hurtigtaster: <kbd>1</kbd>–<kbd>6</kbd> buzz · <kbd>Mellomrom</kbd> vis svar / spill av / start · <kbd>H</kbd> hekseklokka · <kbd>D</kbd> drikkeruletten · <kbd>G</kbd> spøkelsesbesøk · <kbd>J</kbd> skrekk · <kbd>T</kbd> 20 sek · <kbd>M</kbd> lyd · <kbd>F</kbd> fullskjerm · <kbd>Esc</kbd> lukk</p>
+          <p class="keys">Hurtigtaster: <kbd>1</kbd>–<kbd>6</kbd> buzz · <kbd>Mellomrom</kbd> vis svar / spill av / start · <kbd>H</kbd> hekseklokka · <kbd>K</kbd> kasino · <kbd>D</kbd> skjebnehjulet · <kbd>G</kbd> spøkelsesbesøk · <kbd>J</kbd> skrekk · <kbd>T</kbd> 20 sek · <kbd>M</kbd> lyd · <kbd>F</kbd> fullskjerm · <kbd>Esc</kbd> lukk</p>
         </section>
       </div>
       <div class="stack">
@@ -1432,6 +1501,8 @@ const VIEWS = {
     return head("auction", "Gravrøver&shy;", "auksjonen", "Seks kister er gravd opp. Noen er fulle av gull, andre av forbannelser.") + coffins + panel;
   },
 
+  casino() { return casinoView(); },
+
   survive() {
     const units = state.sUnits, live = onlinePlayersReady();
     if (!units) return head("survive", "Siste ", "overlevende", "") + `<div class="card"><p class="lede">${live ? "Alle spillerne svarer på mobilen. Feil svar eller ikke noe svar, og du er ute." : "Hvert lag svarer med fingrene: én, to eller tre. Feil svar, og laget er ute."} Svarer alle feil på samme spørsmål, overlever alle. Når bare ett lag har folk igjen, vinner det 300${state.shotMode ? ", og alle som ryker ut tar ett shot" : ""}.</p>
@@ -1732,6 +1803,7 @@ function onlineMsg(m) {
 }
 function applyVote(m) {
   const ph = phaseNow(); if (m.key !== ph.key) return;
+  if (state.screen === "casino") { casinoVote(m, ph); return; }
   if (ph.mode === "tf") {
     const votes = Object.values(online.votes[m.key] || {});
     state.teams.forEach((_, k) => {
@@ -1748,7 +1820,7 @@ function applyVote(m) {
 }
 function scheduleRender() {
   if (online.renderQ) return;
-  online.renderQ = requestAnimationFrame(() => { online.renderQ = 0; if (spinning || glassBusy || state.potState === "live" || state.screen === "intro") { renderOnlineBtn(); return; } render(); });
+  online.renderQ = requestAnimationFrame(() => { online.renderQ = 0; if (spinning || glassBusy || rSpinning || state.casino.sl.state === "spin" || state.potState === "live" || state.screen === "intro") { renderOnlineBtn(); return; } render(); });
 }
 function phaseNow() {
   const s = state.screen, g = state.buzzGen || 0;
@@ -1764,6 +1836,7 @@ function phaseNow() {
   if (s === "wheel" && state.wheelResult != null && !state.wheelApplied) { const w = wheelSegs()[state.wheelResult]; if (w && w.kind === "challenge") return P({ mode: "rate", key: `wheel:${state.wheelSpin || 0}`, team: state.wheelTeam, text: w.title }); }
   if (s === "costume" && !state.costumeApplied) return P({ mode: "costume", key: "costume" });
   if (s === "final") return state.finalStage === "wager" ? P({ mode: "wager", key: `final:${state.finalIdx}`, max: state.teams.map(t => Math.max(t.score, 300)) }) : P({ mode: "watch", text: FINALS[state.finalIdx].q });
+  if (s === "casino") return casinoPhase(P);
   if (s === "react") return P({ mode: "react", key: rxKey() });
   if (s === "victim" && state.vState === "vote") return P({ mode: "choice", key: vKey(), text: VICTIM[state.vIdx % VICTIM.length], options: online.players.map(p => ({ id: p.pid, label: `${p.name} · ${state.teams[p.team]?.name || ""}` })) });
   if (s === "victim" && state.vResult) return P({ mode: "watch", text: `Offeret: ${state.vResult.names.join(" & ")}` });
@@ -1865,7 +1938,7 @@ const GHOSTS = [
   () => ({ title: "Hodejakt", text: `Den siste som tar seg på hodet, tar ${shotWord(1)}. NÅ!` }),
   () => ({ title: "Oransje fare", text: `Alle som har på seg noe oransje, tar ${shotWord(1)}.` }),
   () => ({ title: "Gravstille", text: `60 sekunder total stillhet. Den første som sier noe, tar ${shotWord(2)}.`, timer: 60 }),
-  () => ({ title: "Spøkelset snurrer!", text: "Drikkeruletten er satt i gang. Hvem blir det?", roulette: true }),
+  () => ({ title: "Spøkelset snurrer!", text: "Skjebnehjulet er satt i gang. Hvem blir det?", roulette: true }),
   () => ({ title: "Skål på tvers", text: `Finn noen fra et annet lag og skål. Begge tar ${shotWord(1)}.` }),
   () => { const k = randTeam(); return { title: "Giftgaven", text: `${teamName(k)} velger et lag som må ta ${shotWord(1)}.`, give: k }; },
   () => { const a = randTeam(); let b = randTeam(); if (state.teams.length > 1) while (b === a) b = randTeam();
@@ -1885,7 +1958,7 @@ function scheduleGhost() {
   ghostTimer = setTimeout(() => ghostVisit(false), (f[0] + Math.random() * (f[1] - f[0])) * 60000);
 }
 function busyNow() {
-  return spinning || glassBusy || drSpinning || fxs.ghost || fxs.dr || online.showQR || state.witchCard
+  return spinning || glassBusy || drSpinning || rSpinning || state.casino.sl.state === "spin" || state.casino.bj.state === "dealer" || fxs.ghost || fxs.dr || online.showQR || state.witchCard
     || state.potState === "live" || state.rxState === "wait" || state.rxState === "go"
     || ["setup", "intro", "end"].includes(state.screen) || document.getElementById("scare");
 }
@@ -1894,7 +1967,7 @@ function ghostVisit(force) {
   if (fxs.ghost || fxs.dr) return;
   if (!state.ghostDeck || !state.ghostDeck.length) state.ghostDeck = shuffle(GHOSTS.map((_, i) => i));
   const ev = GHOSTS[state.ghostDeck.pop()]();
-  if (ev.roulette && !state.shotMode) ev.text = "Godteriruletten er satt i gang!";
+  if (ev.roulette && !state.shotMode) ev.text = "Skjebnehjulet snurrer om sure godterier!";
   fxs.ghost = ev; save();
   if (!ev.calm) { sfx.thunder(); lightning(); }
   sfx.bell(); renderOverlay();
@@ -1934,7 +2007,7 @@ function drSegments() {
 const TEAM_HEX = ["#ff7b1c", "#a6e05a", "#a77bff", "#e0435a", "#6fd0ea", "#f2c94c"];
 function openDr(autoSpin) {
   fxs.dr = { segs: drSegments(), rot: Math.random() * Math.PI * 2, result: null, mult: 1, auto: autoSpin };
-  renderOverlay(); osend({ t: "flash", title: state.shotMode ? "Drikkeruletten" : "Godteriruletten", text: "Hjulet snurrer. Hvem blir det?" });
+  renderOverlay(); osend({ t: "flash", title: "Skjebnehjulet", text: "Hjulet snurrer. Hvem blir det?" });
   if (autoSpin) setTimeout(drSpin, 700);
 }
 function drOverlay() {
@@ -1950,7 +2023,7 @@ function drOverlay() {
   return `<div class="overlay" data-act="drclose-bg"><div class="dr-card" role="dialog" aria-label="Drikkeruletten">
     <div class="wheel-box"><div class="pointer"></div><canvas id="dwheel" width="800" height="800" aria-label="Drikkerulett"></canvas></div>
     <div style="display:grid;gap:14px;min-width:0">
-      <div class="title">${state.shotMode ? "Drikke&shy;ruletten" : "Godteri&shy;ruletten"}</div>
+      <div class="title">Skjebne&shy;hjulet</div>
       ${res || `<p class="lede">${online.connected && online.players.length >= 2 ? "Hjulet er fylt med spillere i rommet." : "Hjulet er fylt med lagene."} Snurr, og se hvem som må drikke.</p>`}
       <div class="row"><button class="btn big" data-act="drspin" ${drSpinning ? "disabled" : ""}>${r ? "Snurr igjen" : "Snurr"}</button><button class="btn ghost" data-act="drclose" ${drSpinning ? "disabled" : ""}>Lukk</button></div>
     </div></div></div>`;
@@ -1984,13 +2057,358 @@ function drSpin() {
     const r = d.segs[d.result], m = d.mult;
     renderOverlay(); lightning();
     if (r.kind === "one") pour(r.team, m, `${r.who}: ${shotWord(m)}!`, r.pid ? [r.pid] : null);
-    else if (r.kind === "all") pour(allTeams(), m, "Drikkeruletten: alle drikker!");
+    else if (r.kind === "all") pour(allTeams(), m, "Skjebnehjulet: alle drikker!");
     else if (r.kind === "free") { sfx.correct(); banner("Fri!", "var(--ghost)"); }
     else if (r.kind === "double") { sfx.thunder(); d.mult = m * 2; setTimeout(() => { if (fxs.dr === d) drSpin(); }, 1600); return; }
     else sfx.stinger();
     d.mult = 1;
   };
   requestAnimationFrame(step);
+}
+
+/* ================================================================== Dødskasinoet */
+const WHEEL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+const REDS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const numColor = n => n === 0 ? "var(--rgreen)" : REDS.has(n) ? "var(--rred)" : "var(--rblack)";
+const BET_TYPES = [["red", "Rød"], ["black", "Svart"], ["odd", "Oddetall"], ["even", "Partall"], ["low", "1–18"], ["high", "19–36"], ["d1", "1.–12."], ["d2", "13.–24."], ["d3", "25.–36."], ["num", "Ett tall"]];
+const betLabel = b => b.type === "num" ? `tall ${b.num}` : (BET_TYPES.find(t => t[0] === b.type) || ["", "?"])[1];
+const betMult = t => t === "num" ? 35 : /^d/.test(t) ? 2 : 1;      // poeng: netto gevinst per innsats
+const shotMult = t => t === "num" ? 5 : /^d/.test(t) ? 2 : 1;      // shots: hvor mange du deler ut per shot i innsats
+const minShots = () => state.shotMode ? 1 : 0;
+const maxPts = k => Math.max(0, state.teams[k]?.score || 0);
+function betWins(b, n) {
+  const red = REDS.has(n);
+  switch (b.type) {
+    case "red": return n !== 0 && red; case "black": return n !== 0 && !red;
+    case "odd": return n !== 0 && n % 2 === 1; case "even": return n !== 0 && n % 2 === 0;
+    case "low": return n >= 1 && n <= 18; case "high": return n >= 19;
+    case "d1": return n >= 1 && n <= 12; case "d2": return n >= 13 && n <= 24; case "d3": return n >= 25;
+    case "num": return +b.num === n;
+  }
+  return false;
+}
+function cleanStake(k, v, roulette) {
+  const out = { pts: Math.max(0, Math.min(maxPts(k), Math.round((+v.pts || 0) / 10) * 10)), shots: Math.max(minShots(), Math.min(3, Math.round(+v.shots || 0))) };
+  if (roulette) { out.type = BET_TYPES.some(t => t[0] === v.type) ? v.type : "red"; out.num = Math.max(0, Math.min(36, Math.round(+v.num || 0))); }
+  return out;
+}
+const C = () => state.casino;
+/* Shots man vinner deles ut: verten trykker på lagene som skal drikke */
+function queueGive(team, n) { if (n > 0 && state.shotMode !== undefined) C().give.push({ team, n }); }
+function settleCommon(k, dPts, drink, give, label) {
+  if (dPts > 0) addScore(k, dPts, true);
+  if (dPts < 0) { addScore(k, dPts, true); C().pot += -dPts; }
+  if (drink > 0) setTimeout(() => pour(k, drink, `${state.teams[k].name}: ${label || "huset vinner"}!`), 400 + k * 700);
+  if (give > 0) queueGive(k, give);
+}
+
+/* ---------- Rulett */
+let rSpinning = false, rAnim = { wheel: 0, ball: 0, br: 1 };
+function drawRoulette() {
+  const cv = document.getElementById("rwheel"); if (!cv) return;
+  const x = cv.getContext("2d"), W = cv.width, c = W / 2, R = W / 2 - 8, seg = Math.PI * 2 / 37;
+  x.clearRect(0, 0, W, W);
+  // ytterkant i tre
+  let g = x.createRadialGradient(c, c, R * .8, c, c, R); g.addColorStop(0, "#5a3820"); g.addColorStop(1, "#24140a");
+  x.fillStyle = g; x.beginPath(); x.arc(c, c, R, 0, Math.PI * 2); x.fill();
+  x.save(); x.translate(c, c); x.rotate(rAnim.wheel - Math.PI / 2 - seg / 2);
+  const r1 = R * .86, r2 = R * .62;
+  WHEEL_ORDER.forEach((n, i) => {
+    x.beginPath(); x.arc(0, 0, r1, i * seg, (i + 1) * seg); x.arc(0, 0, r2, (i + 1) * seg, i * seg, true); x.closePath();
+    x.fillStyle = n === 0 ? "#1f8a4c" : REDS.has(n) ? "#b3122e" : "#141014"; x.fill();
+    x.strokeStyle = "#e2b94a"; x.lineWidth = 2; x.stroke();
+    x.save(); x.rotate(i * seg + seg / 2); x.translate((r1 + r2) / 2 + R * .06, 0); x.rotate(Math.PI / 2);
+    x.fillStyle = "#fff"; x.font = `600 ${Math.round(R * .065)}px "DM Mono", monospace`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(String(n), 0, 0); x.restore();
+  });
+  x.restore();
+  // indre kjegle
+  g = x.createRadialGradient(c, c, 4, c, c, r2); g.addColorStop(0, "#7a5230"); g.addColorStop(1, "#2c1a0c");
+  x.fillStyle = g; x.beginPath(); x.arc(c, c, r2 - 2, 0, Math.PI * 2); x.fill();
+  x.font = `${Math.round(R * .3)}px serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("💀", c, c + 6);
+  // kula
+  const br = r2 + (R * .95 - r2) * rAnim.br;
+  const bx = c + Math.cos(rAnim.ball - Math.PI / 2) * br, by = c + Math.sin(rAnim.ball - Math.PI / 2) * br;
+  g = x.createRadialGradient(bx - 3, by - 3, 1, bx, by, R * .035); g.addColorStop(0, "#fff"); g.addColorStop(1, "#b8b0a6");
+  x.fillStyle = g; x.beginPath(); x.arc(bx, by, R * .032, 0, Math.PI * 2); x.fill();
+}
+function rouletteSpin() {
+  const r = C().r; if (rSpinning || r.state !== "bet" || !Object.keys(r.bets).length) return;
+  rSpinning = true; r.state = "spin"; r.out = null; save(); render();
+  osend({ t: "flash", title: "Rien ne va plus!", text: "Kula ruller …" });
+  const idx = Math.floor(Math.random() * 37), seg = Math.PI * 2 / 37;
+  const w0 = rAnim.wheel % (Math.PI * 2), wEnd = w0 + Math.PI * 2 * (3 + Math.random());
+  const ballEnd = wEnd + idx * seg, extra = Math.PI * 2 * (7 + Math.random() * 2);
+  const dur = reduced() ? 400 : 6500, t0 = performance.now();
+  let lastPocket = -1;
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  const step = now => {
+    const t = Math.min(1, (now - t0) / dur), e = ease(t);
+    rAnim.wheel = w0 + (wEnd - w0) * e;
+    rAnim.ball = ballEnd + extra * (1 - ease(Math.min(1, t * 1.05)));
+    rAnim.br = t < .62 ? 1 : Math.max(0, 1 - (t - .62) / .3) * (1 + .25 * Math.abs(Math.sin(t * 40)) * (1 - t));
+    drawRoulette();
+    const rel = Math.floor((((rAnim.ball - rAnim.wheel) % (Math.PI * 2)) + Math.PI * 4) % (Math.PI * 2) / seg);
+    if (t > .55 && rel !== lastPocket) { sfx.click(); lastPocket = rel; }
+    if (t < 1) return requestAnimationFrame(step);
+    rSpinning = false; rAnim.br = 0; drawRoulette();
+    rouletteSettle(WHEEL_ORDER[idx]);
+  };
+  requestAnimationFrame(step);
+}
+function rouletteSettle(n) {
+  const cs = C(), r = cs.r; r.result = n; r.hist.unshift(n); r.hist = r.hist.slice(0, 12); r.state = "result";
+  const out = {}; const jackpotWinners = [];
+  Object.entries(r.bets).forEach(([k, b]) => {
+    k = +k; const win = betWins(b, n);
+    if (win) {
+      const dPts = b.pts * betMult(b.type), give = b.shots * shotMult(b.type);
+      out[k] = { win: true, text: `Vant ${fmt(dPts)} og deler ut ${shotWord(give)}` };
+      settleCommon(k, dPts, 0, give);
+      if (b.type === "num") jackpotWinners.push(k);
+    } else {
+      const extra = n === 0 ? 1 : 0;
+      out[k] = { win: false, text: `Tapte ${fmt(b.pts)} og drikker ${shotWord(b.shots + extra)}` };
+      settleCommon(k, -b.pts, b.shots + extra, 0, n === 0 ? "Djevelens null" : "kula sa nei");
+    }
+  });
+  if (jackpotWinners.length && cs.pot > 0) {
+    const share = Math.floor(cs.pot / jackpotWinners.length); cs.pot = 0;
+    jackpotWinners.forEach(k => { addScore(k, share, true); out[k].text += ` + JACKPOT ${fmt(share)}`; });
+    setTimeout(() => { sfx.fanfare(); rainCandy(80); banner("JACKPOT!", "var(--gold)", 3000); }, 600);
+  }
+  r.out = out; save();
+  if (n === 0) { sfx.thunder(); lightning(); quake(); banner("Djevelens null!", "var(--rgreen)", 2600); }
+  else { sfx.reveal(); banner(`${n} ${REDS.has(n) ? "rød" : "svart"}`, numColor(n), 1800); }
+  render();
+}
+
+/* ---------- Kortstokk */
+const SUITS = ["♠", "♥", "♦", "♣"], RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const newDeck = () => shuffle(SUITS.flatMap(s => RANKS.map(r => ({ r, s }))));
+const cardHtml = (c, hidden) => hidden ? `<span class="pcard back" aria-label="Skjult kort"></span>` : `<span class="pcard ${c.s === "♥" || c.s === "♦" ? "red" : ""}">${c.r}${c.s}</span>`;
+const cardTxt = c => c.r + c.s;
+function handValue(cards) {
+  let v = 0, aces = 0;
+  cards.forEach(c => { if (c.r === "A") { v += 11; aces++; } else v += ["J", "Q", "K"].includes(c.r) ? 10 : +c.r; });
+  while (v > 21 && aces) { v -= 10; aces--; }
+  return v;
+}
+const draw1 = d => { if (!d.deck.length) d.deck = newDeck(); return d.deck.pop(); };
+
+/* ---------- Blackjack mot Døden */
+function bjDeal() {
+  const b = C().bj; if (b.state !== "bet") return;
+  b.deck = newDeck(); b.dealer = [draw1(b), draw1(b)]; b.hands = {}; b.out = null;
+  state.teams.forEach((_, k) => {
+    const st = cleanStake(k, b.bets[k] || { pts: Math.min(100, maxPts(k)), shots: minShots() });
+    const cards = [draw1(b), draw1(b)];
+    b.hands[k] = { cards, pts: st.pts, shots: st.shots, status: handValue(cards) === 21 ? "bj" : "play" };
+  });
+  b.state = "play"; b.turn = -1; bjNextTurn(); sfx.stinger(); save(); render();
+}
+function bjNextTurn() {
+  const b = C().bj, n = state.teams.length;
+  for (let k = b.turn + 1; k < n; k++) if (b.hands[k] && b.hands[k].status === "play") { b.turn = k; return; }
+  b.turn = -1; bjDealer();
+}
+function bjAction(a) {
+  const b = C().bj; if (b.state !== "play" || b.turn < 0) return;
+  const h = b.hands[b.turn];
+  if (a === "hit" || a === "double") {
+    if (a === "double") { if (h.cards.length !== 2) return; h.pts = Math.min(h.pts * 2, maxPts(b.turn)); h.shots = Math.min(6, h.shots * 2 || 1); }
+    h.cards.push(draw1(b)); sfx.click();
+    const v = handValue(h.cards);
+    if (v > 21) { h.status = "bust"; sfx.wrong(); banner(`${state.teams[b.turn].name} er død! ${v}`, "var(--blood)", 1500); bjNextTurn(); }
+    else if (a === "double" || v === 21) { h.status = "stand"; bjNextTurn(); }
+  } else if (a === "stand") { h.status = "stand"; bjNextTurn(); }
+  save(); render();
+}
+function bjDealer() {
+  const b = C().bj; b.state = "dealer"; save(); render();
+  const live = Object.values(b.hands).some(h => h.status === "stand" || h.status === "bj");
+  const stepD = () => {
+    if (live && handValue(b.dealer) < 17) { b.dealer.push(draw1(b)); sfx.click(); save(); render(); later(stepD, 800); }
+    else later(bjSettle, 600);
+  };
+  later(stepD, 900);
+}
+function bjSettle() {
+  const cs = C(), b = cs.bj, dv = handValue(b.dealer), dBJ = dv === 21 && b.dealer.length === 2, out = {}; let jack = [];
+  Object.entries(b.hands).forEach(([k, h]) => {
+    k = +k; const v = handValue(h.cards); let res;
+    if (h.status === "bust") res = "lose";
+    else if (h.status === "bj" && !dBJ) res = "bj";
+    else if (dBJ && h.status !== "bj") res = "lose";
+    else if (dv > 21 || v > dv) res = "win";
+    else if (v === dv) res = "push";
+    else res = "lose";
+    if (res === "bj") { settleCommon(k, Math.round(h.pts * 1.5), 0, h.shots * 2); jack.push(k); out[k] = { res, text: `Blackjack! +${fmt(Math.round(h.pts * 1.5))}, deler ut ${shotWord(h.shots * 2)}` }; }
+    else if (res === "win") { settleCommon(k, h.pts, 0, h.shots); out[k] = { res, text: `Slo Døden: +${fmt(h.pts)}, deler ut ${shotWord(h.shots)}` }; }
+    else if (res === "push") out[k] = { res, text: "Uavgjort. Døden venter." };
+    else { settleCommon(k, -h.pts, h.shots, 0, h.status === "bust" ? "over 21" : "Døden vant"); out[k] = { res, text: `Tapte ${fmt(h.pts)} og drikker ${shotWord(h.shots)}` }; }
+  });
+  if (jack.length && cs.pot > 0) { const share = Math.floor(cs.pot / jack.length); cs.pot = 0; jack.forEach(k => { addScore(k, share, true); out[k].text += ` + JACKPOT ${fmt(share)}`; }); setTimeout(() => { sfx.fanfare(); rainCandy(80); }, 500); }
+  b.out = out; b.state = "done"; save(); render();
+  dv > 21 ? (sfx.correct(), banner("Døden sprakk!", "var(--slime)", 2000)) : (sfx.gong(), banner(`Døden har ${dv}`, "var(--rblack)", 1800));
+}
+
+/* ---------- Gravautomaten */
+const SLOT_SYMS = ["🎃", "👻", "💀", "🦇", "🕷️", "🍬", "🧛"];
+const SLOT_WEIGHTS = [2, 4, 3, 5, 5, 6, 2];
+function slotPick() { const tot = SLOT_WEIGHTS.reduce((a, b) => a + b, 0); let r = Math.random() * tot; for (let i = 0; i < SLOT_SYMS.length; i++) { r -= SLOT_WEIGHTS[i]; if (r < 0) return SLOT_SYMS[i]; } return SLOT_SYMS[0]; }
+function slotPull() {
+  const sl = C().sl; if (sl.state === "spin") return;
+  const k = sl.team; if (!state.teams[k]) return;
+  sl.pts = Math.max(0, Math.min(maxPts(k), +sl.pts || 0));
+  sl.state = "spin"; sl.out = null; save(); render();
+  const result = [slotPick(), slotPick(), slotPick()];
+  // litt hjelp fra djevelen: av og til lander to like, så det kribler
+  if (Math.random() < .25) result[1] = result[0];
+  const strips = [...document.querySelectorAll(".reel .strip")];
+  const H = 130, spins = [22, 30, 38];
+  strips.forEach((st, i) => {
+    const syms = Array.from({ length: spins[i] }, () => SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)]);
+    syms.unshift(sl.reels[i]); syms.push(result[i]);
+    st.innerHTML = syms.map(x => `<span>${x}</span>`).join("");
+    st.style.transition = "none"; st.style.transform = "translateY(0)"; void st.offsetWidth;
+    const d = reduced() ? .2 : 1.4 + i * .55;
+    st.style.transition = `transform ${d}s cubic-bezier(.15, .6, .25, 1.02)`;
+    st.style.transform = `translateY(-${(syms.length - 1) * H}px)`;
+    setTimeout(() => sfx.tock(), d * 1000);
+  });
+  for (let i = 0; i < 14; i++) setTimeout(() => sfx.click(), i * 110);
+  setTimeout(() => { sl.reels = result; slotSettle(k, result); }, reduced() ? 300 : 2600);
+}
+function slotSettle(k, r) {
+  const cs = C(), sl = cs.sl, stake = sl.pts, [a, b, c] = r, three = a === b && b === c, pair = a === b || b === c || a === c;
+  const skulls = r.filter(x => x === "💀").length;
+  let o;
+  if (three && a === "🎃") { const win = stake * 10 + cs.pot; cs.pot = 0; settleCommon(k, win, 0, 3); o = { title: "JACKPOT!", text: `Tre gresskar! +${fmt(win)} inkludert Djevelens pott, og laget deler ut ${shotWord(3)}.`, big: true }; }
+  else if (three && a === "💀") { settleCommon(k, -stake, 3, 0, "tre dødningehoder"); o = { title: "Døden vinner", text: `Tre dødningehoder. Laget taper innsatsen og tar ${shotWord(3)}.` }; }
+  else if (three && a === "🧛") { const L = leaderIdx(); const suck = L !== k ? Math.min(300, Math.max(0, state.teams[L].score)) : 0; if (suck) { addScore(L, -suck, true); addScore(k, suck, true); } settleCommon(k, stake * 3, 0, 1); o = { title: "Vampyrbitt!", text: `Tre vampyrer: +${fmt(stake * 3)}${suck ? ` og ${fmt(suck)} sugd fra ${state.teams[L].name}` : ""}. Del ut ${shotWord(1)}.` }; }
+  else if (three) { settleCommon(k, stake * 5, 0, 2); o = { title: "Tre like!", text: `+${fmt(stake * 5)} og laget deler ut ${shotWord(2)}.` }; }
+  else if (skulls === 2) { settleCommon(k, -stake, 2, 0, "to dødningehoder"); o = { title: "Dødsvarsel", text: `To dødningehoder. Innsatsen er tapt og laget tar ${shotWord(2)}.` }; }
+  else if (pair) { settleCommon(k, stake, 0, 0); o = { title: "Et par", text: `Laget får innsatsen doblet: +${fmt(stake)}.` }; }
+  else { settleCommon(k, -stake, 1, 0, "tom automat"); o = { title: "Ingenting", text: `Automaten tok innsatsen, og laget tar ${shotWord(1)}.` }; }
+  sl.out = o; sl.state = "ready"; save(); render();
+  if (o.big) { sfx.fanfare(); rainCandy(120); lightning(); } else if (/Død/.test(o.title)) { sfx.thunder(); lightning(); } else sfx.reveal();
+}
+
+/* ---------- Dødsstigen (høyere eller lavere) */
+const rankVal = c => c.r === "A" ? 14 : c.r === "K" ? 13 : c.r === "Q" ? 12 : c.r === "J" ? 11 : +c.r;
+function ladderStart() { const l = C().ld; l.deck = newDeck(); l.cards = [l.deck.pop()]; l.steps = 0; l.pot = 0; l.state = "play"; sfx.stinger(); save(); render(); }
+function ladderGuess(dir) {
+  const l = C().ld; if (l.state !== "play") return;
+  if (!l.deck.length) l.deck = newDeck();
+  const prev = l.cards[l.cards.length - 1], next = l.deck.pop(); l.cards.push(next);
+  const ok = dir === "up" ? rankVal(next) > rankVal(prev) : rankVal(next) < rankVal(prev);
+  if (ok) {
+    l.steps++; l.pot = l.steps === 1 ? 100 : l.pot * 2; sfx.correct();
+    if (l.steps >= 6) { addScore(l.team, l.pot, true); queueGive(l.team, 2); l.state = "escaped"; sfx.fanfare(); rainCandy(60); }
+  } else {
+    l.state = "dead"; const n = Math.min(3, Math.max(1, l.steps));
+    sfx.thunder(); lightning(); setTimeout(() => pour(l.team, n, `${state.teams[l.team].name} falt ned i graven!`), 700);
+  }
+  save(); render();
+}
+function ladderCash() { const l = C().ld; if (l.state !== "play" || !l.steps) return; addScore(l.team, l.pot); if (l.steps >= 3) queueGive(l.team, 1); l.state = "cashed"; save(); render(); }
+
+/* ---------- Visning */
+function stakeEditors(k, cur, roulette) {
+  const st = cur || { type: "red", num: 13, pts: Math.min(100, maxPts(k)), shots: minShots() };
+  return `<div class="ed">
+    ${roulette ? `<select id="cb-type-${k}" data-cbet="${k}" data-f="type" aria-label="Spill">${BET_TYPES.map(([v, l]) => `<option value="${v}" ${st.type === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+    ${st.type === "num" ? `<input id="cb-num-${k}" type="number" min="0" max="36" data-cbet="${k}" data-f="num" value="${st.num}" aria-label="Tall">` : ""}` : ""}
+    <input id="cb-pts-${k}" type="number" min="0" step="50" max="${maxPts(k)}" data-cbet="${k}" data-f="pts" value="${st.pts}" aria-label="Poeng"> <span class="progress">poeng</span>
+    <select id="cb-shots-${k}" data-cbet="${k}" data-f="shots" aria-label="Shots">${[0, 1, 2, 3].filter(n => n >= minShots()).map(n => `<option value="${n}" ${st.shots === n ? "selected" : ""}>${n} ${icon()}</option>`).join("")}</select>
+  </div>`;
+}
+function giveHtml() {
+  const g = C().give[0]; if (!g) return "";
+  return `<div class="give"><b>${esc(state.teams[g.team]?.name || "")} deler ut ${shotWord(g.n)}. Trykk på laget som skal drikke, én gang per ${state.shotMode ? "shot" : "godteri"}.</b>
+    <div class="row">${state.teams.map((t, k) => k === g.team ? "" : `<button class="btn small" style="background:${tc(k)}" data-act="cgive" data-k="${k}">${esc(t.name)}</button>`).join("")}<button class="btn ghost small" style="color:var(--ink-on-bright);border-color:var(--ink-on-bright)" data-act="cgiveskip">Hopp over</button></div></div>`;
+}
+function casinoView() {
+  const cs = C(), g = cs.game;
+  const tabs = [["roulette", "Rulett"], ["blackjack", "Blackjack"], ["slots", "Gravautomaten"], ["ladder", "Dødsstigen"]];
+  let body = "";
+  if (g === "roulette") {
+    const r = cs.r, live = onlinePlayersReady();
+    body = `<div class="table2"><div style="display:grid;gap:12px"><canvas id="rwheel" class="rwheel" width="700" height="700" aria-label="Rulettehjul"></canvas>
+      ${r.state === "result" && r.result != null ? `<div style="text-align:center"><span class="rnum" style="background:${numColor(r.result)}">${r.result}</span></div>` : ""}
+      <div class="hist">${r.hist.map(n => `<span style="background:${numColor(n)}">${n}</span>`).join("")}</div></div>
+      <div style="display:grid;gap:12px;min-width:0">
+        <p class="lede" style="color:var(--bone)">${live ? "Lagene satser fra mobilen. Verten kan justere her." : "Hvert lag velger spill, poeng og shots."} Taper dere, mister dere poengene og drikker shotsene. Vinner dere, får dere poeng og deler ut shots. Rød/svart betaler 1:1, dusin 2:1, ett tall 35:1 og hele Djevelens pott. Lander kula på 0, drikker alle én ekstra.</p>
+        <div class="bets">${state.teams.map((t, k) => { const b = r.bets[k], o = r.out && r.out[k]; return `<div class="bet" style="--tc:${tc(k)}"><span class="nm">${esc(t.name)}</span><span class="out ${o ? (o.win ? "win" : "lose") : ""}">${o ? esc(o.text) : b ? `${betLabel(b)} · ${fmt(b.pts)} · ${b.shots} ${icon()}` : "Ingen innsats"}</span>${r.state === "bet" ? stakeEditors(k, b, true) + `<div class="ed"><button class="btn small ${b ? "ghost" : ""}" data-act="cbetset" data-k="${k}">${b ? "Oppdater" : "Sett innsats"}</button>${b ? `<button class="btn ghost small" data-act="cbetclear" data-k="${k}">Trekk</button>` : ""}</div>` : ""}</div>`; }).join("")}</div>
+        <div class="row">${r.state === "result" ? `<button class="btn big" data-act="rnew">Nye innsatser</button>` : `<button class="btn big" data-act="rspin" ${r.state !== "bet" || !Object.keys(r.bets).length ? "disabled" : ""}>Spinn hjulet</button>`}</div>
+      </div></div>`;
+  } else if (g === "blackjack") {
+    const b = cs.bj, showHole = b.state === "dealer" || b.state === "done";
+    const dealer = `<div class="death"><span class="reaper" aria-hidden="true">💀</span><div style="display:grid;gap:6px"><b>Døden${showHole && b.dealer.length ? ` · ${handValue(b.dealer)}` : ""}</b><div class="pcards">${b.dealer.map((c, i) => cardHtml(c, i === 1 && !showHole)).join("")}</div></div></div>`;
+    if (b.state === "bet") body = `<p class="lede" style="color:var(--bone)">Slå Døden uten å gå over 21. Døden trekker til 17. Blackjack betaler 3:2, dobbelt så mange shots og hele Djevelens pott. Går du over 21, drikker du innsatsen.</p>
+      <div class="bets">${state.teams.map((t, k) => { const st = b.bets[k]; return `<div class="bet" style="--tc:${tc(k)}"><span class="nm">${esc(t.name)}</span><span class="out">${st ? `${fmt(st.pts)} · ${st.shots} ${icon()}` : "Standard: 100 og " + minShots() + " " + icon()}</span>${stakeEditors(k, st, false)}<div class="ed"><button class="btn small ghost" data-act="cbetset" data-k="${k}">Sett innsats</button></div></div>`; }).join("")}</div>
+      <div class="row"><button class="btn big" data-act="bjdeal">Del ut kort</button></div>`;
+    else body = `${dealer}<div class="hands">${state.teams.map((t, k) => { const h = b.hands[k]; if (!h) return ""; const o = b.out && b.out[k]; const v = handValue(h.cards); const turn = b.state === "play" && b.turn === k;
+        const pill = o ? `<span class="pill ${o.res === "bj" ? "bj" : o.res}">${{ win: "Vant", lose: "Tapte", push: "Likt", bj: "Blackjack" }[o.res]}</span>` : h.status === "bust" ? `<span class="pill lose">Død</span>` : h.status === "bj" ? `<span class="pill bj">Blackjack</span>` : h.status === "stand" ? `<span class="pill">Står</span>` : "";
+        return `<div class="hand ${turn ? "turn" : ""}" style="border-left:4px solid ${tc(k)}"><div class="hd"><b>${esc(t.name)}</b><span class="tot">${v}</span>${pill}</div><div class="pcards">${h.cards.map(c => cardHtml(c)).join("")}</div>
+          <span class="progress">${fmt(h.pts)} poeng · ${h.shots} ${icon()}</span>${o ? `<span>${esc(o.text)}</span>` : ""}
+          ${turn ? `<div class="row"><button class="btn small" data-act="bjhit">Trekk</button><button class="btn small ghost" data-act="bjstand">Stå</button>${h.cards.length === 2 ? `<button class="btn small" style="background:var(--gold)" data-act="bjdouble">Dobbel</button>` : ""}</div>` : ""}</div>`; }).join("")}</div>
+      ${b.state === "done" ? `<div class="row"><button class="btn big" data-act="bjnew">Ny runde</button></div>` : ""}`;
+  } else if (g === "slots") {
+    const sl = cs.sl;
+    body = `<div class="table2"><div class="slot-machine"><div class="slot-title">Gravautomaten</div><div class="payline"></div>
+        <div class="reels">${sl.reels.map(x => `<div class="reel"><div class="strip"><span>${x}</span></div></div>`).join("")}</div><div class="payline"></div>
+        <button class="btn big" style="background:var(--blood);color:var(--bone)" data-act="slotpull" ${sl.state === "spin" ? "disabled" : ""}>Dra i spaken</button></div>
+      <div style="display:grid;gap:12px;min-width:0">
+        <div class="team-pick">${state.teams.map((t, k) => `<button data-act="slteam" data-k="${k}" aria-pressed="${k === sl.team}" style="border-color:${tc(k)};${k === sl.team ? `background:${tc(k)}` : ""}">${esc(t.name)}</button>`).join("")}</div>
+        <div class="bet" style="--tc:${tc(sl.team)}"><span class="nm">Innsats</span><span></span><div class="ed"><input id="sl-pts" type="number" min="0" step="50" max="${maxPts(sl.team)}" data-slpts="1" value="${sl.pts}"> <span class="progress">poeng (maks ${fmt(maxPts(sl.team))})</span></div></div>
+        ${sl.out ? `<div class="result" style="border-color:var(--gold)"><h3 style="color:var(--gold)">${esc(sl.out.title)}</h3><p>${esc(sl.out.text)}</p></div>` : ""}
+        <div class="paytable"><span>🎃🎃🎃</span><span>10× innsatsen + Djevelens pott, del ut ${shotWord(3)}</span><span>🧛🧛🧛</span><span>3× og sug 300 fra lederen</span><span>Tre like</span><span>5×, del ut ${shotWord(2)}</span><span>Et par</span><span>Innsatsen doblet</span><span>💀💀</span><span>Tap og ta ${shotWord(2)}</span><span>💀💀💀</span><span>Tap og ta ${shotWord(3)}</span><span>Ingenting</span><span>Tap og ta ${shotWord(1)}</span></div>
+      </div></div>`;
+  } else {
+    const l = cs.ld, cur = l.cards[l.cards.length - 1];
+    const ladder = [100, 200, 400, 800, 1600, 3200];
+    body = `<div class="table2"><div style="display:grid;gap:14px;justify-items:center">
+        ${cur ? `<div class="ladder-card ${cur.s === "♥" || cur.s === "♦" ? "red" : ""}">${cur.r}${cur.s}</div>` : `<div class="ladder-card" style="background:repeating-linear-gradient(45deg,var(--pumpkin) 0 8px,#8a3a08 8px 16px)"></div>`}
+        <div class="pcards" style="justify-content:center">${l.cards.slice(0, -1).map(c => cardHtml(c)).join("")}</div></div>
+      <div style="display:grid;gap:12px;min-width:0">
+        <p class="lede" style="color:var(--bone)">Gjett om neste kort er høyere eller lavere. Hvert riktig svar dobler gevinsten. Likt teller som feil. Ta gevinsten når du vil, men faller du, er alt tapt og du drikker ett shot per trinn, opptil tre. Seks trinn, og du har klatret ut av graven.</p>
+        <div class="team-pick">${state.teams.map((t, k) => `<button data-act="ldteam" data-k="${k}" aria-pressed="${k === l.team}" style="border-color:${tc(k)};${k === l.team ? `background:${tc(k)}` : ""}" ${l.state === "play" ? "disabled" : ""}>${esc(t.name)}</button>`).join("")}</div>
+        <div class="steps">${ladder.map((v, i) => `<span class="${i < l.steps ? "on" : ""}">${fmt(v)}</span>`).join("")}</div>
+        ${l.state === "play" ? `<div class="value-big" style="color:var(--gold)">${fmt(l.pot)} i potten</div>
+          <div class="row"><button class="btn big slime" data-act="ldup">Høyere</button><button class="btn big blood" data-act="lddown">Lavere</button><button class="btn" style="background:var(--gold)" data-act="ldcash" ${l.steps ? "" : "disabled"}>Ta gevinsten</button></div>`
+        : `${l.state === "dead" ? `<div class="devil-tag">Falt ned i graven!</div>` : l.state === "cashed" ? `<div class="devil-tag" style="color:var(--gold)">Tok ${fmt(l.pot)}!</div>` : l.state === "escaped" ? `<div class="devil-tag" style="color:var(--slime)">Klatret ut av graven! +${fmt(l.pot)}</div>` : ""}
+          <div class="row"><button class="btn big" data-act="ldstart">${l.state === "ready" ? "Start stigen" : "Ny stige"}</button></div>`}
+      </div></div>`;
+  }
+  return head("casino", "Døds&shy;", "kasinoet", "", "") + `<div class="casino">
+    <div class="casino-top"><div class="games">${tabs.map(([k, l]) => `<button data-act="cgame" data-g="${k}" aria-pressed="${g === k}">${l}</button>`).join("")}</div>
+      <div class="pot"><span>Djevelens pott</span><b>${fmt(cs.pot)}</b></div></div>
+    ${giveHtml()}${body}</div><div class="row spread"><span class="progress">Alle tapte poeng havner i Djevelens pott. Ett riktig tall på ruletten, blackjack eller tre gresskar tar hele potten.</span>${nextBtn("casino")}</div>`;
+}
+function casinoVote(m, ph) {
+  const cs = C(), k = m.team; if (!state.teams[k]) return;
+  if (ph.key.startsWith("cr:") && cs.r.state === "bet") { cs.r.bets[k] = cleanStake(k, m.value || {}, true); banner(`${m.name} satset ${betLabel(cs.r.bets[k])} for ${state.teams[k].name}`, tc(k), 1400); }
+  else if (ph.key.startsWith("cb:") && cs.bj.state === "bet") { cs.bj.bets[k] = cleanStake(k, m.value || {}, false); banner(`${m.name} satset for ${state.teams[k].name}`, tc(k), 1200); }
+  else if (ph.key.startsWith("cp:") && cs.bj.turn === k) { bjAction(m.value); return; }
+  else if (ph.key.startsWith("cs:") && cs.sl.team === k && m.value === "pull") { slotPull(); return; }
+  save();
+  const ae = document.activeElement; if (ae && ae.dataset && (ae.dataset.cbet != null || ae.dataset.slpts)) return;
+  scheduleRender();
+}
+function casinoPhase(P) {
+  const cs = C(), maxes = state.teams.map((_, k) => maxPts(k));
+  if (cs.game === "roulette") return cs.r.state === "bet" ? P({ mode: "stake", game: "roulette", key: `cr:${cs.r.round}`, max: maxes, minShots: minShots(), bets: BET_TYPES })
+    : P({ mode: "watch", text: cs.r.state === "spin" ? "Kula ruller …" : `Kula landet på ${cs.r.result}` });
+  if (cs.game === "blackjack") {
+    const b = cs.bj;
+    if (b.state === "bet") return P({ mode: "stake", game: "blackjack", key: `cb:${b.round}`, max: maxes, minShots: minShots() });
+    const hands = {}; Object.entries(b.hands).forEach(([k, h]) => hands[k] = { cards: h.cards.map(cardTxt), total: handValue(h.cards), status: h.status, pts: h.pts, shots: h.shots, res: b.out && b.out[k] ? b.out[k].text : null });
+    const showHole = b.state !== "play";
+    return P({ mode: "bj", key: `cp:${b.round}:${b.turn}:${b.turn >= 0 ? b.hands[b.turn].cards.length : 0}`, turn: b.state === "play" ? b.turn : -1, hands, dealer: b.dealer.map((c, i) => i === 1 && !showHole ? "?" : cardTxt(c)), dealerTotal: showHole ? handValue(b.dealer) : null, done: b.state === "done" });
+  }
+  if (cs.game === "slots") return P({ mode: "slot", key: `cs:${cs.sl.team}`, team: cs.sl.team, spinning: cs.sl.state === "spin", text: cs.sl.out ? `${cs.sl.out.title}: ${cs.sl.out.text}` : "" });
+  return P({ mode: "watch", text: cs.ld.state === "play" ? `${state.teams[cs.ld.team]?.name} klatrer Dødsstigen: ${fmt(cs.ld.pot)} i potten` : "Dødsstigen" });
 }
 
 /* ================================================================== Handlinger */
@@ -2234,6 +2652,26 @@ const ACT = {
   drspin: () => drSpin(),
   drclose: () => { if (drSpinning) return; fxs.dr = null; renderOverlay(); },
   "drclose-bg": (d, el, e) => { if (e.target === el) ACT.drclose(); },
+  opencasino: () => { if (state.screen !== "casino") go("casino"); },
+  cgame: d => { if (rSpinning || C().sl.state === "spin") return; C().game = d.g; save(); render(); },
+  cbetset: d => {
+    const k = +d.k, f = n => document.getElementById(`cb-${n}-${k}`), roulette = C().game === "roulette";
+    const v = { type: f("type")?.value, num: f("num")?.value ?? (C().r.bets[k] || {}).num ?? 13, pts: f("pts")?.value, shots: f("shots")?.value };
+    const st = cleanStake(k, v, roulette); if (roulette) C().r.bets[k] = st; else C().bj.bets[k] = st;
+    sfx.click(); save(); render();
+  },
+  cbetclear: d => { delete C().r.bets[+d.k]; save(); render(); },
+  rspin: () => rouletteSpin(),
+  rnew: () => { const r = C().r; r.round++; r.bets = {}; r.state = "bet"; r.out = null; save(); render(); },
+  bjdeal: () => bjDeal(),
+  bjhit: () => bjAction("hit"), bjstand: () => bjAction("stand"), bjdouble: () => bjAction("double"),
+  bjnew: () => { const b = C().bj; b.round++; b.state = "bet"; b.hands = {}; b.dealer = []; b.out = null; b.turn = -1; save(); render(); },
+  slteam: d => { if (C().sl.state === "spin") return; C().sl.team = +d.k; C().sl.out = null; save(); render(); },
+  slotpull: () => { const inp = document.getElementById("sl-pts"); if (inp) C().sl.pts = +inp.value || 0; slotPull(); },
+  ldteam: d => { C().ld.team = +d.k; save(); render(); },
+  ldstart: () => ladderStart(), ldup: () => ladderGuess("up"), lddown: () => ladderGuess("down"), ldcash: () => ladderCash(),
+  cgive: d => { const g = C().give[0]; if (!g) return; pour(+d.k, 1, `${state.teams[g.team].name} gir ${shotWord(1)} til ${state.teams[+d.k].name}!`); g.n--; if (g.n <= 0) C().give.shift(); save(); render(); },
+  cgiveskip: () => { C().give.shift(); save(); render(); },
   witch: () => drawWitch(),
   online: () => { if (!state.room) { onlineCreate(); return; } online.showQR = !online.showQR; renderOverlay(); },
   onlinecreate: () => onlineCreate(),
@@ -2273,6 +2711,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => {
   const t = e.target;
+  if (t.dataset.cbet != null && t.dataset.f === "type") { const k = +t.dataset.cbet, b = C().r.bets[k] || cleanStake(k, {}, true); b.type = t.value; C().r.bets[k] = cleanStake(k, { ...b, pts: document.getElementById(`cb-pts-${k}`)?.value ?? b.pts, shots: document.getElementById(`cb-shots-${k}`)?.value ?? b.shots }, true); save(); render(); return; }
   if (t.dataset.round) { state.off = state.off || {}; if (t.checked) delete state.off[t.dataset.round]; else state.off[t.dataset.round] = true; save(); render(); return; }
   if (t.dataset.setting) { state[t.dataset.setting] = t.checked; if (t.dataset.setting === "shotMode") state.wheelResult = null; save(); render(); }
 });
@@ -2298,6 +2737,7 @@ document.addEventListener("keydown", e => {
   if (k === "h") drawWitch();
   if (k === "b") ACT.reopenbuzz();
   if (k === "d") ACT.droulette();
+  if (k === "k") ACT.opencasino();
   if (k === "g") ghostVisit(true);
   if (k === "j") jumpscare();
   if (k === "t") startTimer(20);

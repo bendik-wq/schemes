@@ -93,6 +93,20 @@ textarea { font: 600 1.15rem/1.35 var(--f-body); color: var(--bone); background:
 .bids { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .bids button { font: 600 1.1rem var(--f-mono); padding: 18px 4px; border-radius: 12px; border: 0; background: var(--slime); color: var(--ink); }
 .bids button:disabled { opacity: .35; }
+.chips6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.chips6 button, .shots4 button { font: 700 1rem var(--f-body); padding: 14px 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--crypt-2); color: var(--bone); }
+.chips6 button[aria-pressed="true"], .shots4 button[aria-pressed="true"] { background: #e2b94a; color: var(--ink); border-color: #e2b94a; }
+.chips6 button:disabled { opacity: .3; }
+.shots4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.betgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.betgrid button { font: 800 1rem var(--f-body); padding: 14px 6px; border-radius: 12px; border: 2px solid var(--line); background: var(--crypt-2); color: var(--bone); }
+.betgrid button[data-v="red"] { border-color: #b3122e; } .betgrid button[data-v="black"] { border-color: #555; }
+.betgrid button[aria-pressed="true"] { background: #e2b94a; color: var(--ink); border-color: #e2b94a; }
+.felt { background: radial-gradient(120% 100% at 50% 0%, #0f3a2a, #0a2a1e); border: 2px solid #e2b94a; }
+.cards { display: flex; gap: 6px; flex-wrap: wrap; }
+.cards span { width: 46px; aspect-ratio: 5 / 7; border-radius: 7px; background: #f6f1e7; color: #16110f; display: grid; place-items: center; font: 700 1rem var(--f-mono); }
+.cards span.r { color: #b3122e; }
+.cards span.q { background: repeating-linear-gradient(45deg, #ff7b1c 0 6px, #8a3a08 6px 12px); }
 #scare { position: fixed; inset: 0; z-index: 11; display: grid; place-items: center; background: #000; font-size: 60vw; line-height: 1; animation: strobe .1s steps(2) infinite; }
 @keyframes strobe { 50% { background: #6a0010; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -270,7 +284,38 @@ function board() {
   const ranked = S.teams.map((t, k) => ({ ...t, k })).sort((a, b) => b.score - a.score);
   return `<div class="list">${ranked.map((t, i) => `<div class="li ${t.k === S.team ? "mine" : ""}" style="--c:${COLORS[t.k]}"><span class="n">${i + 1}</span><span class="nm">${esc(t.name)}</span><span class="sc">${fmt(t.score)}${t.shots ? ` · 🥃${t.shots}` : ""}</span></div>`).join("")}</div>`;
 }
+const cardsHtml = arr => `<div class="cards">${(arr || []).map(c => c === "?" ? `<span class="q"></span>` : `<span class="${/[♥♦]/.test(c) ? "r" : ""}">${esc(c)}</span>`).join("")}</div>`;
 const VIEWS = {
+  stake(p) {
+    const max = (p.max || [])[S.team] || 0, min = p.minShots || 0;
+    const b = S.bet && S.bet.key === p.key ? S.bet : (S.bet = { key: p.key, type: "red", num: 13, pts: Math.min(100, max), shots: Math.max(min, 1) });
+    if (b.pts > max) b.pts = max;
+    const sent = S.myVotes[p.key];
+    const types = p.bets || [];
+    return `<div class="card felt"><div class="eyebrow" style="color:#e2b94a">Dødskasinoet · ${p.game === "roulette" ? "Rulett" : "Blackjack"}</div><h1>Plasser innsatsen</h1>
+      ${p.game === "roulette" ? `<div class="eyebrow">Spill på</div><div class="betgrid">${types.map(([v, l]) => `<button data-act="btype" data-v="${v}" aria-pressed="${b.type === v}">${esc(l)}</button>`).join("")}</div>
+        ${b.type === "num" ? `<div class="tools"><button data-act="bnum" data-d="-1">−</button><button style="flex:2;font-size:1.4rem;background:${b.num === 0 ? "#1f8a4c" : [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(b.num) ? "#b3122e" : "#141014"}">${b.num}</button><button data-act="bnum" data-d="1">+</button></div>` : ""}` : ""}
+      <div class="eyebrow">Poeng (laget har ${fmt(max)})</div>
+      <div class="chips6">${[0, 50, 100, 200, 500, max].map((v, i) => `<button data-act="bpts" data-v="${v}" aria-pressed="${b.pts === v}" ${v > max ? "disabled" : ""}>${i === 5 ? "Alt inn" : fmt(v)}</button>`).join("")}</div>
+      <div class="eyebrow">Shots i potten</div>
+      <div class="shots4">${[0, 1, 2, 3].map(v => `<button data-act="bshots" data-v="${v}" aria-pressed="${b.shots === v}" ${v < min ? "disabled" : ""}>${v}</button>`).join("")}</div>
+      <button class="btn" data-act="bsend" style="background:#e2b94a">${sent ? "Oppdater innsatsen" : "Sett innsatsen"}</button>
+      ${sent ? `<p class="note">Sendt for laget. Siste innsending gjelder.</p>` : `<p class="note">Taper dere, drikker dere shotsene. Vinner dere, deler dere dem ut.</p>`}</div>`;
+  },
+  bj(p) {
+    const mine = (p.hands || {})[S.team], myTurn = p.turn === S.team;
+    return `<div class="card felt"><div class="eyebrow" style="color:#e2b94a">Blackjack mot Døden</div>
+      <div><b>💀 Døden${p.dealerTotal != null ? ` · ${p.dealerTotal}` : ""}</b>${cardsHtml(p.dealer)}</div>
+      ${mine ? `<div><b>Dere · ${mine.total}</b>${cardsHtml(mine.cards)}<p class="note">${fmt(mine.pts)} poeng · ${mine.shots} shots${mine.status === "bust" ? " · over 21!" : mine.status === "bj" ? " · BLACKJACK" : ""}</p>${mine.res ? `<p class="q">${esc(mine.res)}</p>` : ""}</div>` : `<p class="lede">Laget ditt er ikke med i denne runden.</p>`}
+      ${myTurn ? `<div class="two"><button class="btn" data-act="bj" data-v="hit">Trekk</button><button class="btn ghost" data-act="bj" data-v="stand">Stå</button></div>${mine.cards.length === 2 ? `<button class="btn" style="background:#e2b94a" data-act="bj" data-v="double">Dobbel</button>` : ""}`
+        : p.done ? "" : `<p class="lede">${p.turn >= 0 ? `${esc(S.teams[p.turn]?.name || "")} sin tur.` : "Døden trekker …"}</p>`}</div>`;
+  },
+  slot(p) {
+    const mine = p.team === S.team;
+    return `<div class="card felt" style="text-align:center"><div class="eyebrow" style="color:#e2b94a">Gravautomaten</div>
+      ${mine ? `<div class="big-msg" style="color:#e2b94a">Deres tur!</div><button class="buzzer" style="--tc:#e0435a;font-size:2.6rem" data-act="pull" ${p.spinning ? "disabled" : ""}>Dra!</button>` : `<p class="q">${esc(S.teams[p.team]?.name || "Et lag")} spiller på automaten. Se storskjermen!</p>`}
+      ${p.text ? `<p class="lede">${esc(p.text)}</p>` : ""}</div>${board()}`;
+  },
   choice(p) {
     if ((p.out || []).includes(S.pid)) return `<div class="card" style="text-align:center"><div class="big-msg" style="color:var(--blood)">Du er ute!</div><p class="lede">Hei hei. Hei hei! Heie på laget ditt.</p></div>${board()}`;
     const mine = S.myVotes[p.key];
@@ -401,6 +446,13 @@ document.addEventListener("click", e => {
   if (a === "skull") { const k = +b.dataset.k, n = +b.dataset.n; S.myVotes[p.key + ":" + k] = n; send({ t: "vote", key: p.key, sub: k, value: n }); vibrate(20); render(); }
   if (a === "choose") { const v = b.dataset.num === "1" ? +b.dataset.id : b.dataset.id; S.myVotes[p.key] = v; send({ t: "vote", key: p.key, value: v }); vibrate(20); render(); }
   if (a === "lie") { const v = ($("#lie").value || "").trim().slice(0, 60); if (!v) return; S.myVotes[p.key] = v; S.editing = false; send({ t: "vote", key: p.key, value: v }); vibrate(30); render(); }
+  if (a === "btype") { S.bet.type = b.dataset.v; render(); }
+  if (a === "bnum") { S.bet.num = (S.bet.num + +b.dataset.d + 37) % 37; render(); }
+  if (a === "bpts") { S.bet.pts = +b.dataset.v; render(); }
+  if (a === "bshots") { S.bet.shots = +b.dataset.v; render(); }
+  if (a === "bsend") { const { type, num, pts, shots } = S.bet; S.myVotes[p.key] = 1; send({ t: "vote", key: p.key, value: { type, num, pts, shots } }); vibrate(40); tone(880, .08); render(); }
+  if (a === "bj") { send({ t: "vote", key: p.key, value: b.dataset.v }); vibrate(30); b.disabled = true; }
+  if (a === "pull") { send({ t: "vote", key: p.key, value: "pull" }); vibrate([60, 40, 200]); b.disabled = true; }
   if (a === "bid") { send({ t: "vote", key: p.key, value: +b.dataset.v }); vibrate(30); tone(660, .08); }
   if (a === "pen") pad.color = b.dataset.c;
   if (a === "clear") { const c = $("#pad"); if (c) { c.getContext("2d").fillStyle = "#f2e8d5"; c.getContext("2d").fillRect(0, 0, c.width, c.height); pad.dirty = true; } }
