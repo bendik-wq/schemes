@@ -329,6 +329,21 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
 #scare.flash { animation: redflash .12s steps(2) infinite; }
 @keyframes redflash { 50% { background: #5a0010; } }
 
+/* Mobilspill */
+.icon-btn.online { border-color: var(--ghost); color: var(--ghost); }
+.icon-btn.online.live { background: var(--ghost); color: var(--ink-on-bright); }
+.qr-card { width: min(720px, 100%); max-height: 100%; overflow-y: auto; background: var(--crypt); border: 2px solid var(--ghost); border-radius: 24px; padding: clamp(18px, 4vw, 32px); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: start; }
+.qr-box { background: #fff; padding: 12px; border-radius: 16px; width: clamp(180px, 30vw, 280px); max-width: 100%; }
+.qr-box svg, .qr-box img { width: 100%; height: auto; display: block; }
+.room-code { font-family: var(--f-display); font-size: clamp(3rem, 9vw, 5rem); line-height: .9; color: var(--ghost); letter-spacing: .08em; }
+.join-url { font: 500 .95rem var(--f-mono); color: var(--bone); overflow-wrap: anywhere; user-select: all; }
+.roster { display: grid; gap: 8px; }
+.roster div { font-size: .9rem; color: var(--ash); }
+.roster b { color: var(--bone); }
+.crowd { font: 500 .9rem var(--f-mono); color: var(--ghost); }
+.costume img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; max-width: 100%; }
+@media (max-width: 640px) { .qr-card { grid-template-columns: minmax(0, 1fr); justify-items: center; } }
+
 @media (max-width: 820px) {
   .setup-grid, .wheel-layout, .roulette { grid-template-columns: minmax(0, 1fr); }
   .brand { font-size: 1.3rem; }
@@ -359,6 +374,7 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
       <nav class="rounds" id="nav" aria-label="Runder"></nav>
       <div class="tools">
         <span class="timer-pill" id="timer" hidden>0:20</span>
+        <button class="icon-btn online" id="btn-online" data-act="online" hidden title="Mobilspill: vis QR-kode og spillere">Mobilspill</button>
         <button class="icon-btn scare" data-act="scare" title="Skrekkknappen (J). Advarsel: høyt!">Skrekk!</button>
         <button class="icon-btn witch" data-act="witch" title="Trekk et kort fra hekseklokka (H)">Hekseklokka</button>
         <button class="icon-btn" id="btn-sound" data-act="mute" aria-pressed="true" title="Lydeffekter (M)">Lyd</button>
@@ -664,6 +680,7 @@ const fresh = () => ({
   finalIdx: 0, finalStage: "wager", wagers: {}, finalMarks: {}, finalApplied: false,
   tieIdx: 0, tieOpen: false, tieReveal: false,
   witchDeck: [], witchCard: null,
+  buzzGen: 0, wheelSpin: 0, room: null,
   muted: false
 });
 let state;
@@ -870,7 +887,7 @@ function jumpscare() {
   // blod
   x.fillStyle = "#8a0010";
   for (let i = 0; i < 6; i++) { const bx = 300 + Math.random() * 200; x.fillRect(bx, 700, 8 + Math.random() * 8, 40 + Math.random() * 100); }
-  sfx.scream();
+  sfx.scream(); osend({ t: "scare" });
   setTimeout(() => box.remove(), 1500);
 }
 
@@ -913,13 +930,14 @@ function pour(who, n = 1, headline) {
   sfx.pour();
   const txt = headline || (list.length === 1 ? `${state.teams[list[0]].name}: ${shotWord(n)}!` : `${shotWord(n)} til ${list.length} lag!`);
   banner(state.shotMode ? txt.toUpperCase() : txt, list.length === 1 ? tc(list[0]) : "var(--candle)", 2800);
+  osend({ t: "pour", teams: list, n, text: txt });
 }
 const allTeams = () => state.teams.map((_, k) => k);
 function leaderIdx() { let b = -Infinity, bi = -1; state.teams.forEach((t, i) => { if (t.score > b) { b = t.score; bi = i; } }); return bi; }
 function lastIdx() { let b = Infinity, bi = -1; state.teams.forEach((t, i) => { if (t.score < b) { b = t.score; bi = i; } }); return bi; }
-function buzz(i) {
+function buzz(i, who) {
   if (!state.teams[i]) return;
-  sfx.buzz(); banner(state.teams[i].name + "!", tc(i));
+  sfx.buzz(); banner(who ? `${who} · ${state.teams[i].name}` : state.teams[i].name + "!", tc(i));
   document.querySelectorAll(".score").forEach(n => n.classList.toggle("buzzed", n.dataset.i == i));
   setTimeout(() => document.querySelectorAll(".score.buzzed").forEach(n => n.classList.remove("buzzed")), 4000);
   if (state.screen === "seance" && state.seState === "running") { state.seState = "paused"; state.seBuzz = i; clearPending(); save(); render(); }
@@ -944,7 +962,7 @@ function render() {
   if (state.screen === "seance") placePlanchette(true);
   $("#btn-sound").setAttribute("aria-pressed", String(!state.muted));
   $("#btn-sound").textContent = state.muted ? "Lyd av" : "Lyd på";
-  renderOverlay();
+  renderOverlay(); renderOnlineBtn(); syncOnline();
 }
 function renderNav() {
   const nav = $("#nav");
@@ -965,6 +983,7 @@ function renderScores() {
         <button class="full" data-act="pour" data-i="${i}" aria-label="Gi ${esc(t.name)} ${shotWord(1)}">+${icon()} ${state.shotMode ? "shot" : "godteri"}</button>
       </div>
     </div>`).join("");
+  syncOnline();
 }
 const nextBtn = (id, label) => { const n = nextOf(id); return `<button class="btn ghost" data-act="go" data-to="${n}">${label || (n === "end" ? "Til kåringen" : `Videre til runde ${roundNo(n)}`)}</button>`; };
 const head = (id, a, b, lede, extra = "") => `
@@ -1018,12 +1037,15 @@ const VIEWS = {
           <p class="keys">Hurtigtaster: <kbd>1</kbd>–<kbd>6</kbd> buzz · <kbd>Mellomrom</kbd> vis svar / spill av / start · <kbd>H</kbd> hekseklokka · <kbd>J</kbd> skrekk · <kbd>T</kbd> 20 sek · <kbd>M</kbd> lyd · <kbd>F</kbd> fullskjerm · <kbd>Esc</kbd> lukk</p>
         </section>
       </div>
+      <div class="stack">
+      ${onlinePanel()}
       <section class="panel" aria-labelledby="h-rounds">
         <h2 id="h-rounds">Kveldens program</h2>
         <ol class="round-list">${ROUNDS.map((r, k) => `<li><span class="num">${k + 1}</span><div><b>${roundName(r.id)}</b><span>${T(r.desc)}</span></div></li>`).join("")}</ol>
         <button class="btn big" data-act="start">Slipp skrekken løs</button>
         <button class="btn ghost small" data-act="go" data-to="board">Hopp over åpningen</button>
       </section>
+      </div>
     </div>`;
   },
 
@@ -1147,7 +1169,11 @@ const VIEWS = {
     const segs = wheelSegs(), r = state.wheelResult, w = r != null ? segs[r] : null, ti = state.wheelTeam;
     let actions = "";
     if (w && !state.wheelApplied) {
-      if (w.kind === "challenge") actions = [0, 100, 200, 300].map(v => `<button class="btn ${v ? "slime" : "ghost"} small" data-act="wheelaward" data-v="${v}">${v ? "+" + v : "Ingen poeng"}</button>`).join("");
+      if (w.kind === "challenge") {
+        actions = [0, 100, 200, 300].map(v => `<button class="btn ${v ? "slime" : "ghost"} small" data-act="wheelaward" data-v="${v}">${v ? "+" + v : "Ingen poeng"}</button>`).join("");
+        const cr = crowdRate();
+        if (cr) actions += `<span class="crowd">Publikum: snitt ${cr.avg} fra ${cr.n} stemmer</span><button class="btn small" style="background:var(--ghost)" data-act="wheelaward" data-v="${cr.round}">Gi publikumssnittet (+${cr.round})</button>`;
+      }
       else if (w.kind === "swap") actions = state.teams.map((t, k) => k === ti ? "" : `<button class="btn ghost small" data-act="wheelswap" data-k="${k}">Bytt med ${esc(t.name)}</button>`).join("");
       else if (w.kind === "giveshot") actions = state.teams.map((t, k) => k === ti ? "" : `<button class="btn hex small" data-act="wheelgive" data-k="${k}">${esc(t.name)}</button>`).join("");
       else actions = `<button class="btn" data-act="wheelapply">Utfør</button>`;
@@ -1172,11 +1198,13 @@ const VIEWS = {
     <div class="costumes">${state.teams.map((t, k) => `
       <div class="costume" style="border-top:4px solid ${tc(k)}">
         <div class="nm" style="color:${tc(k)}">${esc(t.name)}</div>
+        ${online.photos[k] ? `<img src="${online.photos[k]}" alt="Kostymet til ${esc(t.name)}">` : ""}
+        ${crowdCostume(k) ? `<span class="crowd">Publikum: ${crowdCostume(k).avg.toLocaleString("nb-NO")} av 5 fra ${crowdCostume(k).n} stemmer</span>` : ""}
         ${COSTUME_CRIT.map(c => { const v = (state.costume[k] || {})[c.k] || 0; return `<div class="crit"><span>${c.n}</span><div class="skulls">${[1, 2, 3, 4, 5].map(n => `<button class="${n <= v ? "on" : ""}" data-act="skull" data-k="${k}" data-c="${c.k}" data-n="${n}" aria-label="${c.n}: ${n} av 5" ${state.costumeApplied ? "disabled" : ""}>💀</button>`).join("")}</div></div>`; }).join("")}
         <div class="tot">${tot(k)} hoder · ${tot(k) * 20} poeng</div>
       </div>`).join("")}</div>
     <div class="row spread">
-      ${state.costumeApplied ? `<span class="progress">Poengene er delt ut.</span>` : `<button class="btn big" data-act="costumeapply">Kår vinneren og del ut poeng</button>`}
+      ${state.costumeApplied ? `<span class="progress">Poengene er delt ut.</span>` : `<div class="row">${state.teams.some((_, k) => crowdCostume(k)) ? `<button class="btn ghost" data-act="crowdcostume">Bruk publikumsstemmene</button>` : ""}<button class="btn big" data-act="costumeapply">Kår vinneren og del ut poeng</button></div>`}
       ${nextBtn("costume")}
     </div>`;
   },
@@ -1435,6 +1463,7 @@ function potBoom() {
 /* ================================================================== Hekseklokka */
 function renderOverlay() {
   const root = $("#overlay-root");
+  if (online.showQR) { root.innerHTML = qrOverlay(); return; }
   if (!state.witchCard) { root.innerHTML = ""; return; }
   const c = state.witchCard;
   const extra = c.act === "lastbonus" ? `<button class="btn slime" data-act="witchact">Gi 200 til ${esc(state.teams[lastIdx()]?.name || "")}</button>`
@@ -1483,6 +1512,7 @@ function segmentAtPointer(rot, n) {
 let spinning = false;
 function spin() {
   if (spinning) return; spinning = true;
+  state.wheelSpin = (state.wheelSpin || 0) + 1;
   state.wheelResult = null; state.wheelApplied = false; render();
   const btn = $("#spin"); if (btn) btn.disabled = true;
   const n = wheelSegs().length;
@@ -1532,6 +1562,133 @@ function pickGlass(n) {
 }
 function advanceRoulTeam() { state.roul.team = (state.roul.lastTeam + 1) % state.teams.length; save(); render(); }
 
+/* ================================================================== Mobilspill (bare på Cloudflare) */
+const ONLINE_HOME = "https://spokelsesshowet.bendik-50e.workers.dev";
+const online = { on: false, ws: null, connected: false, retry: 0, players: [], votes: {}, photos: {}, lastPhase: "", lastTeams: "", showQR: false, renderQ: 0 };
+const osend = o => { if (online.ws && online.ws.readyState === 1) online.ws.send(JSON.stringify(o)); };
+async function onlineInit() {
+  try {
+    const r = await fetch("/api/ping", { cache: "no-store" });
+    if (!r.ok) return;
+    const j = await r.json(); if (!j.ok) return;
+  } catch (e) { return; }
+  online.on = true;
+  if (state.room) onlineConnect(state.room);
+  render();
+}
+async function onlineCreate() {
+  if (!online.on) return;
+  try { const j = await (await fetch("/api/new", { cache: "no-store" })).json(); state.room = j.code; } catch (e) { banner("Fikk ikke laget et rom. Sjekk nettet.", "var(--blood)"); return; }
+  save(); online.players = []; online.votes = {}; online.showQR = true; onlineConnect(state.room); render();
+}
+function onlineConnect(code) {
+  try { if (online.ws) { online.ws.onclose = null; online.ws.close(); } } catch (e) {}
+  const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/${code}?role=host`);
+  online.ws = ws;
+  ws.onopen = () => { online.connected = true; online.retry = 0; online.lastPhase = ""; online.lastTeams = ""; syncOnline(); renderOnlineBtn(); };
+  ws.onclose = () => { online.connected = false; renderOnlineBtn(); if (online.ws === ws) setTimeout(() => { if (online.ws === ws && state.room) onlineConnect(state.room); }, Math.min(8000, 500 * 2 ** online.retry++)); };
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (_) { return; } onlineMsg(m); };
+}
+function onlineMsg(m) {
+  if (m.t === "roster") { online.players = m.players || []; renderOnlineBtn(); if (online.showQR) renderOverlay(); if (state.screen === "setup") scheduleRender(); }
+  if (m.t === "buzzed") { if (m.key === phaseNow().key) buzz(m.team, m.name); }
+  if (m.t === "photo") { online.photos[m.team] = m.data; if (state.screen === "costume") scheduleRender(); if (m.name && state.teams[m.team]) banner(`${state.teams[m.team].name} sendte et bilde!`, tc(m.team), 1800); }
+  if (m.t === "vote") {
+    const id = m.pid + (m.sub != null ? ":" + m.sub : "");
+    (online.votes[m.key] = online.votes[m.key] || {})[id] = { team: m.team, value: m.value, sub: m.sub, at: Date.now() };
+    applyVote(m);
+  }
+}
+function applyVote(m) {
+  const ph = phaseNow(); if (m.key !== ph.key) return;
+  if (ph.mode === "tf") {
+    const votes = Object.values(online.votes[m.key] || {});
+    state.teams.forEach((_, k) => {
+      const mine = votes.filter(v => v.team === k); if (!mine.length) return;
+      const yes = mine.filter(v => v.value === true).length, no = mine.length - yes;
+      state.tfVotes[k] = yes === no ? mine.sort((a, b) => b.at - a.at)[0].value : yes > no;
+    });
+    save(); scheduleRender();
+  } else if (ph.mode === "wager" && state.teams[m.team]) {
+    state.wagers[m.team] = Math.max(0, Math.min(+m.value || 0, Math.max(state.teams[m.team].score, 300))); save();
+    const inp = document.getElementById("wager-" + m.team); if (inp) inp.value = state.wagers[m.team];
+    banner(`${state.teams[m.team].name} har satset!`, tc(m.team), 1500);
+  } else scheduleRender();
+}
+function scheduleRender() {
+  if (online.renderQ) return;
+  online.renderQ = requestAnimationFrame(() => { online.renderQ = 0; if (spinning || glassBusy || state.seState === "running" || state.potState === "live" || state.screen === "intro") { renderOnlineBtn(); return; } render(); });
+}
+function phaseNow() {
+  const s = state.screen, g = state.buzzGen || 0;
+  const round = ROUNDS.some(r => r.id === s) ? roundName(s) : s === "end" ? "Kåringen" : "Spøkelsesshowet";
+  const P = o => Object.assign({ round }, o);
+  if ((s === "board" || s === "board2") && state.current && state.current.b === s) {
+    const { b, c, i, reveal } = state.current, q = BOARDS[b].data[c].qs[i].q;
+    return reveal ? P({ mode: "watch", text: q }) : P({ mode: "buzz", key: `q:${b}:${c}:${i}:${g}`, text: q });
+  }
+  if (s === "emoji" && !state.emojiReveal) return P({ mode: "buzz", key: `emoji:${state.emojiIdx}:${g}`, text: EMOJI[state.emojiIdx].e });
+  if (s === "tune" && !state.tuneReveal) return P({ mode: "buzz", key: `tune:${state.tuneIdx}:${g}`, text: "Hvilken melodi er dette?" });
+  if (s === "seance" && (state.seState === "running" || state.seState === "paused")) return P({ mode: "buzz", key: `se:${state.seIdx}:${g}`, text: SEANCE[state.seIdx].q });
+  if (s === "tf") { const it = TF[state.tfIdx]; return state.tfReveal ? P({ mode: "tfresult", key: `tf:${state.tfIdx}`, text: it.s, correct: it.t }) : P({ mode: "tf", key: `tf:${state.tfIdx}`, text: it.s }); }
+  if (s === "wheel" && state.wheelResult != null && !state.wheelApplied) { const w = wheelSegs()[state.wheelResult]; if (w && w.kind === "challenge") return P({ mode: "rate", key: `wheel:${state.wheelSpin || 0}`, team: state.wheelTeam, text: w.title }); }
+  if (s === "costume" && !state.costumeApplied) return P({ mode: "costume", key: "costume" });
+  if (s === "final") return state.finalStage === "wager" ? P({ mode: "wager", key: `final:${state.finalIdx}`, max: state.teams.map(t => Math.max(t.score, 300)) }) : P({ mode: "watch", text: FINALS[state.finalIdx].q });
+  if (s === "end") return P({ mode: "end" });
+  return P({ mode: "watch" });
+}
+function syncOnline() {
+  if (!online.connected) return;
+  const teams = JSON.stringify(state.teams.map(t => ({ name: t.name, score: t.score, shots: t.shots || 0 })));
+  if (teams !== online.lastTeams) { online.lastTeams = teams; osend({ t: "teams", teams: JSON.parse(teams) }); }
+  const ph = JSON.stringify(phaseNow());
+  if (ph !== online.lastPhase) { online.lastPhase = ph; osend({ t: "phase", phase: JSON.parse(ph) }); }
+}
+function crowdRate() {
+  const v = Object.values(online.votes[`wheel:${state.wheelSpin || 0}`] || {}); if (!v.length) return null;
+  const avg = v.reduce((a, b) => a + (+b.value || 0), 0) / v.length;
+  return { avg: Math.round(avg), n: v.length, round: Math.round(avg / 50) * 50 };
+}
+function crowdCostume(k) {
+  const v = Object.values(online.votes.costume || {}).filter(x => x.sub === k); if (!v.length) return null;
+  return { avg: Math.round(v.reduce((a, b) => a + (+b.value || 0), 0) / v.length * 10) / 10, n: v.length };
+}
+const joinUrl = () => `${location.origin}/spill?rom=${state.room}`;
+function qrSvg(text) {
+  if (typeof qrcode !== "function") return "";
+  try { const q = qrcode(0, "M"); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 8, margin: 2, scalable: true }); } catch (e) { return ""; }
+}
+function rosterHtml() {
+  if (!online.players.length) return `<div>Ingen spillere ennå. Skann koden for å bli med.</div>`;
+  return state.teams.map((t, k) => { const ps = online.players.filter(p => p.team === k); return `<div><b style="color:${tc(k)}">${esc(t.name)}</b> · ${ps.length ? ps.map(p => esc(p.name)).join(", ") : "ingen ennå"}</div>`; }).join("");
+}
+function onlinePanel() {
+  if (!online.on) return `<section class="panel"><h2>Mobilspill</h2><p class="note">Vil dere buzze, stemme og sende kostymebilder fra mobilen? Åpne showet på <a href="${ONLINE_HOME}" target="_blank" rel="noopener" style="color:var(--ghost)">${ONLINE_HOME.replace("https://", "")}</a>. Der får gjestene en QR-kode å skanne.</p></section>`;
+  if (!state.room) return `<section class="panel"><h2>Mobilspill</h2><p class="note">Gjestene skanner en QR-kode og bruker mobilen som buzzer, stemmer på sant/skrøne, sender innsats i finalen og laster opp kostymebilder. Når noen må drikke, blinker telefonen deres rødt.</p><button class="btn" style="background:var(--ghost)" data-act="onlinecreate">Åpne rom for mobiler</button></section>`;
+  return `<section class="panel"><h2>Mobilspill · rom ${esc(state.room)}</h2>
+    <div class="row" style="align-items:start;flex-wrap:nowrap"><div class="qr-box" style="width:140px;padding:8px">${qrSvg(joinUrl())}</div>
+    <div style="display:grid;gap:8px;min-width:0"><span class="join-url">${esc(joinUrl())}</span><div class="roster">${rosterHtml()}</div></div></div>
+    <div class="row"><button class="btn small" style="background:var(--ghost)" data-act="online">Vis stor QR-kode</button><span class="progress">${online.connected ? `${online.players.length} tilkoblet` : "Kobler til …"}</span></div></section>`;
+}
+function qrOverlay() {
+  return `<div class="overlay" data-act="onlineclose-bg"><div class="qr-card" role="dialog" aria-label="Bli med fra mobilen">
+    <div class="qr-box">${qrSvg(joinUrl())}</div>
+    <div style="display:grid;gap:14px;min-width:0">
+      <div class="eyebrow" style="color:var(--ghost)">Skann og bli med</div>
+      <div class="room-code">${esc(state.room || "")}</div>
+      <span class="join-url">${esc(joinUrl())}</span>
+      <div class="roster">${rosterHtml()}</div>
+      <div class="row"><button class="btn small" style="background:var(--ghost)" data-act="reopenbuzz">Åpne buzzeren igjen (B)</button><button class="btn ghost small" data-act="onlinenew">Nytt rom</button><button class="btn ghost small" data-act="onlineclose">Lukk</button></div>
+    </div>
+  </div></div>`;
+}
+function renderOnlineBtn() {
+  const b = $("#btn-online"); if (!b) return;
+  b.hidden = !online.on;
+  b.classList.toggle("live", online.connected);
+  b.textContent = state.room ? `${state.room} · ${online.players.length}` : "Mobilspill";
+}
+
 /* ================================================================== Handlinger */
 const ACT = {
   go: d => go(d.to),
@@ -1543,7 +1700,7 @@ const ACT = {
   buzz: d => buzz(+d.i),
   adj: d => addScore(+d.i, +d.d),
   pour: d => pour(+d.i, 1),
-  wrong: d => { addScore(+d.i, -(+d.d)); if (+d.s) setTimeout(() => pour(+d.i, +d.s), 350); },
+  wrong: d => { state.buzzGen++; addScore(+d.i, -(+d.d)); if (+d.s) setTimeout(() => pour(+d.i, +d.s), 350); },
   timer: d => startTimer(+d.s),
   addteam: () => { const used = new Set(state.teams.map(t => t.name)); state.teams.push({ name: NAME_POOL.find(n => !used.has(n)) || "Lag " + (state.teams.length + 1), score: 0, shots: 0 }); save(); render(); },
   rmteam: d => { state.teams.splice(+d.i, 1); state.wagers = {}; state.tfVotes = {}; state.finalMarks = {}; state.costume = {}; if (state.wheelTeam >= state.teams.length) state.wheelTeam = 0; if (state.roul.team >= state.teams.length) state.roul.team = 0; save(); render(); },
@@ -1581,7 +1738,7 @@ const ACT = {
   sepause: () => { clearPending(); state.seState = "paused"; state.seBuzz = null; save(); render(); },
   seresume: () => seStart(),
   seright: () => { const b = state.seBuzz, v = seValue(); addScore(b, v); state.seState = "solved"; state.seDone[state.seIdx] = true; save(); render(); placePlanchette(); rainCandy(30); },
-  sewrong: () => { const b = state.seBuzz; addScore(b, -100); if (state.shotMode) setTimeout(() => pour(b, 1), 300); state.seBuzz = null; seStart(); },
+  sewrong: () => { state.buzzGen++; const b = state.seBuzz; addScore(b, -100); if (state.shotMode) setTimeout(() => pour(b, 1), 300); state.seBuzz = null; seStart(); },
   sereveal: () => { clearPending(); state.seState = "revealed"; state.seDone[state.seIdx] = true; save(); render(); placePlanchette(); sfx.gong(); },
   sestep: d => seGo(state.seIdx + +d.d),
   sego: d => seGo(+d.k),
@@ -1651,6 +1808,16 @@ const ACT = {
   lastshot: d => pour(+d.i, 1, `Siste skål til ${state.teams[+d.i].name}!`),
   celebrate: () => { rainCandy(); sfx.fanfare(); },
   witch: () => drawWitch(),
+  online: () => { if (!state.room) { onlineCreate(); return; } online.showQR = !online.showQR; renderOverlay(); },
+  onlinecreate: () => onlineCreate(),
+  onlinenew: () => { osend({ t: "clearPhotos" }); online.photos = {}; onlineCreate(); },
+  onlineclose: () => { online.showQR = false; renderOverlay(); },
+  "onlineclose-bg": (d, el, e) => { if (e.target === el) ACT.onlineclose(); },
+  reopenbuzz: () => { state.buzzGen++; save(); syncOnline(); banner("Buzzeren er åpen!", "var(--ghost)"); },
+  crowdcostume: () => {
+    state.teams.forEach((_, k) => { const c = crowdCostume(k); if (c) { const v = Math.max(1, Math.min(5, Math.round(c.avg))); state.costume[k] = { scary: v, creative: v, effort: v }; } });
+    save(); render();
+  },
   witchclose: () => { state.witchCard = null; save(); renderOverlay(); },
   "witchclose-bg": (d, el, e) => { if (e.target === el) ACT.witchclose(); },
   witchact: () => {
@@ -1684,7 +1851,7 @@ document.addEventListener("keydown", e => {
   if (e.target.matches("input, textarea")) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toLowerCase();
-  if (k === "escape") { if (state.witchCard) ACT.witchclose(); else if (state.current) ACT.closeq(); return; }
+  if (k === "escape") { if (online.showQR) ACT.onlineclose(); else if (state.witchCard) ACT.witchclose(); else if (state.current) ACT.closeq(); return; }
   if (/^[1-6]$/.test(k)) { buzz(+k - 1); return; }
   if (k === " ") {
     e.preventDefault();
@@ -1700,6 +1867,7 @@ document.addEventListener("keydown", e => {
     return;
   }
   if (k === "h") drawWitch();
+  if (k === "b") ACT.reopenbuzz();
   if (k === "j") jumpscare();
   if (k === "t") startTimer(20);
   if (k === "m") ACT.mute();
@@ -1718,7 +1886,7 @@ function start(seed) {
   state._confirmReset = false;
   if (state.screen === "intro") state.screen = "setup";
   if (!state.roul || !state.roul.glasses) state.roul = fresh().roul;
-  fxInit(); render();
+  fxInit(); render(); onlineInit();
   if (state.screen === "end") rainCandy(60);
   window.claude?.hot?.snapshot?.(() => ({ state }));
   if (document.fonts) document.fonts.ready.then(() => { if (state.screen === "wheel") drawWheel(); });

@@ -1,0 +1,4 @@
+node_modules/
+.wrangler/
+public/index.html
+public/qrcode.js
