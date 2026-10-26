@@ -439,6 +439,23 @@ footer.scores { border-top: 1px solid var(--line); background: rgba(13, 8, 16, .
 .give b { font-size: 1.15rem; }
 @media (max-width: 860px) { .table2 { grid-template-columns: minmax(0, 1fr); } }
 
+/* Allmennquizen */
+.qopts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qopt { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 16px 18px; border-radius: 16px; background: var(--qc); color: #fff; font: 800 clamp(1.05rem, 2.4vw, 1.5rem)/1.2 var(--f-body); }
+.qopt .sym { font-size: 1.4em; opacity: .9; }
+.qopt .cnt { font: 600 1rem var(--f-mono); opacity: .9; }
+.qopt.dim { opacity: .28; }
+.qopt.right { outline: 4px solid var(--bone); outline-offset: 2px; }
+.qbar { height: 10px; border-radius: 5px; background: var(--crypt-3); overflow: hidden; }
+.qbar i { display: block; height: 100%; background: var(--slime); }
+.qhead { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font: 500 .85rem var(--f-mono); color: var(--ash); letter-spacing: .08em; text-transform: uppercase; }
+.qhead b { color: var(--candle); font-weight: 500; }
+.lb { display: grid; gap: 6px; }
+.lb div { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 12px; border-radius: 10px; background: var(--crypt); border-left: 4px solid var(--tc); }
+.lb .g { font: 500 .9rem var(--f-mono); color: var(--slime); }
+.lb b { font: 600 1rem var(--f-mono); }
+@media (max-width: 640px) { .qopts { grid-template-columns: minmax(0, 1fr); } }
+
 /* Kasinofeed fra mobilene */
 #toasts { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); z-index: 35; display: grid; gap: 8px; width: min(340px, calc(100% - 32px)); pointer-events: none; }
 .toast { padding: 10px 14px; border-radius: 14px; background: rgba(10, 42, 30, .95); border: 1px solid var(--gold); border-left: 5px solid var(--tc, var(--gold)); color: var(--bone); font: 600 .9rem/1.3 var(--f-body); box-shadow: 0 10px 30px rgba(0, 0, 0, .5); animation: toastIn .35s ease-out; }
@@ -519,6 +536,7 @@ const NAME_POOL = ["Gresskarhodene", "Vampyrklubben", "Heksegjengen", "Zombie-ek
 
 const ROUNDS = [
   { id: "board",    short: "Tavla",        name: "Skrekk-tavla",              desc: "Fem kategorier, 25 spørsmål. Feil svar koster poeng og ett shot. To ruter skjuler Djevelens dobbel." },
+  { id: "quiz",     short: "Quiz",         name: "Allmennquizen",             desc: "Fire alternativer, svar på mobilen. Raske, riktige svar gir mest. Svar på rad gir bonus." },
   { id: "emoji",    short: "Emoji",        name: "Emoji-krypten",             desc: "Gjett skrekkfilmen fra emojiene. Første lag som roper riktig tar 200." },
   { id: "react",    short: "Refleks",      name: "Refleksen",                 desc: "Skjermen blir rød når du minst venter det. Raskest vinner. Tjuvstart koster ett shot." },
   { id: "tune",     short: "Lyd",          name: "Lyden fra krypten",         desc: "Showet spiller uhyggelige melodier. Hvilken er det?" },
@@ -655,6 +673,64 @@ const TUNES = [
   { a: "Familien Addams", x: "Snap, snap! Kjenningsmelodien til TV-serien fra 1964.", inst: "harpsi", seq: [[60,.22],[62,.22],[64,.22],[65,.4],["snap",.35],["snap",.55],[62,.22],[64,.22],[66,.22],[67,.4],["snap",.35],["snap",.55],[62,.22],[64,.22],[66,.22],[67,.22],[62,.22],[64,.22],[66,.22],[67,.22],[60,.22],[62,.22],[64,.22],[65,.4],["snap",.35],["snap",.5]] },
   { a: "I Dovregubbens hall (Grieg)", x: "Fra Peer Gynt, 1875. Norges skumleste troll-låt.", inst: "pizz", seq: [[59,.2],[61,.2],[62,.2],[64,.2],[66,.2],[62,.2],[66,.4],[65,.2],[61,.2],[65,.4],[64,.2],[60,.2],[64,.4],[59,.2],[61,.2],[62,.2],[64,.2],[66,.2],[62,.2],[66,.2],[71,.2],[69,.2],[66,.2],[62,.2],[66,.2],[69,.7]] }
 ];
+
+/* Showlengde: styrer hvilke runder som er med og hvor mange spørsmål hver runde har */
+const LENGTHS = {
+  kort:   { label: "Kort",   time: "ca. 1 time",  n: 6,  rows: 3, rounds: ["board", "quiz", "emoji", "react", "victim", "casino", "final"] },
+  normal: { label: "Normal", time: "ca. 2 timer", n: 10, rows: 4, rounds: ["board", "quiz", "emoji", "react", "tune", "victim", "tf", "draw", "lie", "wheel", "casino", "roulette", "final"] },
+  lang:   { label: "Lang",   time: "3 timer +",   n: 99, rows: 5, rounds: null }
+};
+const LEN = () => LENGTHS[state.len] || LENGTHS.kort;
+const lim = arr => Math.min(arr.length, LEN().n);
+const boardRows = () => LEN().rows;
+function offFor(len) { const keep = LENGTHS[len].rounds; const off = {}; if (keep) ROUNDS.forEach(r => { if (!keep.includes(r.id)) off[r.id] = true; }); return off; }
+
+/* Allmennquizen: a = indeks for riktig svar */
+const QUIZ = [
+  { c: "Geografi", q: "Hva er hovedstaden i Australia?", o: ["Sydney", "Canberra", "Melbourne", "Perth"], a: 1 },
+  { c: "Geografi", q: "Hva er hovedstaden i Canada?", o: ["Toronto", "Montreal", "Ottawa", "Vancouver"], a: 2 },
+  { c: "Geografi", q: "Hva heter Norges høyeste fjell?", o: ["Snøhetta", "Glittertind", "Store Skagastølstind", "Galdhøpiggen"], a: 3 },
+  { c: "Geografi", q: "Hvor mange fylker har Norge hatt siden 2024?", o: ["11", "13", "15", "19"], a: 2 },
+  { c: "Geografi", q: "Hvilket land har flest innbyggere i verden i dag?", o: ["Kina", "India", "USA", "Indonesia"], a: 1 },
+  { c: "Geografi", q: "Hvilket hav ligger mellom Afrika og Australia?", o: ["Atlanterhavet", "Stillehavet", "Indiahavet", "Sørishavet"], a: 2 },
+  { c: "Geografi", q: "I hvilket land ligger Machu Picchu?", o: ["Mexico", "Peru", "Chile", "Bolivia"], a: 1 },
+  { c: "Geografi", q: "Hvilken av disse byene ligger lengst nord?", o: ["Tromsø", "Bodø", "Hammerfest", "Narvik"], a: 2 },
+  { c: "Historie", q: "Hvilket år ble unionen med Sverige oppløst?", o: ["1814", "1884", "1905", "1945"], a: 2 },
+  { c: "Historie", q: "Hvem var den første mannen på månen?", o: ["Buzz Aldrin", "Neil Armstrong", "Juri Gagarin", "John Glenn"], a: 1 },
+  { c: "Historie", q: "Hvilket år falt Berlinmuren?", o: ["1985", "1989", "1991", "1993"], a: 1 },
+  { c: "Historie", q: "Hvem var Norges første kvinnelige statsminister?", o: ["Erna Solberg", "Gro Harlem Brundtland", "Siv Jensen", "Kristin Halvorsen"], a: 1 },
+  { c: "Historie", q: "Hvor ble Norges grunnlov vedtatt i 1814?", o: ["Christiania", "Bergen", "Eidsvoll", "Trondheim"], a: 2 },
+  { c: "Historie", q: "Hvilket skip sank på jomfruturen sin i 1912?", o: ["Lusitania", "Titanic", "Britannic", "Queen Mary"], a: 1 },
+  { c: "Historie", q: "Hvilken by var Norges hovedstad før Oslo/Christiania?", o: ["Bergen", "Trondheim", "Tønsberg", "Stavanger"], a: 0 },
+  { c: "Vitenskap", q: "Hva er det kjemiske symbolet for gull?", o: ["Go", "Gd", "Au", "Ag"], a: 2 },
+  { c: "Vitenskap", q: "Hvilken planet er nærmest sola?", o: ["Venus", "Mars", "Merkur", "Jorda"], a: 2 },
+  { c: "Vitenskap", q: "Hva er den største planeten i solsystemet?", o: ["Saturn", "Jupiter", "Neptun", "Uranus"], a: 1 },
+  { c: "Vitenskap", q: "Omtrent hvor lang tid bruker lyset fra sola til jorda?", o: ["8 sekunder", "8 minutter", "8 timer", "8 dager"], a: 1 },
+  { c: "Vitenskap", q: "Hvilken blodtype kalles universalgiver?", o: ["A+", "AB+", "O−", "B−"], a: 2 },
+  { c: "Vitenskap", q: "Hvilket organ lager insulin?", o: ["Leveren", "Nyrene", "Bukspyttkjertelen", "Milten"], a: 2 },
+  { c: "Vitenskap", q: "Hva er kokepunktet til vann ved havnivå i Fahrenheit?", o: ["100 °F", "180 °F", "212 °F", "232 °F"], a: 2 },
+  { c: "Vitenskap", q: "Hvilken gass tar plantene opp fra lufta?", o: ["Oksygen", "Nitrogen", "Karbondioksid", "Helium"], a: 2 },
+  { c: "Sport", q: "Hvor mange spillere har hvert lag på banen i fotball?", o: ["9", "10", "11", "12"], a: 2 },
+  { c: "Sport", q: "Hvor langt er et maraton?", o: ["40 km", "42,195 km", "45 km", "50 km"], a: 1 },
+  { c: "Sport", q: "Hvilket land har vunnet flest medaljer totalt i vinter-OL?", o: ["USA", "Tyskland", "Norge", "Russland"], a: 2 },
+  { c: "Sport", q: "Hvilken sport forbinder du med Magnus Carlsen?", o: ["Poker", "Sjakk", "Golf", "Tennis"], a: 1 },
+  { c: "Sport", q: "Hvor mange ringer er det i OL-symbolet?", o: ["4", "5", "6", "7"], a: 1 },
+  { c: "Sport", q: "Hvor mange poeng er en touchdown verdt i amerikansk fotball?", o: ["3", "5", "6", "7"], a: 2 },
+  { c: "Kultur", q: "Hvem skrev «Peer Gynt»?", o: ["Bjørnstjerne Bjørnson", "Henrik Ibsen", "Knut Hamsun", "Sigrid Undset"], a: 1 },
+  { c: "Kultur", q: "Hvilket norsk band hadde verdenshiten «Take On Me»?", o: ["a-ha", "Madcon", "Kings of Convenience", "Röyksopp"], a: 0 },
+  { c: "Kultur", q: "Hvem malte «Skrik»?", o: ["Edvard Munch", "Hans Gude", "Nikolai Astrup", "Harriet Backer"], a: 0 },
+  { c: "Kultur", q: "Hvor mange bøker er det i hovedserien om Harry Potter?", o: ["5", "6", "7", "8"], a: 2 },
+  { c: "Kultur", q: "Hvilken film vant Oscar for beste film med 11 statuetter i 1998?", o: ["Titanic", "Forrest Gump", "Gladiator", "Braveheart"], a: 0 },
+  { c: "Kultur", q: "I hvilken by ligger Louvre?", o: ["Roma", "London", "Paris", "Madrid"], a: 2 },
+  { c: "Kultur", q: "Hvilket instrument spilte Ole Bull?", o: ["Piano", "Fiolin", "Cello", "Fløyte"], a: 1 },
+  { c: "Mat og hverdag", q: "Hvilken nøtt er hovedingrediensen i marsipan?", o: ["Hasselnøtt", "Valnøtt", "Mandel", "Cashew"], a: 2 },
+  { c: "Mat og hverdag", q: "Hva er hovedingrediensen i guacamole?", o: ["Avokado", "Erter", "Agurk", "Spinat"], a: 0 },
+  { c: "Mat og hverdag", q: "Hvilken rett ble kåret til Norges nasjonalrett i 2014?", o: ["Kjøttkaker", "Fårikål", "Pinnekjøtt", "Taco"], a: 1 },
+  { c: "Mat og hverdag", q: "Hvilket språk har flest morsmålsbrukere i verden?", o: ["Engelsk", "Spansk", "Hindi", "Mandarin"], a: 3 },
+  { c: "Mat og hverdag", q: "Hvor mange grader er en rett vinkel?", o: ["45", "90", "180", "360"], a: 1 },
+  { c: "Mat og hverdag", q: "Hvor mange nuller er det i én million?", o: ["5", "6", "7", "9"], a: 1 }
+];
+const QCOLORS = ["#e0435a", "#3b7ddd", "#d9a520", "#3ea862"], QSYMS = ["▲", "◆", "●", "■"];
 
 const TF = [
   { s: "Gresskar er botanisk sett et bær.", t: true, x: "Gresskar er en såkalt pepo, en bærtype med hardt skall." },
@@ -830,6 +906,7 @@ function newGlasses() {
   return shuffle(g);
 }
 const fresh = () => ({
+  off: offFor("kort"),
   screen: "setup",
   shotMode: true, wrongShot: true, devilOn: true,
   teams: [
@@ -849,13 +926,14 @@ const fresh = () => ({
   finalIdx: 0, finalStage: "wager", wagers: {}, finalMarks: {}, finalApplied: false,
   tieIdx: 0, tieOpen: false, tieReveal: false,
   witchDeck: [], witchCard: null,
-  buzzGen: 0, wheelSpin: 0, room: null, off: {}, ghostFreq: "normal", ghostDeck: [], phoneCasino: true,
+  buzzGen: 0, wheelSpin: 0, room: null, ghostFreq: "normal", ghostDeck: [], phoneCasino: true,
   rxHeat: 0, rxState: "ready",
   vIdx: 0, vState: "vote", vResult: null,
   dIdx: -1, dTeam: 0, dState: "ready", dUsed: [],
   lIdx: 0, lState: "write", lOpts: null, lMarks: {}, lResult: null,
   aRound: 0, aCoffins: newCoffins(), aIdx: 0, aState: "bid", aHigh: null, aGive: false,
-  casino: freshCasino(),
+  casino: freshCasino(), len: "kort",
+  qz: { round: 0, set: [], i: 0, state: "ready", startAt: 0, players: {}, marks: {}, last: null },
   sIdx: 0, sState: "ask", sUnits: null, sOut: {}, sAns: {}, sDone: false, sLast: null,
   muted: false
 });
@@ -869,6 +947,9 @@ function load(seed) {
   if (st.potState === "live") st.potState = "ready";
   if (st.rxState === "wait" || st.rxState === "go") st.rxState = "ready";
   if (!st.casino || !st.casino.r) st.casino = freshCasino();
+  if (!st.len) { st.len = "kort"; st.off = offFor("kort"); }
+  if (!st.qz) st.qz = fresh().qz;
+  if (st.qz.state === "ask") st.qz.state = "ready";
   if (st.casino.r.state === "spin") st.casino.r.state = "bet";
   if (st.casino.sl.state === "spin") st.casino.sl.state = "ready";
   if (st.casino.bj.state === "dealer") st.casino.bj.state = "play";
@@ -1222,7 +1303,8 @@ const VIEWS = {
       ${onlinePanel()}
       <section class="panel" aria-labelledby="h-rounds">
         <h2 id="h-rounds">Kveldens program</h2>
-        <p class="note">Slå av runder dere vil hoppe over. Hele programmet tar 2–3 timer.</p>
+        <div class="freq" role="group" aria-label="Showlengde">${Object.entries(LENGTHS).map(([k, L]) => `<button data-act="setlen" data-l="${k}" aria-pressed="${state.len === k}">${L.label} · ${L.time}</button>`).join("")}</div>
+        <p class="note">Lengden velger runder og antall spørsmål per runde. Du kan slå enkeltrunder av og på under.</p>
         <ol class="round-list">${ROUNDS.map(r => { const on = !(state.off || {})[r.id]; return `<li style="${on ? "" : "opacity:.45"}"><span class="num">${on ? roundNo(r.id) : "–"}</span><div><label class="rtog"><input type="checkbox" id="round-${r.id}" data-round="${r.id}" ${on ? "checked" : ""}><b>${roundName(r.id)}</b></label><span>${T(r.desc)}</span></div></li>`; }).join("")}</ol>
         <button class="btn big" data-act="start">Slipp skrekken løs</button>
         <button class="btn ghost small" data-act="go" data-to="${activeRounds()[0]?.id || "end"}">Hopp over åpningen</button>
@@ -1241,7 +1323,7 @@ const VIEWS = {
 
   emoji() {
     const i = state.emojiIdx, item = EMOJI[i], val = state.emojiHint ? 100 : 200;
-    return head("emoji", "Emoji-", "krypten", `Hvilken skrekkfilm skjuler seg her? Første lag som buzzer og svarer riktig tar ${val} poeng.`, ` · film ${i + 1} av ${EMOJI.length}`) + `
+    return head("emoji", "Emoji-", "krypten", `Hvilken skrekkfilm skjuler seg her? Første lag som buzzer og svarer riktig tar ${val} poeng.`, ` · film ${i + 1} av ${lim(EMOJI)}`) + `
     <div class="card">
       <div class="emoji-stage" aria-label="Emoji-gåte">${item.e}</div>
       ${state.emojiHint ? `<div class="hint">Hint: ${esc(item.h)}</div>` : ""}
@@ -1252,17 +1334,17 @@ const VIEWS = {
         <button class="btn ghost" data-act="timer" data-s="20">20 sek</button>
       </div>
       ${awardRow(val)}
-      ${dots(EMOJI.length, i, state.emojiDone, "emojigo", "Film")}
+      ${dots(lim(EMOJI), i, state.emojiDone, "emojigo", "Film")}
       <div class="row spread">
         <button class="btn ghost" data-act="emojistep" data-d="-1" ${i === 0 ? "disabled" : ""}>Forrige</button>
-        ${i < EMOJI.length - 1 ? `<button class="btn" data-act="emojistep" data-d="1">Neste film</button>` : nextBtn("emoji")}
+        ${i < lim(EMOJI) - 1 ? `<button class="btn" data-act="emojistep" data-d="1">Neste film</button>` : nextBtn("emoji")}
       </div>
     </div>`;
   },
 
   tune() {
     const i = state.tuneIdx, item = TUNES[i];
-    return head("tune", "Lyden fra ", "krypten", "Skru opp lyden. Hvilken uhyggelig melodi er dette? Riktig svar gir 200. Vet laget også hvor den kommer fra eller hvem som laget den, gir verten 100 ekstra.", ` · melodi ${i + 1} av ${TUNES.length}`) + `
+    return head("tune", "Lyden fra ", "krypten", "Skru opp lyden. Hvilken uhyggelig melodi er dette? Riktig svar gir 200. Vet laget også hvor den kommer fra eller hvem som laget den, gir verten 100 ekstra.", ` · melodi ${i + 1} av ${lim(TUNES)}`) + `
     <div class="card">
       <div class="speaker">
         <button class="play" data-act="playtune" aria-label="Spill av melodien"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg></button>
@@ -1274,17 +1356,17 @@ const VIEWS = {
         <button class="btn ghost" data-act="stoptune">Stopp lyden</button>
       </div>
       ${awardRow([200, 100])}
-      ${dots(TUNES.length, i, state.tuneDone, "tunego", "Melodi")}
+      ${dots(lim(TUNES), i, state.tuneDone, "tunego", "Melodi")}
       <div class="row spread">
         <button class="btn ghost" data-act="tunestep" data-d="-1" ${i === 0 ? "disabled" : ""}>Forrige</button>
-        ${i < TUNES.length - 1 ? `<button class="btn" data-act="tunestep" data-d="1">Neste melodi</button>` : nextBtn("tune")}
+        ${i < lim(TUNES) - 1 ? `<button class="btn" data-act="tunestep" data-d="1">Neste melodi</button>` : nextBtn("tune")}
       </div>
     </div>`;
   },
 
   tf() {
     const i = state.tfIdx, item = TF[i], rev = state.tfReveal;
-    return head("tf", "Sant eller ", "skrøne", "Alle lag svarer samtidig: tommel opp for sant, ned for skrøne. Verten registrerer svarene, så vises fasiten og poengene deles ut automatisk.", ` · påstand ${i + 1} av ${TF.length}`) + `
+    return head("tf", "Sant eller ", "skrøne", "Alle lag svarer samtidig: tommel opp for sant, ned for skrøne. Verten registrerer svarene, så vises fasiten og poengene deles ut automatisk.", ` · påstand ${i + 1} av ${lim(TF)}`) + `
     <div class="card">
       <p class="q">«${esc(item.s)}»</p>
       ${rev ? `<div class="verdict ${item.t ? "true" : "false"}">${item.t ? "Sant!" : "Skrøne!"}</div>${item.x ? `<p class="lede" style="text-align:center;margin:0 auto">${esc(item.x)}</p>` : ""}` : ""}
@@ -1299,7 +1381,7 @@ const VIEWS = {
         <div class="row">
           ${!rev ? `<button class="btn" data-act="tfreveal">Vis fasit og gi poeng</button><button class="btn ghost" data-act="timer" data-s="10">10 sek</button>` : ""}
         </div>
-        ${i < TF.length - 1 ? `<button class="btn ${rev ? "" : "ghost"}" data-act="tfnext">Neste påstand</button>` : nextBtn("tf")}
+        ${i < lim(TF) - 1 ? `<button class="btn ${rev ? "" : "ghost"}" data-act="tfnext">Neste påstand</button>` : nextBtn("tf")}
       </div>
     </div>`;
   },
@@ -1448,7 +1530,7 @@ const VIEWS = {
   },
 
   victim() {
-    const prompt = VICTIM[state.vIdx % VICTIM.length], live = onlinePlayersReady();
+    const prompt = VICTIM[state.vIdx % lim(VICTIM)], live = onlinePlayersReady();
     const votes = Object.values(online.votes[vKey()] || {});
     let body;
     if (state.vState === "result" && state.vResult) {
@@ -1465,7 +1547,7 @@ const VIEWS = {
         <div class="row"><button class="btn big" data-act="vcount">Tell ned 3 – 2 – 1</button></div>
         <div class="award"><div class="eyebrow">Hvilket lag er offeret på?</div><div class="row">${state.teams.map((t, k) => `<button class="btn small" style="background:${tc(k)}" data-act="vpick" data-k="${k}">${esc(t.name)}</button>`).join("")}</div></div>`;
     }
-    return head("victim", "Kveldens ", "offer", "", ` · ${state.vIdx % VICTIM.length + 1} av ${VICTIM.length}`) + `<div class="card"><p class="q">${esc(prompt)}</p>${body}</div><div class="row spread"><span></span>${nextBtn("victim")}</div>`;
+    return head("victim", "Kveldens ", "offer", "", ` · ${state.vIdx % lim(VICTIM) + 1} av ${lim(VICTIM)}`) + `<div class="card"><p class="q">${esc(prompt)}</p>${body}</div><div class="row spread"><span></span>${nextBtn("victim")}</div>`;
   },
 
   draw() {
@@ -1487,7 +1569,7 @@ const VIEWS = {
   },
 
   lie() {
-    const L = LIES[state.lIdx % LIES.length], st = state.lState, live = onlinePlayersReady();
+    const L = LIES[state.lIdx % lim(LIES)], st = state.lState, live = onlinePlayersReady();
     const qHtml = esc(L.q).replace("___", `<span class="blank">${st === "reveal" ? esc(L.a) : "&nbsp;"}</span>`);
     let body = "";
     if (st === "write") {
@@ -1504,7 +1586,7 @@ const VIEWS = {
         : `<div class="vote-grid">${state.teams.map((t, k) => `<div class="vote" style="border-left:4px solid ${tc(k)};grid-template-columns:minmax(0,1fr) auto"><span class="nm">${esc(t.name)}</span><span class="row" style="gap:4px;flex-wrap:nowrap">${state.lOpts.map((o, i) => `<button class="${state.lMarks[k] === o.id ? "sel-t" : ""}" data-act="lmark" data-k="${k}" data-o="${esc(o.id)}">${"ABCDEFGH"[i]}</button>`).join("")}</span></div>`).join("")}</div><div class="row"><button class="btn big" data-act="lreveal">Avslør sannheten</button></div>`;
       else body += `<div class="row"><button class="btn" data-act="lnext">Neste løgn</button></div>`;
     }
-    return head("lie", "Løgn fra ", "graven", live ? "Finn sannheten: +200. Lur andre med løgnen din: +100 per person." : `Finn sannheten: +200. Velger dere en løgn, blir det ${shotWord(1)}.`, ` · ${state.lIdx % LIES.length + 1} av ${LIES.length}`) + `<div class="card"><p class="q">${qHtml}</p>${body}</div><div class="row spread"><span></span>${nextBtn("lie")}</div>`;
+    return head("lie", "Løgn fra ", "graven", live ? "Finn sannheten: +200. Lur andre med løgnen din: +100 per person." : `Finn sannheten: +200. Velger dere en løgn, blir det ${shotWord(1)}.`, ` · ${state.lIdx % lim(LIES) + 1} av ${lim(LIES)}`) + `<div class="card"><p class="q">${qHtml}</p>${body}</div><div class="row spread"><span></span>${nextBtn("lie")}</div>`;
   },
 
   auction() {
@@ -1525,12 +1607,13 @@ const VIEWS = {
   },
 
   casino() { return casinoView(); },
+  quiz() { return quizView(); },
 
   survive() {
     const units = state.sUnits, live = onlinePlayersReady();
     if (!units) return head("survive", "Siste ", "overlevende", "") + `<div class="card"><p class="lede">${live ? "Alle spillerne svarer på mobilen. Feil svar eller ikke noe svar, og du er ute." : "Hvert lag svarer med fingrene: én, to eller tre. Feil svar, og laget er ute."} Svarer alle feil på samme spørsmål, overlever alle. Når bare ett lag har folk igjen, vinner det 300${state.shotMode ? ", og alle som ryker ut tar ett shot" : ""}.</p>
       <div class="row"><button class="btn big" data-act="sbegin">Start</button></div></div><div class="row spread"><span></span>${nextBtn("survive")}</div>`;
-    const q = SURVIVE[state.sIdx % SURVIVE.length], rev = state.sState === "reveal";
+    const q = SURVIVE[state.sIdx % lim(SURVIVE)], rev = state.sState === "reveal";
     const alive = units.filter(u => !state.sOut[u.id]);
     const chips = `<div class="chips">${units.map(u => `<span class="chip ${state.sOut[u.id] ? "out" : ""}" style="--tc:${tc(u.team)}">${esc(u.name)}</span>`).join("")}</div>`;
     const opts = `<div class="opts">${q.o.map((o, i) => `<div class="opt ${rev ? (i === q.c ? "real" : "fake") : ""}"><span class="letter">${"ABC"[i]}</span><span class="lbl">${esc(o)}</span></div>`).join("")}</div>`;
@@ -1589,13 +1672,13 @@ function boardView(b) {
   return head(b, B.title[0], B.title[1], lede) + `
   <div class="board-wrap"><div class="board ${b === "board2" ? "b2" : ""}">
     ${B.data.map(c => `<div class="cat">${c.cat}</div>`).join("")}
-    ${B.values.map((v, i) => B.data.map((c, ci) => {
+    ${B.values.slice(0, boardRows()).map((v, i) => B.data.map((c, ci) => {
       const used = state.used[`${b}:${ci}-${i}`];
       return `<button class="tile ${used ? "used" : ""}" ${used ? "disabled aria-label='Brukt'" : `data-act="open" data-b="${b}" data-c="${ci}" data-q="${i}" aria-label="${c.cat} for ${v}"`}>${v}</button>`;
     }).join("")).join("")}
   </div></div>
   <div class="row spread">
-    <span class="progress">${done} av 25 spørsmål brukt</span>
+    <span class="progress">${done} av ${boardRows() * 5} spørsmål brukt</span>
     ${nextBtn(b)}
   </div>`;
 }
@@ -1841,6 +1924,7 @@ function onlineMsg(m) {
   }
   if (m.t === "vote") {
     const id = m.pid + (m.sub != null ? ":" + m.sub : "");
+    if (m.key && m.key.startsWith("qz:") && online.votes[m.key] && online.votes[m.key][id]) return;
     (online.votes[m.key] = online.votes[m.key] || {})[id] = { team: m.team, value: m.value, sub: m.sub, at: Date.now() };
     applyVote(m);
   }
@@ -1848,6 +1932,12 @@ function onlineMsg(m) {
 function applyVote(m) {
   const ph = phaseNow(); if (m.key !== ph.key) return;
   if (state.screen === "casino") { casinoVote(m, ph); return; }
+  if (state.screen === "quiz") {
+    const v = online.votes[m.key]; const id = m.pid; if (v && v[id] && !v[id].at) v[id].at = Date.now();
+    // første svar teller, så man ikke kan endre etter å ha sett andre
+    const z = QZ(); if (z.state === "ask") { if (Object.keys(v || {}).length >= online.players.length) setTimeout(() => { if (QZ().state === "ask") qzReveal(); }, 600); else scheduleRender(); }
+    return;
+  }
   if (ph.mode === "tf") {
     const votes = Object.values(online.votes[m.key] || {});
     state.teams.forEach((_, k) => {
@@ -1881,16 +1971,20 @@ function phaseNow() {
   if (s === "costume" && !state.costumeApplied) return P({ mode: "costume", key: "costume" });
   if (s === "final") return state.finalStage === "wager" ? P({ mode: "wager", key: `final:${state.finalIdx}`, max: state.teams.map(t => Math.max(t.score, 300)) }) : P({ mode: "watch", text: FINALS[state.finalIdx].q });
   if (s === "casino") return casinoPhase(P);
+  if (s === "quiz") { const z = QZ(); if (z.state === "ask") { const q = qzQ(); return P({ mode: "quiz", key: qzKey(), text: q.q, cat: q.c, options: q.o, n: z.i + 1, total: z.set.length, double: qzDouble() }); }
+    if (z.state === "reveal" && z.last) { const q = qzQ(), me = {}; Object.entries(z.players).forEach(([pid, p]) => me[pid] = { gain: z.last.gains[pid] || 0, score: p.score, streak: p.streak, rank: Object.values(z.players).filter(o => o.score > p.score).length + 1 });
+      return P({ mode: "quizres", key: qzKey(), text: q.q, options: q.o, correct: q.a, me }); }
+    return P({ mode: "watch", text: z.state === "done" ? "Quizen er ferdig!" : "Neste spørsmål kommer …" }); }
   if (s === "react") return P({ mode: "react", key: rxKey() });
-  if (s === "victim" && state.vState === "vote") return P({ mode: "choice", key: vKey(), text: VICTIM[state.vIdx % VICTIM.length], options: online.players.map(p => ({ id: p.pid, label: `${p.name} · ${state.teams[p.team]?.name || ""}` })) });
+  if (s === "victim" && state.vState === "vote") return P({ mode: "choice", key: vKey(), text: VICTIM[state.vIdx % lim(VICTIM)], options: online.players.map(p => ({ id: p.pid, label: `${p.name} · ${state.teams[p.team]?.name || ""}` })) });
   if (s === "victim" && state.vResult) return P({ mode: "watch", text: `Offeret: ${state.vResult.names.join(" & ")}` });
   if (s === "draw" && state.dState === "drawing") return P({ mode: "draw", key: `d:${state.dIdx}:${g}`, team: state.dTeam, word: DRAW_WORDS[state.dIdx], buzz: true, text: "Gjett hva laget tegner!" });
-  if (s === "lie") { const L = LIES[state.lIdx % LIES.length];
+  if (s === "lie") { const L = LIES[state.lIdx % lim(LIES)];
     if (state.lState === "write") return P({ mode: "write", key: lwKey(), text: L.q });
     if (state.lState === "vote") return P({ mode: "choice", key: lvKey(), text: L.q, options: state.lOpts.map(o => ({ id: o.id, label: o.label, pid: o.pid })) });
     return P({ mode: "watch", text: `Sannheten: ${L.a}` }); }
   if (s === "auction" && state.aState === "bid" && state.aIdx < state.aCoffins.length) return P({ mode: "bid", key: `a:${state.aRound}:${state.aIdx}`, item: `Kiste ${state.aIdx + 1}`, high: state.aHigh, max: state.teams.map((_, k) => maxBid(k)) });
-  if (s === "survive" && state.sUnits && state.sState === "ask" && !state.sDone) { const q = SURVIVE[state.sIdx % SURVIVE.length]; return P({ mode: "choice", key: sKey(), text: q.q, options: q.o.map((o, i) => ({ id: i, label: `${"ABC"[i]}: ${o}` })), out: Object.keys(state.sOut) }); }
+  if (s === "survive" && state.sUnits && state.sState === "ask" && !state.sDone) { const q = SURVIVE[state.sIdx % lim(SURVIVE)]; return P({ mode: "choice", key: sKey(), text: q.q, options: q.o.map((o, i) => ({ id: i, label: `${"ABC"[i]}: ${o}` })), out: Object.keys(state.sOut) }); }
   if (s === "end") return P({ mode: "end" });
   return P({ mode: "watch" });
 }
@@ -2108,6 +2202,77 @@ function drSpin() {
     d.mult = 1;
   };
   requestAnimationFrame(step);
+}
+
+/* ================================================================== Allmennquizen */
+const QZ = () => state.qz;
+const qzN = () => Math.min(LEN().n + 2, 12);
+const qzKey = () => `qz:${QZ().round}:${QZ().i}`;
+const qzQ = () => QUIZ[QZ().set[QZ().i]];
+const qzDouble = () => QZ().i === QZ().set.length - 1;
+const QZ_TIME = 20;
+function qzNew() {
+  const z = QZ(); z.round++; z.i = 0; z.state = "ready"; z.players = {}; z.marks = {}; z.last = null;
+  // jevn miks av kategorier
+  const byCat = {}; shuffle(QUIZ.map((_, i) => i)).forEach(i => (byCat[QUIZ[i].c] = byCat[QUIZ[i].c] || []).push(i));
+  const cats = shuffle(Object.keys(byCat)), set = [];
+  while (set.length < qzN()) { const c = cats[set.length % cats.length]; const i = byCat[c].pop(); if (i == null) break; set.push(i); }
+  z.set = set;
+}
+function qzAsk() {
+  const z = QZ(); if (!z.set.length) qzNew();
+  z.state = "ask"; z.startAt = Date.now(); z.marks = {}; z.last = null; online.votes[qzKey()] = {};
+  save(); render(); sfx.stinger();
+  startTimer(QZ_TIME, () => { if (QZ().state === "ask") qzReveal(); });
+}
+function qzReveal() {
+  const z = QZ(), q = qzQ(), key = qzKey(), mult = qzDouble() ? 2 : 1; stopTimer();
+  const res = { counts: [0, 0, 0, 0], gains: {}, teamGain: {} };
+  if (onlinePlayersReady()) {
+    const votes = online.votes[key] || {};
+    online.players.forEach(p => { z.players[p.pid] = z.players[p.pid] || { name: p.name, team: p.team, score: 0, streak: 0 }; });
+    const perTeam = {};
+    Object.entries(z.players).forEach(([pid, pl]) => {
+      const v = votes[pid]; let gain = 0;
+      if (v) res.counts[+v.value] = (res.counts[+v.value] || 0) + 1;
+      if (v && +v.value === q.a) {
+        const t = Math.max(0, Math.min(QZ_TIME * 1000, (v.at || Date.now()) - z.startAt));
+        pl.streak++; gain = Math.round((500 + 500 * (1 - t / (QZ_TIME * 1000))) * mult) + (pl.streak >= 3 ? 100 * (pl.streak - 2) : 0);
+      } else pl.streak = 0;
+      pl.score += gain; res.gains[pid] = gain;
+      (perTeam[pl.team] = perTeam[pl.team] || []).push(gain);
+    });
+    // laget får snittet av spillerne sine, delt på 5, så store og små lag stiller likt
+    Object.entries(perTeam).forEach(([k, arr]) => { const g = Math.round(arr.reduce((a, b) => a + b, 0) / arr.length / 5 / 10) * 10; if (g > 0) { addScore(+k, g, true); res.teamGain[k] = g; } });
+  } else {
+    state.teams.forEach((_, k) => { const m = z.marks[k]; if (m == null) return; res.counts[m]++; if (m === q.a) { const g = 150 * mult; addScore(k, g, true); res.teamGain[k] = g; } });
+  }
+  z.last = res; z.state = "reveal"; save(); sfx.reveal(); render();
+}
+function qzNext() { const z = QZ(); if (z.i >= z.set.length - 1) { z.state = "done"; sfx.fanfare(); rainCandy(60); } else { z.i++; z.state = "ready"; z.last = null; } save(); render(); }
+function quizView() {
+  const z = QZ(); if (!z.set.length) qzNew();
+  const live = onlinePlayersReady(), q = qzQ(), total = z.set.length;
+  const board = () => { const pl = Object.values(z.players).sort((a, b) => b.score - a.score).slice(0, 6);
+    return pl.length ? `<div class="lb">${pl.map((p, i) => { const pid = Object.keys(z.players).find(k => z.players[k] === p); const g = z.last && z.last.gains[pid]; return `<div style="--tc:${tc(p.team)}"><span>${i + 1}</span><span>${esc(p.name)}${p.streak >= 3 ? ` · 🔥${p.streak}` : ""}</span><span class="g">${g ? "+" + fmt(g) : ""}</span><b>${fmt(p.score)}</b></div>`; }).join("")}</div>` : ""; };
+  if (z.state === "done") return head("quiz", "Allmenn", "quizen", "", "") + `<div class="card"><div class="devil-tag" style="color:var(--slime)">Quizen er ferdig!</div>${board() || `<p class="lede">Poengene er delt ut til lagene.</p>`}
+    <div class="row"><button class="btn ghost" data-act="qznew">Ny quiz med nye spørsmål</button>${nextBtn("quiz")}</div></div>`;
+  const headTxt = live ? `Svar på mobilen. Riktig svar gir 500–1000 poeng etter hvor fort du svarer, og tre riktige på rad gir bonus. Laget får snittet av spillerne sine.` : `Lagene svarer med fingrene: én, to, tre eller fire. Riktig svar gir 150 til laget.`;
+  const opts = (rev) => `<div class="qopts">${q.o.map((o, i) => `<div class="qopt ${rev ? (i === q.a ? "right" : "dim") : ""}" style="--qc:${QCOLORS[i]}"><span class="sym">${QSYMS[i]}</span><span>${esc(o)}</span><span class="cnt">${rev && z.last ? z.last.counts[i] || "" : ""}</span></div>`).join("")}</div>`;
+  const meta = `<div class="qhead"><span>${esc(q.c)}</span><b>${qzDouble() ? "Siste spørsmål · dobbel poeng" : `Spørsmål ${z.i + 1} av ${total}`}</b></div>`;
+  let body;
+  if (z.state === "ready") body = `${meta}<p class="q">Gjør dere klare …</p><div class="row"><button class="btn big" data-act="qzask">Vis spørsmål ${z.i + 1}</button></div>${board()}`;
+  else if (z.state === "ask") {
+    const answered = live ? Object.keys(online.votes[qzKey()] || {}).length : Object.keys(z.marks).length;
+    body = `${meta}<p class="q">${esc(q.q)}</p>${opts(false)}
+      <div class="big-timer" id="bigtimer" style="font-size:clamp(2.4rem,7vw,4rem)">0:${QZ_TIME}</div>
+      ${live ? `<div class="value-big" style="text-align:center">${answered} av ${online.players.length} har svart</div>`
+        : `<div class="vote-grid">${state.teams.map((t, k) => `<div class="vote" style="border-left:4px solid ${tc(k)};grid-template-columns:minmax(0,1fr) auto"><span class="nm">${esc(t.name)}</span><span class="row" style="gap:4px;flex-wrap:nowrap">${q.o.map((_, i) => `<button class="${z.marks[k] === i ? "sel-t" : ""}" style="${z.marks[k] === i ? "" : `border-color:${QCOLORS[i]}`}" data-act="qzmark" data-k="${k}" data-v="${i}">${QSYMS[i]}</button>`).join("")}</span></div>`).join("")}</div>`}
+      <div class="row"><button class="btn" data-act="qzreveal">Vis svaret nå</button></div>`;
+  } else body = `${meta}<p class="q">${esc(q.q)}</p>${opts(true)}
+      ${Object.keys(z.last.teamGain).length ? `<div class="row">${Object.entries(z.last.teamGain).map(([k, g]) => `<span class="chip" style="--tc:${tc(+k)}">${esc(state.teams[k]?.name || "")} +${fmt(g)}</span>`).join("")}</div>` : `<p class="lede">Ingen lag fikk poeng.</p>`}
+      ${board()}<div class="row"><button class="btn big" data-act="qznext">${z.i >= total - 1 ? "Se resultatet" : "Neste spørsmål"}</button></div>`;
+  return head("quiz", "Allmenn", "quizen", headTxt) + `<div class="card">${body}</div>`;
 }
 
 /* ================================================================== Dødskasinoet */
@@ -2488,7 +2653,7 @@ const ACT = {
   reveal: () => { if (state.current) { state.current.reveal = true; stopTimer(); sfx.reveal(); save(); render(); } },
   closeq: () => {
     const b = state.current?.b; state.current = null; stopTimer(); save(); render();
-    if (b && Object.keys(state.used).filter(k => k.startsWith(b + ":")).length === 25) banner("Tavla er tom!", "var(--slime)");
+    if (b && Object.keys(state.used).filter(k => k.startsWith(b + ":")).length === boardRows() * 5) banner("Tavla er tom!", "var(--slime)");
   },
   emojihint: () => { state.emojiHint = true; save(); render(); },
   emojireveal: () => { state.emojiReveal = true; state.emojiDone[state.emojiIdx] = true; stopTimer(); sfx.reveal(); save(); render(); },
@@ -2509,7 +2674,7 @@ const ACT = {
     state.teams.forEach((_, k) => { if (state.tfVotes[k] === item.t) { addScore(k, 100, true); any = true; } });
     (any ? sfx.correct : sfx.wrong)(); save(); render();
   },
-  tfnext: () => { state.tfIdx = Math.min(TF.length - 1, state.tfIdx + 1); state.tfReveal = false; state.tfVotes = {}; stopTimer(); save(); render(); },
+  tfnext: () => { state.tfIdx = Math.min(lim(TF) - 1, state.tfIdx + 1); state.tfReveal = false; state.tfVotes = {}; stopTimer(); save(); render(); },
   potstart: () => potStart(),
   potcat: () => { let n; do { n = Math.floor(Math.random() * POTATO.length); } while (n === state.potCat && POTATO.length > 1); state.potCat = n; save(); render(); },
   pothit: d => { const k = +d.k; addScore(k, -200, true); pour(k, 1, `${state.teams[k].name} ble sprengt!`); state.potHits[k] = (state.potHits[k] || 0) + 1; state.potState = "done"; save(); render(); },
@@ -2602,7 +2767,7 @@ const ACT = {
     const teams = [...new Set(top.map(t => t.team).filter(t => t != null))];
     setTimeout(() => pour(teams, 1, `${top.map(t => t.name).join(" og ")} er kveldens offer!`, victimPids()), 1200);
   },
-  vnext: () => { state.vIdx = (state.vIdx + 1) % VICTIM.length; state.vState = "vote"; state.vResult = null; save(); render(); },
+  vnext: () => { state.vIdx = (state.vIdx + 1) % lim(VICTIM); state.vState = "vote"; state.vResult = null; save(); render(); },
   /* Tegn monsteret */
   dteam: d => { state.dTeam = +d.k; save(); render(); },
   dstart: () => {
@@ -2613,7 +2778,7 @@ const ACT = {
   dreveal: () => { state.dState = "done"; stopTimer(); sfx.reveal(); save(); render(); },
   /* Løgn fra graven */
   lvote: () => {
-    const L = LIES[state.lIdx % LIES.length], norm = x => String(x).trim().toLowerCase();
+    const L = LIES[state.lIdx % lim(LIES)], norm = x => String(x).trim().toLowerCase();
     const opts = [{ id: "real", label: L.a, real: true }], seen = new Set([norm(L.a)]);
     if (onlinePlayersReady()) Object.entries(online.votes[lwKey()] || {}).forEach(([pid, v]) => {
       const txt = String(v.value || "").trim().slice(0, 60); if (!txt || seen.has(norm(txt))) return;
@@ -2641,7 +2806,7 @@ const ACT = {
     }
     state.lResult = res; state.lState = "reveal"; save(); sfx.correct(); lightning(); render();
   },
-  lnext: () => { state.lIdx = (state.lIdx + 1) % LIES.length; state.lState = "write"; state.lOpts = null; state.lResult = null; state.lMarks = {}; save(); render(); },
+  lnext: () => { state.lIdx = (state.lIdx + 1) % lim(LIES); state.lState = "write"; state.lOpts = null; state.lResult = null; state.lMarks = {}; save(); render(); },
   /* Gravrøverauksjonen */
   abid: d => { const k = +d.k, base = state.aHigh ? state.aHigh.amount : 0; if (!takeBid(k, base + +d.d)) banner(`${state.teams[k].name} har ikke råd`, "var(--blood)", 1200); render(); },
   asold: () => {
@@ -2672,7 +2837,7 @@ const ACT = {
   },
   sans: d => { state.sAns[d.u] = +d.v; save(); render(); },
   sreveal: () => {
-    const q = SURVIVE[state.sIdx % SURVIVE.length], alive = state.sUnits.filter(u => !state.sOut[u.id]);
+    const q = SURVIVE[state.sIdx % lim(SURVIVE)], alive = state.sUnits.filter(u => !state.sOut[u.id]);
     const ans = {}; if (onlinePlayersReady()) Object.entries(online.votes[sKey()] || {}).forEach(([pid, v]) => ans[pid] = +v.value); else Object.assign(ans, state.sAns);
     const wrong = alive.filter(u => ans[u.id] !== q.c);
     stopTimer();
@@ -2684,11 +2849,11 @@ const ACT = {
       else sfx.correct();
     }
     const left = state.sUnits.filter(u => !state.sOut[u.id]), teamsLeft = [...new Set(left.map(u => u.team))];
-    if (teamsLeft.length <= 1 || state.sIdx >= SURVIVE.length - 1) { state.sDone = true; teamsLeft.forEach(k => addScore(k, 300, true)); setTimeout(() => { sfx.fanfare(); rainCandy(50); }, 800); }
+    if (teamsLeft.length <= 1 || state.sIdx >= lim(SURVIVE) - 1) { state.sDone = true; teamsLeft.forEach(k => addScore(k, 300, true)); setTimeout(() => { sfx.fanfare(); rainCandy(50); }, 800); }
     state.sState = "reveal"; save(); render();
   },
   snext: () => { state.sIdx++; state.sState = "ask"; state.sAns = {}; save(); render(); },
-  sreset: () => { state.sUnits = null; state.sIdx = (state.sIdx + 1) % SURVIVE.length; save(); render(); },
+  sreset: () => { state.sUnits = null; state.sIdx = (state.sIdx + 1) % lim(SURVIVE); save(); render(); },
   ghostfreq: d => { state.ghostFreq = d.f; save(); scheduleGhost(); render(); },
   ghostnow: () => ghostVisit(true),
   ghostclose: () => { fxs.ghost = null; renderOverlay(); },
@@ -2698,6 +2863,12 @@ const ACT = {
   drspin: () => drSpin(),
   drclose: () => { if (drSpinning) return; fxs.dr = null; renderOverlay(); },
   "drclose-bg": (d, el, e) => { if (e.target === el) ACT.drclose(); },
+  setlen: d => { state.len = d.l; state.off = offFor(d.l); save(); render(); },
+  qzask: () => qzAsk(),
+  qzreveal: () => qzReveal(),
+  qznext: () => qzNext(),
+  qznew: () => { qzNew(); save(); render(); },
+  qzmark: d => { QZ().marks[+d.k] = +d.v; save(); render(); },
   opencasino: () => { if (state.screen !== "casino") go("casino"); },
   cgame: d => { if (rSpinning || C().sl.state === "spin") return; C().game = d.g; save(); render(); },
   cbetset: d => {
@@ -2740,8 +2911,8 @@ const ACT = {
   },
   witchaward: d => { addScore(+d.k, 200); state.witchCard.done = true; save(); renderOverlay(); }
 };
-function emojiGo(k) { state.emojiIdx = Math.max(0, Math.min(EMOJI.length - 1, k)); state.emojiReveal = false; state.emojiHint = false; stopTimer(); save(); render(); }
-function tuneGo(k) { stopTune(); state.tuneIdx = Math.max(0, Math.min(TUNES.length - 1, k)); state.tuneReveal = false; save(); render(); }
+function emojiGo(k) { state.emojiIdx = Math.max(0, Math.min(lim(EMOJI) - 1, k)); state.emojiReveal = false; state.emojiHint = false; stopTimer(); save(); render(); }
+function tuneGo(k) { stopTune(); state.tuneIdx = Math.max(0, Math.min(lim(TUNES) - 1, k)); state.tuneReveal = false; save(); render(); }
 function syncDrone() { $("#btn-drone").setAttribute("aria-pressed", String(!!droneNodes)); }
 
 document.addEventListener("click", e => {

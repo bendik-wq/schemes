@@ -125,6 +125,11 @@ textarea { font: 600 1.15rem/1.35 var(--f-body); color: var(--bone); background:
 .preel .strip span { height: 96px; display: grid; place-items: center; font-size: 3.2rem; }
 .cres { padding: 14px; border-radius: 14px; background: rgba(0, 0, 0, .35); border: 2px solid #e2b94a; display: grid; gap: 8px; animation: pop .35s ease-out; }
 .cres h3 { font-family: var(--f-display); font-weight: 400; font-size: 2rem; margin: 0; line-height: 1; }
+.qa { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qa button { min-height: 120px; border: 0; border-radius: 18px; color: #fff; font: 800 1.05rem/1.2 var(--f-body); display: grid; place-items: center; gap: 6px; padding: 10px; text-align: center; }
+.qa button .sym { font-size: 2rem; }
+.qa button:disabled { opacity: .3; }
+.qa button.mine { outline: 4px solid var(--bone); outline-offset: 2px; opacity: 1; }
 #scare { position: fixed; inset: 0; z-index: 11; display: grid; place-items: center; background: #000; font-size: 60vw; line-height: 1; animation: strobe .1s steps(2) infinite; }
 @keyframes strobe { 50% { background: #6a0010; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -317,7 +322,7 @@ function board() {
   return `<div class="list">${ranked.map((t, i) => `<div class="li ${t.k === S.team ? "mine" : ""}" style="--c:${COLORS[t.k]}"><span class="n">${i + 1}</span><span class="nm">${esc(t.name)}</span><span class="sc">${fmt(t.score)}${t.shots ? ` · 🥃${t.shots}` : ""}</span></div>`).join("")}</div>`;
 }
 /* ================= Mobilkasinoet ================= */
-const INTERACTIVE = ["buzz", "tf", "wager", "rate", "costume", "choice", "write", "react", "draw", "bid", "stake", "bj", "slot"];
+const INTERACTIVE = ["quiz", "buzz", "tf", "wager", "rate", "costume", "choice", "write", "react", "draw", "bid", "stake", "bj", "slot"];
 const RED_N = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 const BTYPES = [["red", "Rød"], ["black", "Svart"], ["odd", "Oddetall"], ["even", "Partall"], ["low", "1–18"], ["high", "19–36"], ["d1", "1.–12."], ["d2", "13.–24."], ["d3", "25.–36."], ["num", "Ett tall"]];
 const SYMS = ["🎃", "👻", "💀", "🦇", "🕷️", "🍬", "🧛"], SW = [2, 4, 3, 5, 5, 6, 2];
@@ -436,6 +441,19 @@ function casinoView() {
 
 const cardsHtml = arr => `<div class="cards">${(arr || []).map(c => c === "?" ? `<span class="q"></span>` : `<span class="${/[♥♦]/.test(c) ? "r" : ""}">${esc(c)}</span>`).join("")}</div>`;
 const VIEWS = {
+  quiz(p) {
+    const mine = S.myVotes[p.key];
+    const QC = ["#e0435a", "#3b7ddd", "#d9a520", "#3ea862"], QS = ["▲", "◆", "●", "■"];
+    return `<div class="card"><div class="eyebrow">${esc(p.cat || "")} · ${p.double ? "dobbel poeng!" : `${p.n} av ${p.total}`}</div><p class="q">${esc(p.text)}</p></div>
+      <div class="qa">${(p.options || []).map((o, i) => `<button style="background:${QC[i]}" data-act="qans" data-v="${i}" class="${mine === i ? "mine" : ""}" ${mine != null ? "disabled" : ""}><span class="sym">${QS[i]}</span>${esc(o)}</button>`).join("")}</div>
+      <div class="status">${mine != null ? "Svar låst. Fingrene krysset!" : "Raskt svar gir mer poeng"}</div>`;
+  },
+  quizres(p) {
+    const r = (p.me || {})[S.pid], mine = S.myVotes[p.key], ok = mine === p.correct;
+    return `<div class="card" style="text-align:center"><div class="big-msg" style="color:${ok ? "var(--slime)" : "var(--blood)"}">${mine == null ? "For sent!" : ok ? "Riktig!" : "Feil!"}</div>
+      <p class="lede">Svaret var <b style="color:var(--bone)">${esc((p.options || [])[p.correct] || "")}</b></p>
+      ${r ? `<p class="q">${r.gain ? "+" + fmt(r.gain) : "0"} poeng${r.streak >= 3 ? ` · 🔥 ${r.streak} på rad` : ""}</p><p class="lede">${fmt(r.score)} totalt · nr. ${r.rank}</p>` : ""}</div>${board()}`;
+  },
   stake(p) {
     const max = (p.max || [])[S.team] || 0, min = p.minShots || 0;
     const b = S.bet && S.bet.key === p.key ? S.bet : (S.bet = { key: p.key, type: "red", num: 13, pts: Math.min(100, max), shots: Math.max(min, 1) });
@@ -596,6 +614,7 @@ document.addEventListener("click", e => {
   if (a === "skull") { const k = +b.dataset.k, n = +b.dataset.n; S.myVotes[p.key + ":" + k] = n; send({ t: "vote", key: p.key, sub: k, value: n }); vibrate(20); render(); }
   if (a === "choose") { const v = b.dataset.num === "1" ? +b.dataset.id : b.dataset.id; S.myVotes[p.key] = v; send({ t: "vote", key: p.key, value: v }); vibrate(20); render(); }
   if (a === "lie") { const v = ($("#lie").value || "").trim().slice(0, 60); if (!v) return; S.myVotes[p.key] = v; S.editing = false; send({ t: "vote", key: p.key, value: v }); vibrate(30); render(); }
+  if (a === "qans") { if (S.myVotes[p.key] != null) return; const v = +b.dataset.v; S.myVotes[p.key] = v; send({ t: "vote", key: p.key, value: v }); vibrate(40); render(); }
   if (a === "view") { S.view = b.dataset.v; if (S.view === "show") S.alert = false; render(); }
   if (a === "cgm") { S.cgame = b.dataset.g; S.cr = null; render(); }
   if (a === "cs") { S.cbet.souls = +b.dataset.v; render(); }
