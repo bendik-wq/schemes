@@ -1,0 +1,54 @@
+/* Northbid base: tokens, type, buttons. Shared by the offer page and the workspace. */
+@font-face { font-family: "Inter"; src: url("/assets/fonts/Inter-Latin.woff2") format("woff2"); font-weight: 400 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inter Fallback"; src: local("Arial"), local("Helvetica Neue"), local("Helvetica"); size-adjust: 107.06%; ascent-override: 90.49%; descent-override: 22.56%; line-gap-override: 0%; }
+@font-face { font-family: "Geist Mono"; src: url("/assets/fonts/GeistMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+
+:root {
+  --white: #ffffff;
+  --paper: #f5f7fa;
+  --ink: #08111f;
+  --ink-2: #26324a;
+  --grey: #3b4760;
+  --grey-2: #5b6782;
+  --hair: #dce2ec;
+  --hair-2: #eaeef4;
+  --navy: #061a33;
+  --on-dark: #eef4ff;
+  --on-dark-2: #a9bad6;
+  --blue: #1663ff;
+  --blue-press: #0c4fd6;
+  --teal: #0aa5a8;
+  --green: #0f8a5f;
+  --amber: #b26a00;
+  --red: #c8283a;
+  /* One accent family: deep sea blue into teal. Text stops stay above 4.5:1 on white. */
+  --flow-text: linear-gradient(95deg, #1352e0 0%, #0b6fb8 55%, #077f82 100%);
+  --btn: linear-gradient(100deg, #1663ff 0%, #0f63d8 55%, #0a8c9c 100%);
+  --text: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 16px;
+  --shadow: 0 1px 2px rgba(8, 17, 31, .05), 0 8px 28px rgba(8, 17, 31, .07);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font: 16px/1.55 var(--text); color: var(--ink-2); background: var(--white); font-feature-settings: "ss03", "cv11"; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { color: var(--ink); line-height: 1.12; margin: 0 0 .5em; letter-spacing: -0.022em; }
+a { color: var(--blue); }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; cursor: pointer; font: 600 15px/1 var(--text);
+  color: #fff; background: var(--btn); padding: 14px 22px; border-radius: 999px; text-decoration: none; box-shadow: 0 6px 20px rgba(22, 99, 255, .25); transition: transform .15s, box-shadow .15s; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(22, 99, 255, .32); }
+.btn:disabled { opacity: .55; cursor: default; transform: none; }
+.btn.ghost { background: var(--white); color: var(--ink); border: 1px solid var(--hair); box-shadow: none; }
+.btn.small { padding: 9px 14px; font-size: 14px; }
+.link { background: none; border: 0; color: var(--blue); font: inherit; cursor: pointer; padding: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 13px; background: var(--paper); color: var(--grey); border: 1px solid var(--hair); }
+.mono { font-family: var(--mono); font-size: .92em; }
+.card { background: var(--white); border: 1px solid var(--hair); border-radius: var(--r); box-shadow: var(--shadow); }
+input, select, textarea { font: inherit; color: var(--ink); background: var(--white); border: 1px solid var(--hair); border-radius: 10px; padding: 10px 12px; width: 100%; }
+input:focus, select:focus, textarea:focus { outline: 2px solid rgba(22, 99, 255, .35); border-color: var(--blue); }
+label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.err { color: var(--red); font-size: 14px; min-height: 1.2em; margin: 0; }

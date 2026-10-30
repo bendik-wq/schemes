@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Northbid workspace</title>
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/app/app.css">
+</head>
+<body class="app">
+<div id="login" class="login" hidden>
+  <form class="card login-card" id="login-form">
+    <div class="brand"><img src="/assets/mark.svg" alt="" width="28" height="28"> Northbid</div>
+    <h1>Sign in</h1>
+    <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
+    <p class="err" id="login-err" role="alert"></p>
+    <button class="btn" type="submit">Sign in</button>
+  </form>
+</div>
+
+<div id="shell" class="shell" hidden>
+  <aside class="side">
+    <div class="brand"><img src="/assets/mark.svg" alt="" width="26" height="26"> Northbid</div>
+    <nav>
+      <a href="#overview" data-view="overview">Overview</a>
+      <a href="#tenders" data-view="tenders">Tender watch</a>
+      <a href="#rfqs" data-view="rfqs">RFQs &amp; bids</a>
+      <a href="#library" data-view="library">Answer library</a>
+      <a href="#profile" data-view="profile">Company profile</a>
+      <a href="#leads" data-view="leads">Offer applications</a>
+    </nav>
+    <div class="side-foot">
+      <span id="reader-mode" class="chip"></span>
+      <button class="link" id="logout" type="button">Sign out</button>
+    </div>
+  </aside>
+  <main id="main" class="main" tabindex="-1"></main>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="/app/app.js" defer></script>
+</body>
+</html>
