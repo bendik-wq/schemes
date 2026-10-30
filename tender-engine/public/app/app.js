@@ -58,7 +58,7 @@
   }
 
   // ---------- Router ----------
-  const views = { overview, tenders, rfqs, rfq, library, profile, leads };
+  const views = { overview, radar, awards, tenders, rfqs, rfq, library, profile, leads };
   async function route() {
     const [name, id] = (location.hash.slice(1) || "overview").split("/");
     const view = views[name] || overview;
@@ -100,13 +100,72 @@
         <div class="card panel"><h2>Tender feeds</h2>${o.runs.length ? `<table><tbody>${o.runs.map((r) => `<tr><td>${r.source === "ted" ? "TED (EU/EEA)" : "UK Find a Tender"}</td>
           <td class="small">${esc(fmtDate(r.ran_at))}</td><td class="small">${r.error ? `<span class="warn">${esc(r.error)}</span>` : `${r.fetched} found, ${r.inserted} saved`}</td></tr>`).join("")}</tbody></table>` : '<p class="muted">Feeds run every 6 hours. Run them now from Tender watch.</p>'}
           <p class="muted small">Offer applications received: ${o.applications}</p></div>
-      </div>`;
+      </div>
+      <div class="card panel" style="margin-top:16px"><h2>Coming up: projects that lead to RFQs</h2>${o.radar && o.radar.length ? `<table><tbody>${o.radar.map((s) => `<tr class="click" data-href="#radar"><td><span class="score ${scoreCls(s.relevance)}">${s.relevance}</span></td><td><b>${esc(s.title)}</b><div class="muted small">${esc(KIND[s.kind] || s.kind)} · ${fmtDate(s.published_at)}</div></td></tr>`).join("")}</tbody></table>` : '<p class="muted">Nothing yet. Open <a href="#radar">Project radar</a> and check for new signals.</p>'}</div>`;
     $$("tr.click", main).forEach((tr) => tr.addEventListener("click", () => (location.hash = tr.dataset.href)));
     $("#demo")?.addEventListener("click", async (e) => {
       e.target.disabled = true; e.target.innerHTML = '<span class="spin"></span> Loading';
       const r = await api("/demo", { method: "POST" });
       location.hash = "#rfq/" + r.rfq;
     });
+  }
+
+  // ---------- Project radar ----------
+  const KIND = { fid: "Investment decision / PDO", epci_award: "Contract award", feed_award: "FEED award", frame: "Frame agreement", decom: "Decommissioning", wind_grant: "Offshore wind", vessel: "Vessel / rig", other: "News" };
+  async function radar() {
+    const st = sessionStorage.getItem("nb_rs") || "open";
+    main.innerHTML = `
+      <div class="head"><div><h1>Project radar</h1><p>Awards, investment decisions, frame agreements and grants that come before subcontract RFQs. Each one shows who buys next, what they're likely to buy, and when. Get in front of the buyer before the RFQ is written.</p></div>
+        <button class="btn small" id="rrefresh">Check for new signals</button></div>
+      <div class="filters"><select id="r-status"><option value="open">Open</option><option value="new">New</option><option value="watching">Watching</option><option value="acting">Acting on it</option><option value="dismissed">Dismissed</option></select>
+        <select id="r-min"><option value="0">Any relevance</option><option value="30" selected>Relevance 30+</option><option value="50">50+</option></select></div>
+      <div id="rlist" class="lib-list"></div>
+      <p class="muted small" style="margin-top:14px">Likely packages and timing are patterns from past projects, not promises. Check the buyer's own announcements.</p>`;
+    $("#r-status").value = st;
+    const load = async () => {
+      sessionStorage.setItem("nb_rs", $("#r-status").value);
+      const rows = await api(`/radar?status=${$("#r-status").value}&min=${$("#r-min").value}`);
+      $("#rlist").innerHTML = rows.length ? rows.map((s) => `<div class="card lib-item" data-id="${s.id}">
+        <div class="row" style="justify-content:space-between;align-items:flex-start"><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><span class="score ${scoreCls(s.relevance)}">${s.relevance}</span>
+          <div><a href="${safeUrl(s.url)}" target="_blank" rel="noopener"><b>${esc(s.title)}</b></a><div class="muted small">${esc(KIND[s.kind] || s.kind)} · ${esc(s.outlet)} · ${fmtDate(s.published_at)}</div></div></div>
+          <select data-act="status" aria-label="Status" style="width:auto">${["new", "watching", "acting", "dismissed"].map((x) => `<option value="${x}" ${x === s.status ? "selected" : ""}>${x === "acting" ? "acting on it" : x}</option>`).join("")}</select></div>
+        <div class="small">${s.buyers.length ? `<b>Who buys next:</b> ${esc(s.buyers.join(", "))} · ` : ""}${s.window ? `<b>When:</b> ${esc(s.window)}` : ""}</div>
+        <div>${s.packages.map((x) => `<span class="std">${esc(x)}</span>`).join("")}</div>
+        <div class="reasons">${esc(s.reasons.join(" · "))}</div>
+        <textarea data-act="note" rows="1" placeholder="Next step, e.g. call the buyer, register in their supplier portal, send capability statement">${esc(s.note)}</textarea></div>`).join("")
+        : '<p class="empty card">No signals yet. Check for new signals, and make sure your profile keywords describe what you sell.</p>';
+    };
+    ["r-status", "r-min"].forEach((id) => $("#" + id).addEventListener("change", load));
+    $("#rlist").addEventListener("change", async (e) => {
+      const act = e.target.dataset.act; if (!act) return;
+      await api("/radar/" + e.target.closest(".lib-item").dataset.id, { method: "PATCH", body: { [act]: e.target.value } });
+      toast("Saved");
+    });
+    $("#rrefresh").addEventListener("click", async (e) => {
+      e.target.disabled = true; e.target.innerHTML = '<span class="spin"></span> Checking';
+      try { const r = await api("/radar/refresh", { method: "POST" }); toast(`${r.signals} signals from ${r.news} news items, ${r.awards} award notices`); await load(); }
+      catch (err) { toast(err.message); }
+      finally { e.target.disabled = false; e.target.textContent = "Check for new signals"; }
+    });
+    await load();
+  }
+
+  // ---------- Who wins (TED awards) ----------
+  async function awards() {
+    const d = await api("/awards");
+    main.innerHTML = `
+      <div class="head"><div><h1>Who wins</h1><p>Public contract awards in your field from TED (Norway, Denmark, the Netherlands and the rest of the EEA): who won, for how much, and against how many bidders. Use it to price, pick partners and decide where to bid.</p></div></div>
+      <div class="tiles">
+        <div class="card tile"><div class="k">Awards in your field</div><div class="v">${d.awards.length}</div></div>
+        <div class="card tile"><div class="k">Median bids per contract</div><div class="v">${d.medianBids ?? "–"}</div></div>
+        <div class="card tile"><div class="k">Won by SMEs / mid-size</div><div class="v">${d.smeShare != null ? d.smeShare + "%" : "–"}</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card panel"><h2>Most frequent winners</h2>${d.winners.length ? `<table><thead><tr><th>Company</th><th>Wins</th><th>Value (€)</th></tr></thead><tbody>${d.winners.map((w) => `<tr><td>${esc(w.name)}</td><td>${w.wins}</td><td class="small">${w.value ? eur(w.value) : "–"}</td></tr>`).join("")}</tbody></table>` : '<p class="muted">No awards yet. Check for new signals on Project radar.</p>'}</div>
+        <div class="card panel"><h2>Latest awards</h2><div class="tablewrap" style="max-height:60vh"><table><tbody>${d.awards.slice(0, 60).map((a) => `<tr><td><a href="${safeUrl(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a>
+          <div class="muted small">${esc(a.buyer)} · ${esc(a.country)} · ${fmtDate(a.published_at)}</div>
+          <div class="small">${a.winners.length ? "Won by " + esc(a.winners.join(", ")) : "Winner not published"}${a.bids_received ? ` · ${a.bids_received} bids` : ""}${a.value_eur ? ` · ${eur(a.value_eur)}` : ""}</div></td></tr>`).join("")}</tbody></table></div></div>
+      </div>`;
   }
 
   // ---------- Tenders ----------
@@ -224,7 +283,7 @@
         <div class="tablewrap"><table class="matrix"><thead><tr><th>#</th><th>Clause</th><th>Requirement</th><th>Category</th><th>Status</th><th>Response / deviation</th><th>Evidence</th></tr></thead><tbody>
         ${r.requirements.map((q) => `<tr data-id="${q.id}" data-cat="${esc(q.category)}" data-status="${esc(q.status)}" data-m="${q.mandatory}">
           <td class="muted small">${q.seq}</td><td class="mono small">${esc(q.clause)}</td>
-          <td class="req">${esc(q.text)}${q.mandatory ? "" : ' <span class="pill">optional</span>'}<div>${q.standards.map((s) => `<span class="std">${esc(s)}</span>`).join("")}</div></td>
+          <td class="req">${esc(q.text)}${q.mandatory ? "" : ' <span class="pill">optional</span>'}${q.found_by === "rules-only" ? ' <span class="pill clarify" title="Found by the second-pass rule reader only">check: second pass</span>' : ""}<div>${q.standards.map((s) => `<span class="std">${esc(s)}</span>`).join("")}</div></td>
           <td><select data-f="category">${CATS.map((c) => `<option ${c === q.category ? "selected" : ""}>${c}</option>`).join("")}</select></td>
           <td><select data-f="status">${REQ.map((c) => `<option ${c === q.status ? "selected" : ""}>${c}</option>`).join("")}</select></td>
           <td><textarea data-f="response" rows="2">${esc(q.response)}</textarea></td>

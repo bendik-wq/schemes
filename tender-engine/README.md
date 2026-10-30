@@ -21,6 +21,9 @@ Offer and pricing: `../offers/northbid-tender-engine.md`. Research behind it: `.
 - **Bid/no-bid scorecard**: scope fit, approvals held (profile certifications + standards your library evidences), evidence coverage, time to deadline; lists missing approvals.
 - **Compliance matrix**: set status (open / comply / partial / deviation / clarify / n/a), write responses, pick evidence; export CSV (Excel-safe).
 - **Tender watch** (`src/feeds/`): every 6 hours (cron) pulls 30 days of notices from **TED** (EU/EEA incl. Norway; no key) and **UK Find a Tender** (OCDS; no key; only when `GBR` is in the profile countries), ranks them 0–100 against the profile with reasons. "Start bid" turns a tender into an RFQ.
+- **Project radar** (`src/radar/`): every 6 hours reads 11 trade/press RSS feeds (plus Google News when it answers; it refuses Cloudflare IPs), classifies triggers (FID/PDO, contract award, FEED, frame agreement, decommissioning, wind grant, vessel), clusters one story across outlets, and maps each to who buys next, the subcontract packages that usually follow and when. Ranked against the profile; other regions and non-energy news are pushed down. Status + next-step notes per signal.
+- **Who wins**: TED contract-award notices in your field: winners, value (EUR), bids received, median bids, SME share.
+- **Second-pass reading**: with the Claude reader on, the rule reader also runs; requirements only it found are added and flagged "check: second pass".
 - **Answer library** with expiry dates (flagged 60 days ahead), **company profile**, **offer applications** (A/B/C tier).
 - "Load sample workspace" on the empty overview loads a fictional subsea supplier and a sample ITT.
 

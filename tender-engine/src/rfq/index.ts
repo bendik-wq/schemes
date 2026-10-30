@@ -3,6 +3,7 @@ import { parseList } from "../util";
 import { loadProfile } from "../feeds";
 import { analyseWithClaude } from "./claude";
 import {
+  tokens,
   bestEvidence, clarifications, extractRequirements, findDeadline, findReference, findStandards, scorecard,
   type ExtractedReq, type LibraryItem, type Scorecard,
 } from "./rules";
@@ -45,6 +46,7 @@ export async function analyseRfq(env: Env, rfqId: number, opts: { pdfBase64?: st
   let analysis: Analysis;
   const meta: { title?: string; client?: string; reference?: string } = {};
   let note: string | undefined;
+  let foundBy: string[] = [];
 
   if (env.ANTHROPIC_API_KEY) {
     try {
@@ -53,6 +55,13 @@ export async function analyseRfq(env: Env, rfqId: number, opts: { pdfBase64?: st
       });
       by = "claude";
       reqs = c.requirements.map((r) => ({ ...r, standards: [...new Set([...r.standards.map((s) => s.toUpperCase()), ...findStandards(r.text)])] }));
+      foundBy = reqs.map(() => "claude");
+      // Second pass: the rule reader catches obligations a single model pass can miss.
+      if (text.trim()) {
+        const extra = missedByFirstPass(reqs, extractRequirements(text));
+        for (const r of extra) { reqs.push(r); foundBy.push("rules-only"); }
+        if (extra.length) note = `${extra.length} requirement(s) were found only by the second-pass rule reader. They are flagged in the matrix: check them.`;
+      }
       deadline = c.deadline;
       Object.assign(meta, { title: c.title, client: c.client, reference: c.reference });
       const rulesCard = scorecard(reqs, 0, profileForCard, text || reqs.map((r) => r.text).join("\n"), deadline, now);
@@ -71,6 +80,7 @@ export async function analyseRfq(env: Env, rfqId: number, opts: { pdfBase64?: st
   // Evidence from the answer library, for both readers.
   if (by === "rules") {
     reqs = extractRequirements(text);
+    foundBy = reqs.map(() => "rules");
     deadline = findDeadline(text);
     meta.reference = findReference(text);
   }
@@ -94,8 +104,8 @@ export async function analyseRfq(env: Env, rfqId: number, opts: { pdfBase64?: st
     const ev = evidence[i];
     stmts.push(
       env.DB.prepare(
-        "INSERT INTO requirements (rfq_id, seq, clause, text, category, mandatory, standards, evidence_id, response) VALUES (?,?,?,?,?,?,?,?,?)",
-      ).bind(rfqId, i + 1, r.clause, r.text, r.category, r.mandatory ? 1 : 0, JSON.stringify(r.standards), ev?.item.id ?? null, ev ? `Draft from library: ${ev.item.title}` : ""),
+        "INSERT INTO requirements (rfq_id, seq, clause, text, category, mandatory, standards, evidence_id, response, found_by) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      ).bind(rfqId, i + 1, r.clause, r.text, r.category, r.mandatory ? 1 : 0, JSON.stringify(r.standards), ev?.item.id ?? null, ev ? `Draft from library: ${ev.item.title}` : "", foundBy[i] ?? "rules"),
     );
   });
   stmts.push(
@@ -109,4 +119,21 @@ export async function analyseRfq(env: Env, rfqId: number, opts: { pdfBase64?: st
   );
   for (let i = 0; i < stmts.length; i += 80) await env.DB.batch(stmts.slice(i, i + 80));
   return { by, requirements: reqs!.length };
+}
+
+/** Rule-found requirements with no close match among the first pass (by shared words or standards). */
+export function missedByFirstPass(first: ExtractedReq[], second: ExtractedReq[]): ExtractedReq[] {
+  const firstTok = first.map((r) => tokens(r.text));
+  return second.filter((r) => {
+    const t = tokens(r.text);
+    if (t.size < 3) return false;
+    return !first.some((f, i) => {
+      if (r.standards.length && r.standards.every((s) => f.standards.includes(s)) && (!r.clause || r.clause === f.clause)) return true;
+      // Different standards cited means a different obligation, however similar the wording.
+      if (r.standards.length && f.standards.length && !r.standards.some((s) => f.standards.includes(s))) return false;
+      let shared = 0;
+      for (const w of t) if (firstTok[i].has(w)) shared++;
+      return shared / t.size >= 0.6;
+    });
+  });
 }

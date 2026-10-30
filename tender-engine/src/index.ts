@@ -4,6 +4,7 @@ import { type Env, clean, parseList, sha256Hex, csvCell } from "./util";
 import { checkSession, clearCookie, makeSession, readCookie, safeEqual, sessionCookie } from "./auth";
 import { loadProfile, rescoreAll, runFeeds } from "./feeds";
 import { analyseRfq } from "./rfq";
+import { runRadar, rerankSignals } from "./radar";
 import { tierOf, validateApplication } from "./apply";
 import { SAMPLE_LIBRARY, SAMPLE_PROFILE, SAMPLE_RFQ } from "./sample";
 
@@ -106,10 +107,11 @@ app.get("/app/api/overview", async (c) => {
     db.prepare("SELECT source, fetched, inserted, error, ran_at FROM feed_runs ORDER BY id DESC LIMIT 4").all(),
     db.prepare("SELECT COUNT(*) n FROM applications").first<{ n: number }>(),
   ]);
+  const radar = await db.prepare("SELECT id, kind, title, url, published_at, relevance FROM signals WHERE status IN ('new','watching','acting') AND relevance >= 40 ORDER BY relevance DESC, published_at DESC LIMIT 5").all();
   const due = await db
     .prepare("SELECT id, title, client, deadline_at, stage FROM rfqs WHERE stage IN ('reviewing','bidding') ORDER BY deadline_at IS NULL, deadline_at LIMIT 6")
     .all();
-  return c.json({ tenders, stages: rfqs.results, library: lib, runs: runs.results, due: due.results, applications: apps?.n ?? 0 });
+  return c.json({ tenders, stages: rfqs.results, library: lib, runs: runs.results, due: due.results, applications: apps?.n ?? 0, radar: radar.results });
 });
 
 // Profile
@@ -123,6 +125,7 @@ app.put("/app/api/profile", async (c) => {
     .bind(clean(b.company, 160), clean(b.summary, 2000), list(b.keywords), list(b.exclude_keywords), list(b.cpv), list((b.countries as unknown[]) ?? [], 30), list(b.certifications), Math.max(0, Number(b.min_value_eur) || 0))
     .run();
   const rescored = await rescoreAll(c.env.DB);
+  await rerankSignals(c.env.DB);
   return c.json({ ok: true, rescored });
 });
 
@@ -162,6 +165,47 @@ app.post("/app/api/tenders/:id/rfq", async (c) => {
     .run();
   await c.env.DB.prepare("UPDATE tenders SET status = 'pursuing' WHERE id = ?").bind(t.id).run();
   return c.json({ ok: true, id: r.meta.last_row_id });
+});
+
+// Project radar: signals that come before RFQs
+const SIGNAL_STATUS = ["new", "watching", "acting", "dismissed"];
+app.get("/app/api/radar", async (c) => {
+  const status = c.req.query("status") || "open";
+  const min = Number(c.req.query("min") ?? 0) || 0;
+  const where = status === "open" ? "status IN ('new','watching','acting')" : "status = ?";
+  const binds: unknown[] = status === "open" ? [] : [SIGNAL_STATUS.includes(status) ? status : "new"];
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, kind, title, url, outlet, published_at, buyers, packages, window, relevance, reasons, status, note
+     FROM signals WHERE ${where} AND relevance >= ? ORDER BY relevance DESC, published_at DESC LIMIT 150`,
+  ).bind(...binds, min).all<Record<string, unknown>>();
+  return c.json(results.map((r) => ({ ...r, buyers: parseList(r.buyers as string), packages: parseList(r.packages as string), reasons: parseList(r.reasons as string) })));
+});
+app.patch("/app/api/radar/:id", async (c) => {
+  const b = await c.req.json<{ status?: string; note?: string }>();
+  if (b.status !== undefined && !SIGNAL_STATUS.includes(b.status)) return c.json({ error: "Bad status" }, 400);
+  await c.env.DB.prepare("UPDATE signals SET status = COALESCE(?, status), note = COALESCE(?, note) WHERE id = ?")
+    .bind(b.status ?? null, b.note === undefined ? null : clean(b.note, 2000), Number(c.req.param("id"))).run();
+  return c.json({ ok: true });
+});
+app.post("/app/api/radar/refresh", async (c) => c.json({ ok: true, ...(await runRadar(c.env)) }));
+
+// Competitor intelligence from TED award notices
+app.get("/app/api/awards", async (c) => {
+  const { results } = await c.env.DB.prepare(
+    "SELECT ext_id, title, buyer, country, winners, winner_size, value_eur, bids_received, published_at, url, relevance FROM awards WHERE relevance >= 20 ORDER BY published_at DESC LIMIT 200",
+  ).all<Record<string, unknown>>();
+  const rows: Record<string, unknown>[] = results.map((r) => ({ ...r, winners: parseList(r.winners as string), winner_size: parseList(r.winner_size as string) }));
+  const tally = new Map<string, { wins: number; value: number }>();
+  for (const r of rows) for (const w of r.winners as string[]) {
+    const t = tally.get(w) ?? { wins: 0, value: 0 };
+    t.wins++; t.value += Number(r.value_eur ?? 0) / Math.max(1, (r.winners as string[]).length);
+    tally.set(w, t);
+  }
+  const winners = [...tally.entries()].map(([name, t]) => ({ name, ...t })).sort((a, b) => b.wins - a.wins || b.value - a.value).slice(0, 25);
+  const counts = rows.map((r) => Number(r.bids_received)).filter((n) => n > 0);
+  const medianBids = counts.length ? counts.sort((a, b) => a - b)[Math.floor(counts.length / 2)] : null;
+  const sme = rows.filter((r) => (r.winner_size as string[]).some((s) => ["sme", "small", "micro", "medium"].includes(s))).length;
+  return c.json({ awards: rows, winners, medianBids, smeShare: rows.length ? Math.round((sme / rows.length) * 100) : null });
 });
 
 // RFQs
@@ -337,7 +381,7 @@ app.notFound(async (c) => {
 export default {
   fetch: app.fetch,
   async scheduled(_e: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runFeeds(env).then(() => undefined));
+    ctx.waitUntil(Promise.allSettled([runFeeds(env), runRadar(env)]).then(() => undefined));
   },
 } satisfies ExportedHandler<Env>;
 

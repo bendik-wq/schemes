@@ -70,7 +70,7 @@ ul.ok li::before { content: ""; position: absolute; left: 1px; top: .38em; width
 
 .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin: 36px 0 18px; }
 .bento .card { padding: 24px; display: grid; gap: 8px; align-content: start; }
-.b1 { grid-column: span 4; } .b2 { grid-column: span 2; } .b3 { grid-column: span 3; } .b4 { grid-column: span 3; }
+.b0 { grid-column: 1 / -1; } .b1 { grid-column: span 4; } .b2 { grid-column: span 2; } .b3 { grid-column: span 3; } .b4 { grid-column: span 3; }
 .step { font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--teal); }
 .bento p { margin: 0; }
 .mini { margin-top: 10px; background: var(--paper); border-radius: 12px; padding: 12px; font-size: 13.5px; }
@@ -138,7 +138,7 @@ legend { font-size: 21px; font-weight: 650; color: var(--ink); margin-bottom: 12
   .hero-grid, .split, .offer { grid-template-columns: 1fr; }
   .stats, .timeline { grid-template-columns: 1fr; }
   .bento { grid-template-columns: 1fr; }
-  .b1, .b2, .b3, .b4 { grid-column: auto; }
+  .b0, .b1, .b2, .b3, .b4 { grid-column: auto; }
   .nav nav { display: none; }
 }
 @media (max-width: 560px) {

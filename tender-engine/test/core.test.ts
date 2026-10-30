@@ -146,3 +146,12 @@ it("escapes CSV formulas", () => {
   expect(csvCell("=HYPERLINK(1)")).toBe("'=HYPERLINK(1)");
   expect(csvCell('a,"b"')).toBe('"a,""b"""');
 });
+
+import { missedByFirstPass } from "../src/rfq";
+it("second pass adds only requirements the first pass missed", () => {
+  const all = extractRequirements(SAMPLE_RFQ);
+  const first = all.filter((r) => r.clause !== "5.4" && r.clause !== "2.4");
+  const extra = missedByFirstPass(first, all);
+  expect(extra.map((r) => r.clause).sort()).toEqual(["2.4", "5.4"]);
+  expect(missedByFirstPass(all, all)).toEqual([]);
+});
