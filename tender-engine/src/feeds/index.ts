@@ -65,10 +65,23 @@ export function mapTed(n: Record<string, unknown>): FeedTender {
   };
 }
 
+const UA = "Northbid/1.0 (tender watch; contact via site)";
+
+/** TED rate-limits shared egress IPs; retry 429/5xx with backoff. */
+async function withRetry(call: () => Promise<Response>, tries = 4, sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<Response> {
+  let res = await call();
+  for (let i = 1; i < tries && (res.status === 429 || res.status >= 500); i++) {
+    const wait = Number(res.headers.get("retry-after")) * 1000 || 1500 * 2 ** i;
+    await sleep(Math.min(wait, 15_000));
+    res = await call();
+  }
+  return res;
+}
+
 export async function fetchTed(p: Profile, sinceYmd: string, fetcher = fetch): Promise<FeedTender[]> {
-  const res = await fetcher("https://api.ted.europa.eu/v3/notices/search", {
+  const res = await withRetry(() => fetcher("https://api.ted.europa.eu/v3/notices/search", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", accept: "application/json", "user-agent": UA },
     body: JSON.stringify({
       query: tedQuery(p, sinceYmd),
       fields: [
@@ -79,7 +92,7 @@ export async function fetchTed(p: Profile, sinceYmd: string, fetcher = fetch): P
       limit: 100,
       page: 1,
     }),
-  });
+  }));
   if (!res.ok) throw new Error(`TED ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = (await res.json()) as { notices?: Record<string, unknown>[] };
   return (data.notices ?? []).map(mapTed);
@@ -129,7 +142,8 @@ export async function fetchFts(p: Profile, sinceIso: string, fetcher = fetch, ma
   const out: FeedTender[] = [];
   const terms = [...p.keywords.filter((k) => k.length >= 4), ...STRONG_OFFSHORE_TERMS].map((s) => s.toLowerCase());
   for (let page = 0; url && page < maxPages; page++) {
-    const res = await fetcher(url, { headers: { accept: "application/json" } });
+    const u = url;
+    const res = await withRetry(() => fetcher(u, { headers: { accept: "application/json", "user-agent": UA } }));
     if (!res.ok) throw new Error(`Find a Tender ${res.status}`);
     const data = (await res.json()) as { releases?: OcdsRelease[]; links?: { next?: string } };
     for (const r of data.releases ?? []) {

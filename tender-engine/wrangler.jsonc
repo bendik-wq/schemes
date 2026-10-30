@@ -15,8 +15,7 @@
     {
       "binding": "DB",
       "database_name": "tender-engine",
-      // Replace with the id from `npx wrangler d1 create tender-engine`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "368b9d2c-4c64-4ec1-9244-10e3372f6026",
       "migrations_dir": "migrations"
     }
   ],

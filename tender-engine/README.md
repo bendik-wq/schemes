@@ -1,5 +1,7 @@
 # Northbid: tender & RFQ engine for offshore suppliers
 
+**Live:** https://tender-engine.bendik-50e.workers.dev (offer page) · https://tender-engine.bendik-50e.workers.dev/app/ (workspace, password in the `APP_PASSWORD` secret)
+
 One Cloudflare Worker with a D1 database:
 
 | Path | What |
