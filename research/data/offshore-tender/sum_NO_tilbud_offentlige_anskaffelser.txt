@@ -1,0 +1,7 @@
+
+##### NO_tilbud_offentlige_anskaffelser.json 1
+Traceback (most recent call last):
+  File "/home/user/schemes/tools/summarize_ads.py", line 6, in <module>
+    for a in ads: g[a["snapshot"].get("page_name") or a.get("page_name")].append(a)
+                    ~^^^^^^^^^^^^
+KeyError: 'snapshot'

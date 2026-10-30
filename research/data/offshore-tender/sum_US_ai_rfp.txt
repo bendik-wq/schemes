@@ -1,0 +1,22 @@
+
+##### US_ai_rfp.json 40
+- HALOS Body Cameras | ads=18 maxdup=1 oldest=130d | https://halosbodycams.com/private-security-system?utm_medium=cpc-cta | No button | likes=5055
+    Why security companies switching to the HALOS Connected Camera Platform win contracts their SD card cameras and enterprise police systems never could, even after storage costs killed their last program  The competitor across town won the contract.  Not because
+- Snaptrude | ads=11 maxdup=7 oldest=367d | https://www.snaptrude.com/ | Learn more | likes=1679
+    {{product.brand}}
+- Cvent | ads=3 maxdup=1 oldest=101d | None | Learn more | likes=34889
+    Find the right venue faster and keep sourcing moving with less manual work.   Search global venues, send one RFP to multiple properties, compare bids, and manage venue data in one place.
+- GoodShip | ads=2 maxdup=2 oldest=91d | https://www.goodship.io/?utm_source=facebook&utm_campaign=remarketing&utm_medium=cpc | Learn more | likes=15
+    Unify your data. Pinpoint what matters most. Act faster with confidence. Procurement, analytics, carriers in one AI engine.
+- SamSearch | ads=1 maxdup=1 oldest=36d | https://samsearch.co/demo | Book now | likes=309
+    Your next government contract might never show up on SAM.gov. SamSearch tracks opportunities across 60,000 federal, state, and local agencies, so you can find relevant bids earlier and build a stronger pipeline. See what’s out there for your company.
+- OpenAsset | ads=1 maxdup=1 oldest=30d | https://openasset.com/platform/ | Learn more | likes=271
+    OpenAsset DAM keeps your images, projects, and people organized. Shred helps transform that trusted content into AI-powered proposals.
+- equivant | ads=1 maxdup=1 oldest=10d | https://equivant-court.com/checklist/ | Download | likes=194
+    Writing an RFP for a court CMS or sitting through vendor demos?  This free checklist gives you 7 questions to ask every vendor. It covers pricing, data ownership, AI governance, implementation and data migration.  Use it to hold every vendor to the same standa
+- ClearSight Growth Strategies  | ads=1 maxdup=1 oldest=10d | http://fb.me/ | Learn more | likes=3
+    For U.S. consulting firm owners doing $500K+ per year.  If your firm has capacity for more advisory projects, but your next engagement still depends on when a referral arrives, you do not have a predictable pipeline.  You have a waiting game.  Most consulting 
+- Fuse Finance | ads=1 maxdup=2 oldest=24d | http://Fusefinance.com/ | See details | likes=32
+    Credit unions have lost ground for a decade — not because they stopped caring about members, but because their technology stopped keeping up. Fuse is the AI-native loan origination and account opening platform built to change that. One system. Every loan type.
+- Bidscope | ads=1 maxdup=1 oldest=31d | https://bidscopeai.com/ | Sign up | likes=0
+    {{product.brand}}

@@ -1,0 +1,14 @@
+
+##### GB_tender_software.json 11
+- ProcureKey | ads=4 maxdup=2 oldest=17d | http://fb.me/ | Book now | likes=23
+    Tired of juggling Excel, Outlook and WhatsApp for every tender?  Run your entire sourcing process in one place with ProcureKey.  Create, invite, bid, evaluate and award in one flow Compare supplier quotes side by side ISO 27001, SOC 2 Type II and GDPR certifie
+- BuildPartner - Construction Pricing Software | ads=2 maxdup=1 oldest=15d | https://buildpartner.com/lp-architect-intro/?bpm=design | Sign up | likes=692
+    Price it as you design. BuildPartner gives architects quick, accurate material and labour costs so you can validate schemes early and kill cost-shock at tender. Start your 14-day free trial — 50% off your first year.
+- Capsule CRM | ads=2 maxdup=2 oldest=1d | https://capsulecrm.com/industries/crm-for-civil-engineering/ | Sign up | likes=851
+    Civil engineering firms don't need more software. They need one place to track tenders, manage relationships, and stay on top of follow-ups.
+- Operate AEC Software | ads=1 maxdup=1 oldest=11d | http://fb.me/ | Learn more | likes=175
+    {{product.brand}}
+- Tribresegrim Greglaltsha | ads=1 maxdup=1 oldest=24d | https://book-261006-1771676087174143.oceread.com/content/BdTEYw4mdd2q4S7v/420623256833818624?utm_campaign={{campaign.name}}&utm_adset={{adset.name}}&utm_campaign_id={{campaign.id}}&utm_medium={{placement}}&utm_adset_id={{adset.id}}&utm_ad_id={{ad.id}}&utm_source=fb&utm_ad_name={{ad.name}}&utm_site_source_name={{site_source_name}}&contentId=BdTEYw4mdd2q4S7v&initIndex=1&pId=438417069291630592&pixel_code=1663590264844844&picture_id=https://cdn.overseas-new-media.com/xiaoyao-writer/prod/content/cover/fMTz1rfa9w2xBWeyOONDauIE3axHbXLa.png&bizAdId=438421858364719104 | Learn more | likes=2
+    I died exactly twenty-four hours ago.   Now, my shattered soul floated against the ceiling of our Seattle penthouse, completely invisible.   The heavy oak front door swung open, hitting the wall with a dull thud.   "It’s massive, Julian," Celeste said, steppin
+- Inspec | ads=1 maxdup=1 oldest=5d | https://inspec.design/ | Learn more | likes=97
+    Save hours on admin. Inspec makes specification scheduling fast, beautiful & collaborative. Start your 14 day free trial.
