@@ -62,8 +62,8 @@ h1{font-size:26px;line-height:1.2;margin:0 0 6px;text-wrap:balance;letter-spacin
 <div class="wrap">
   <header class="top">
     <h1>Josh's X posts</h1>
-    <p class="lead">40 long-form posts that send $1M+ owners to apply.grosfjeld-li.com. Copy a post and paste it straight into X: the spacing comes with it.</p>
-    <p class="tip">For more reach, use "Copy without link", post it, then reply to your own post with "Copy link for reply".</p>
+    <p class="lead">40 long-form posts, written in the Sultanic letter style, that send $1M+ owners to apply.grosfjeld-li.com. Copy a post and paste it straight into X: the spacing comes with it.</p>
+    <p class="tip">Each post ends with a P.S. that carries the link. For more reach, use "Copy without P.S. link", post it, then reply to your own post with "Copy P.S. for reply".</p>
   </header>
   <div class="bar" role="toolbar" aria-label="Filter posts">
     <div class="seg" id="sets">
@@ -85,7 +85,8 @@ try { store = JSON.parse(localStorage.getItem("posted") || "{}"); } catch (e) { 
 const save = () => { try { localStorage.setItem("posted", JSON.stringify(store)); } catch (e) {} };
 let set = 0, q = "";
 
-function withoutLink(b){ return b.split("\n").filter(l => l.trim() !== LINK).join("\n").replace(/\n{3,}/g, "\n\n").trim(); }
+function withoutLink(b){ return b.split("\n").filter(l => !l.includes(LINK)).join("\n").replace(/^P\.P\.S\./m, "P.S.").replace(/\n{3,}/g, "\n\n").trim(); }
+function psLine(b){ return (b.split("\n").find(l => l.includes(LINK)) || ("https://" + LINK)).trim(); }
 
 async function copy(text, btn, label){
   let ok = false;
@@ -112,8 +113,8 @@ function render(){
       <pre class="post"></pre>
       <div class="actions">
         <button type="button" class="btn primary" data-a="all">Copy post</button>
-        <button type="button" class="btn" data-a="nolink">Copy without link</button>
-        <button type="button" class="btn" data-a="link">Copy link for reply</button>
+        <button type="button" class="btn" data-a="nolink">Copy without P.S. link</button>
+        <button type="button" class="btn" data-a="link">Copy P.S. for reply</button>
         <button type="button" class="more" data-a="more">Show all</button>
         <label class="chk"><input type="checkbox" id="posted-${p.n}" ${store[p.n] ? "checked" : ""}> Posted</label>
       </div>`;
@@ -123,8 +124,8 @@ function render(){
       const b = e.target.closest("button"); if (!b) return;
       const a = b.dataset.a;
       if (a === "all") copy(p.b, b, "Copy post");
-      if (a === "nolink") copy(withoutLink(p.b), b, "Copy without link");
-      if (a === "link") copy("https://" + LINK, b, "Copy link for reply");
+      if (a === "nolink") copy(withoutLink(p.b), b, "Copy without P.S. link");
+      if (a === "link") copy(psLine(p.b), b, "Copy P.S. for reply");
       if (a === "more") { const o = card.classList.toggle("open"); b.textContent = o ? "Show less" : "Show all"; }
     });
     card.querySelector("input").addEventListener("change", e => {
