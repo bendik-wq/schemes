@@ -1,0 +1,26 @@
+
+##### US_claude_code.json 40
+- Claude | ads=21 maxdup=6 oldest=12d | https://claude.com/product/claude-code | None | likes=130390
+    A new model, smarter Claude Code, and a redesigned voice mode. Everything we shipped last month.
+- Kodree | ads=4 maxdup=1 oldest=96d | https://kodree.com/en/claude-code/get-started | Learn more | likes=38472
+    Learn in-demand skills by doing. No endless tutorials, real practice from day one.
+- AskCatgpt | ads=4 maxdup=6 oldest=12d | https://claude.com/product/overview | Sign up | likes=13815
+    What the hell are Fable, Opus, Sonnet, and Haiku?  These are the 4 model classes of @claudeai   In order from MOST to LEAST intelligent, it’s: Fable Opus Sonnet Haiku  When should you use each?  Well, the more intelligent the model, the more complex of tasks i
+- Chris Raroque | ads=2 maxdup=6 oldest=12d | https://claude.com/product/claude-code | Sign up | likes=45
+    First, I keep choosing Claude Code for iOS because it’s THE BEST I’ve used for design and anything that requires exploration and creativity @claudeai #ClaudePartner  Even with Opus 5, I get better results for that kind of work than with anything else I’ve trie
+- Farzatv | ads=2 maxdup=3 oldest=17d | http://heyclicky.com/ig-ad | Download | likes=16
+    Here’s my demo of screen-aware dictation.  First, we built a speedy speech-to-text (very fast, ~450ms). Let’s you write with your voice anywhere on your computer.  But, many products do this.  So we went further! Now dictate using your screen as context. In Cl
+- Master.Dev | ads=1 maxdup=1 oldest=131d | https://master.dev/courses/claude-code/ | Learn more | likes=82962
+    {{product.brand}}
+- Vaibhav Sisinty | ads=1 maxdup=3 oldest=102d | https://go.outskill.com/claude-us | Sign up | likes=398910
+    {{product.brand}}
+- The Code  | ads=1 maxdup=1 oldest=186d | https://codenewsletter.ai/subscribe?utm_source=fbads | Sign up | likes=8844
+    Claude Code is the biggest productivity unlock for developers right now, but most won't bother learning it properly.  We've compiled every resource you need: 4 courses, 7 GitHub repos, 6 YouTube tutorials, and more.   Sign up for The Code newsletter to get acc
+- icet | ads=1 maxdup=2 oldest=39d | https://comparison.supercool.com/ | See details | likes=1
+    Your AI tools belong in one workflow. Here’s what brings them together: 👇  One tool. One workflow. That's it.  And here's the part nobody says out loud: YOU are the glue. You're the one copying the script out of ChatGPT, pasting it into the voiceover tool, dow
+- Perplexity AI | ads=1 maxdup=4 oldest=37d | https://perplexity.sng.link/A6awk/lplb?_smtype=3&_android_dl=perplexity-app%3A%2F%2Fcomputer&_dl=perplexity-app%3A%2F%2Fcomputer&_ddl=perplexity-app%3A%2F%2Fcomputer&_p=%7B%22show-intro%22%3Afalse%2C%22show-smb-onboarding%22%3Afalse%7D&_forward_params=1&pscid={{adset.id}}&pcn={{campaign.name}}&pcrid={{ad.id}}&pcrn={{ad.name}}&pscn={{adset.name}}&pcid={{campaign.id}} | Download | likes=345038
+    Chat gives you answers. Agents can run a task. Computer executes entire workflows from start to finish — research, build, deploy — all from a single prompt.   20+ specialized AI models working in parallel 400+ connected apps
+- Glowify App Selfie Enhancer & Filters | ads=1 maxdup=1 oldest=19d | https://play.google.com/store/apps/details?id=com.syct.chatbot.assistant | Install now | likes=4639
+    {{product.brand}}
+- NextbySophie | ads=1 maxdup=1 oldest=39d | https://vercel.com/drop | Learn more | likes=91
+    Ad | Partnered with @Vercel  If I had 10 minutes to get my business online, here's exactly what I'd do 👇  Built a live website for Terra Vista (my landscaping company going dog-first 🐾) using nothing but a folder of logos + a doc and Claude Code, then dragged 

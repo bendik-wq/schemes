@@ -1,0 +1,58 @@
+
+##### US_ai_avatar_for_business.json 40
+- Daniel Whitmore | ads=7 maxdup=4 oldest=8d | https://zeely.ai/start/avatar-ai/?utm_source=meta&utm_campaign={{campaign.name}}&utm_medium={{adset.name}}&utm_content={{ad.name}}&utm_source_platform=1179346067258567&an_acc=1179346067258567&an_cam={{campaign.id}}&an_grp={{adset.id}}&an_ad={{ad.id}}&an_net=meta&an_plc={{placement}}&an_site={{site_source_name}} | Learn more | likes=274
+    AI-powered content to help grow your business!  Create your own AI Avatar and turn it into high-performing videos, assets and social posts for your business in minutes. ✅ Create months of content in just a few clicks ✅ Your AI Marketing Agent, available 24/7 ✅
+- Jasmine Harris | ads=4 maxdup=4 oldest=11d | https://zeely.ai/start/avatar-ai/?utm_source=meta&utm_campaign={{campaign.name}}&utm_medium={{adset.name}}&utm_content={{ad.name}}&utm_source_platform=1179346067258567&an_acc=1179346067258567&an_cam={{campaign.id}}&an_grp={{adset.id}}&an_ad={{ad.id}}&an_net=meta&an_plc={{placement}}&an_site={{site_source_name}} | Learn more | likes=325
+    AI-powered content to help grow your business!  Create your own AI Avatar and turn it into high-performing videos, assets and social posts for your business in minutes. ✅ Create months of content in just a few clicks ✅ Your AI Marketing Agent, available 24/7 ✅
+- Kong | ads=2 maxdup=1 oldest=423d | https://getkong.ai/ | Learn more | likes=444
+    “This thing is batsh*t CRAZY! It increased my ROAS 72% INSTANTLY”  It requires zero change to your business.  You paste in some basic info about your biz.  And it spits out high-converting ads (creative + copy).  You paste ‘em into your ads manager.  Ad perfor
+- Metaview | ads=2 maxdup=2 oldest=46d | https://www.metaview.ai/screening | See details | likes=384
+    Metaview's Screening agent conducts two-way conversations with every candidate.  It asks your questions, follows up naturally, and grades responses against your specific rubrics.  You decide who advances. But without hundreds of calls to get there.  Book your 
+- Rachel Hayes | ads=2 maxdup=2 oldest=7d | https://zeely.ai/start/avatar-ai/?utm_source=meta&utm_campaign={{campaign.name}}&utm_medium={{adset.name}}&utm_content={{ad.name}}&utm_source_platform=1179346067258567&an_acc=1179346067258567&an_cam={{campaign.id}}&an_grp={{adset.id}}&an_ad={{ad.id}}&an_net=meta&an_plc={{placement}}&an_site={{site_source_name}} | Learn more | likes=295
+    AI-powered content to help grow your business!  Create your own AI Avatar and turn it into high-performing videos, assets and social posts for your business in minutes. ✅ Create months of content in just a few clicks ✅ Your AI Marketing Agent, available 24/7 ✅
+- CopyandContent.ai | ads=1 maxdup=1 oldest=585d | https://copyandcontent.ai/ | Learn more | likes=146
+    $219k Contract Secret: AI Copywriting Hack Revealed!   Struggling with copywriting? Engineering pro Bradley Waldrop shows how AI tools can transform your business in minutes!  Full interview here: https://youtu.be/nqJl3CLGIx8?si=oGeRvIqh_86eBX4N  #aitools #mar
+- Association of Professional Builders (APB) | ads=1 maxdup=1 oldest=116d | https://go.associationofprofessionalbuilders.com/builders-aeo-guide | Download | likes=37429
+    A homeowner with a $1.5M build budget asked ChatGPT for a builder recommendation last night.  Three names came up.  Yours was not one of them.  Not because your work is not good enough. Because the way your business appears across the web is not set up for the
+- Skool | ads=1 maxdup=1 oldest=7d | https://www.skool.com/mattryder/about?&utm_campaign=sk_meta_ads | Sign up | likes=157440
+    For sales reps and appointment setters who struggle with objections, scripts, and running effective sales calls, Matt Ryder F The GuRUs: Sales helps members build a simple, repeatable sales process.  Sales training has become overcomplicated. Learning another 
+- Profit Surge Group | ads=1 maxdup=1 oldest=200d | None | Send message | likes=1821
+    Free training: what makes a good CFO niche? 👇   #FractionalCFO #ProfitSurgeGroup #BusinessFinance #CharlesLeikauf #businesscoach #accountant #bookkeeper #AI
+- Udemy Business | ads=1 maxdup=1 oldest=31d | https://business.udemy.com/?utm_source=meta&utm_medium=paid-social&utm_campaign=amer-sa-web&utm_content=roleplay-sa-mp4-vert&utm_term=roleplay-sa-ai-test&utm_method=performance-era&utm_funnel=solutionawareness&utm_region=gb-namer&utm_audience=ub&utm_custom=ub&utm_tactic=platform-mix-prosp | Learn more | likes=17242
+    Develop your workforce with learning that drives performance, growth, and measurable results across your organization. Get started with Udemy Business.
+- Alina Bond | ads=1 maxdup=1 oldest=5d | https://zeely.ai/start/avatar-ai/?utm_source=meta&utm_campaign={{campaign.name}}&utm_medium={{adset.name}}&utm_content={{ad.name}}&utm_source_platform=1179346067258567&an_acc=1179346067258567&an_cam={{campaign.id}}&an_grp={{adset.id}}&an_ad={{ad.id}}&an_net=meta&an_plc={{placement}}&an_site={{site_source_name}} | Learn more | likes=64146
+    AI-powered content to help grow your business!  Create your own AI Avatar and turn it into high-performing videos, assets and social posts for your business in minutes. ✅ Create months of content in just a few clicks ✅ Your AI Marketing Agent, available 24/7 ✅
+- Langla: Learn Any Language | ads=1 maxdup=1 oldest=16d | https://play.google.com/store/apps/details?id=aitutor.ailanguagelearn.ailearning&pli=1 | Download | likes=1809
+    {{product.brand}}
+- Marcos BlueHackers | ads=1 maxdup=1 oldest=3d | https://instagram.com/marcosrazzetti | Visit Instagram profile | likes=2496
+    Comenta "CLAUDE" y te envío los 5 proyectos completos por MD.⬇️
+- Leadscape Digital | ads=1 maxdup=1 oldest=39d | https://leadsuite.agency/new-funnel-page | Learn more | likes=351
+    Marketing agencies and coaches, we will get you 10 new high-ticket clients on your highest-ticket offer within 30 days, or you don’t pay a cent.   If you’re wondering how we’ll do this, we’ll set you up with our simple AI paid ads funnel, which attracts only t
+- Yellowbrick | ads=1 maxdup=3 oldest=141d | https://www.yellowbrick.co/business-entertainment/?utm_source=Facebook&utm_medium=paidsocial&utm_campaign={{campaign.name}}&utm_term={{placement}}&utm_content={{ad.name}}&partner=NYU&program=BOE | Learn more | likes=169490
+    {{product.brand}}
+- Alex Hormozi | ads=1 maxdup=1 oldest=81d | https://www.acquisition.com/workshop-marketing | Learn more | likes=1083743
+    We finally launched a marketing workshop. A whole new 2-day experience here in Vegas.  I've been pretty deliberate about NOT running a marketing workshop until now. Not because we couldn't. I didn't want the brand of a marketer. I wanted the brand of a busines
+- Pete Thorpe | ads=1 maxdup=1 oldest=16d | None | None | likes=3163
+    𝗔 𝟰𝟵 𝗢𝗨𝗧 𝗢𝗙 𝟭𝟬𝟬.  That's where we started.  And chances are, a lot of real estate agents would score about the same. Maybe worse.  𝗛𝗲𝗿𝗲'𝘀 𝘁𝗵𝗲 𝘁𝗵𝗶𝗻𝗴: 𝗬𝗼𝘂 𝗰𝗮𝗻'𝘁 𝗳𝗶𝘅 𝘄𝗵𝗮𝘁 𝘆𝗼𝘂 𝗱𝗼𝗻'𝘁 𝗸𝗻𝗼𝘄 𝗶𝘀 𝗯𝗿𝗼𝗸𝗲𝗻.  At our recent Mid-Atlantic Mastermind, one lucky attendee won a c
+- Anoop Avatar | ads=1 maxdup=1 oldest=30d | https://anoopavatar.com/ | Learn more | likes=3
+    Discover anoopavatar.com — an innovation news portal designed for a new era of human–AI collaboration.  🤖 AI Agents + Human Intelligence 💡 Innovation, Ideas & Opportunities 🚀 AI, Robotics & Automation 🌎 Global Business & Technology Updates 🔬 Emerging Technolog
+- Merve Tas | ads=1 maxdup=1 oldest=57d | https://app.creatify.ai/tool/ai-avatar | Apply now | likes=3199
+    AI avatars are getting seriously impressive 👀✨  With @creatify_ai_official, I can turn one photo into an AI avatar, change backgrounds, and even create content in different languages — all without constantly filming myself. 🤍  Such a time saver for creators an
+- Sifu Yik's A.I. 4-Day Training | ads=1 maxdup=1 oldest=51d | https://sifuyik.substack.com/p/announcement-i-am-hosting-a-ai-avatar | See details | likes=1284
+    AI Avatar Training this Sat!
+- Travis Scott Stephenson | ads=1 maxdup=6 oldest=8d | https://ideas.paidcreators.com/50salessprintv2 | See details | likes=17778
+    How to sell digital products in 2026 (because we all have AI now)  AI is here and is changing everything... in the best way possible.   If you automate the RIGHT parts, you can get more done in less time. I've followed the same system for over 18 years, but no
+- Sarah Taylor, Realtor | ads=1 maxdup=1 oldest=60d | https://videotour.ai/real-estate-video-tour?via=sarah | Learn more | likes=15
+    I’m usually not a huge fan of AI, but I’ve been seeing more and more really smart agents using it to double down on content around their listings and just get a lot more exposure.  So I did my research. I probably tried way too many different tools, and honest
+- Agentattraction.io | ads=1 maxdup=1 oldest=33d | None | None | likes=1850
+    Amanda calls it the best button she ever pressed.  She runs an independent team brokerage in New Orleans, and she had no recruiting pipeline at all.  28 days later she had 7 experienced real estate agents signed and 40 more leads waiting.  In this interview sh
+- Hernan Vazquez | ads=1 maxdup=1 oldest=239d | None | No button | likes=16204
+    Today I want to talk about how most people are overcomplicating testing offers...  In fact, I spent $1,000 testing a dumb offer idea that I didn't think was going to work.  A couple months later, it became my number one best-selling offer.  Last month alone, I
+- SmartScale AI Marketing | ads=1 maxdup=1 oldest=17d | https://hub.imanoubou.ai/ai_avatar_playbook | See details | likes=569
+    How to Create, Grow, and Monetize Your AI Avatar  Get the free Playbook and learn how AI avatars can help you create content, grow your brand, and sell digital products
+- Pretty Smart Marketing | ads=1 maxdup=1 oldest=43d | https://go.launchbabes.com/5-files | Learn more | likes=26
+    Still opening ChatGPT… and rewriting everything it gives you?  Kinda defeats the point, right?  AI is supposed to SAVE you time.  Not be like: write → fix → re-prompt → fix again → “whatever, I’ll just do it myself.”  But if it keeps missing the mark… there’s 
+- Client Overflow with Buki | ads=1 maxdup=1 oldest=106d | None | None | likes=1315
+    Woman of God, if you have been coaching and getting results for your clients but next months paycheck looks lean, you need this.  Use Claude AI for cashflow  Comment Claude below and get you Content cashflow skill set up👇
+- Dr. Matt Shiver | ads=1 maxdup=1 oldest=155d | http://mattshiver.com/coach-training | See details | likes=2230
+    Online Coaches: We Will Launch Your Facebook & Instagram Ads + Help You Build an AI Booking Bot To Help You Sign New Clients Every Month  Just like we helped Greg scale his coaching business  To learn more about our program to see if we can help, click the lin
