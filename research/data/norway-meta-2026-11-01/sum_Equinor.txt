@@ -1,0 +1,16 @@
+
+##### NO_Equinor.json 40
+- Equinor | ads=31 maxdup=13 oldest=19d | https://www.stemgapet.no/?utm_medium=paid&utm_source=meta&utm_campaign=61002_eqnr_stemgapet&utm_adgroup=gp&utm_content=curious-minds_astronaut | Learn more | likes=173669
+    Jannicke Mikkelsen er filmfotograf, teknologigründer og Norges første astronaut. Hun er et bevis på at nysgjerrighet kan ta deg langt – til og med helt til verdensrommet.
+- OneSubsea | ads=3 maxdup=1 oldest=13d | https://www.onesubsea.slb.com/?utm_source=instagram&utm_medium=paid&utm_campaign=&utm_content=static | Learn more | likes=717
+    Troll Phase 3 Step II is now in production, just 27 months after contract award and ahead of schedule.  Awarded in May 2024, the project followed a period of close collaboration, studies, and Front-End Engineering Design (FEED), where OneSubsea was entrusted w
+- Tekna | ads=2 maxdup=1 oldest=63d | https://www.tekna.no/lederkonferansen/StartPage/?utm_campaign=Konferanse&utm_source=facebook&utm_medium=paid_social&utm_term=Lillerigg&utm_content=Lederkonferansen_2026&utm_id=164 | Sign up | likes=31403
+    {{product.brand}}
+- Universum | ads=1 maxdup=1 oldest=21d | https://www.equinor.com/no/karriere | Learn more | likes=71220
+    Gratulerer. Tre topplasseringer. Én tydelig favoritt.  Equinor er igjen kåret til Norges mest attraktive arbeidsgiver blant ingeniørstudenter.  Samtidig oppnår selskapet en imponerende 2. plass blant økonomistudenter og en 3. plass blant IT-studenter, og range
+- KnowledgeGroup AS | ads=1 maxdup=1 oldest=17d | https://knowledgegroup.no/kurs/KnowledgeDay-Norges-storste-Copilot-seminardag-p717441594?utm_campaign=fb-oslo-des-kd | Book now | likes=1216
+    Vi har gleden av å invitere deg til Norges største KI og Copilot seminardag, med hele 5 spor og 28 unike sesjoner, tirsdag 8. desember på Radisson Blu Scandinavia Hotel i Oslo sentrum.  KI og Copilot endrer arbeidsdagen i rekordfart - og de som lykkes, er de s
+- KI-dagene | ads=1 maxdup=1 oldest=17d | https://kidagene.no/program/?utm_source=meta&utm_medium=paid&utm_campaign=kd26_program&utm_content=bredde | Learn more | likes=5
+    KI i Oljefondet. Norges første KI-fabrikk hos Telenor. Digitale tvillinger i Equinor. Roboter i industrien. KI-dagene samler folk som bruker teknologien i praksis, fra ganske forskjellige ståsteder. Oslo Kongressenter 25.–26. november.
+- ENEB - European Business School | ads=1 maxdup=1 oldest=59d | http://fb.me/ | Learn more | likes=312
+    Do you work like a senior but get paid like a junior? 🚀 14,000 job offers 🎓 Triple degree

@@ -1,0 +1,20 @@
+
+##### NO_båt_til_salgs.json 27
+- Lagerseksjoner | ads=13 maxdup=1 oldest=63d | http://lagerseksjoner.no/ | See details | likes=2279
+    SELVEIDE OG FLEKSIBLE LAGERSEKJONER TIL SALGS I ÅRØDALEN 🤩  Nå har du muligheten til å sikre deg din egen lagerseksjon I ÅRØDALEN – perfekt for deg som drømmer om eget verksted, eller som trenger trygg og fleksibel oppbevaring av bil, båt, bobil eller annet ut
+- MittEgetLokale | ads=4 maxdup=2 oldest=6d | https://www.mittegetlokale.no/os/ | See details | likes=4602
+    🏗️ Byggingen pågår på Os, og nesten alt er solgt.  47 av 53 lokaler er solgt. Nå er det 6 igjen: ett på 48 kvm fra 1.350.000,- og fem på 72 kvm fra 1.650.000,-.  📍 Hegglandsdalen Industripark: 5 minutter fra Os og 18 minutter fra Bergen.  🔑 Du eier lokalet sel
+- Aktiv Steinkjer | ads=4 maxdup=2 oldest=2d | https://aktiv.no/bolig/boliger-til-salgs/snasa-andreastjonna-6-122433461?utm_source=adfenix&utm_medium=newsfeed&utm_campaign=mini_tilpasset | Learn more | likes=4602
+    🏡 Til salgs – Tiltalende og flott utstyrt fjellhytte med utsøkt beliggenhet. 2 soverom, tørkerom, anneks og uthus. Leveres møblert. Hytta har gode løsninger på strøm og vann, med mulighet for 9 sengeplasser. Båt ved Åsvatnet medfølger. Vid utsikt over Skjækerf
+- ConsignmentStar | ads=1 maxdup=1 oldest=181d | https://qcviwxfqmc.com/17?ekw=YG0M4UBQYAylXi6XAMLN8g&market=NO&lang=no&subid1={{campaign.id}}&ad_id={{ad.id}}&network=facebook&site=direct&dpco=1&adtitle=%25f0%259f%259a%25a4%2bL%25c3%25a6r%2bmer%2bom%2bNamsmannen%2bB%25c3%25a5t%2b%25f0%259f%259a%25a4%2bEmpatisk%2binnsikt%2bsom%2btar%2bdine%2bbekymringer%2bp%25c3%25a5%2balvor%2b%25f0%259f%2592%25ac%25e2%259a%2593%25ef%25b8%258fL%25c3%25a6r%2bmer%2bom%2bNamsmannen%2bB%25c3%25a5t%2b%25e2%25ac%2587%25ef%25b8%258f%2bHva%2bskjer%2bmed%2bb%25c3%25a5ten%2bved%2bnamsmannsaksjon%253f%2b%25f0%259f%25a4%2594%25f0%259f%259a%25a4%2bB%25c3%25a5ter%2btil%2bsalgs%2bvia%2bNamsmannen%2bHvor%2bfinner%2bdu%2bde%2bbeste%2balternativene | Learn more | likes=18
+    Empatisk innsikt som tar dine bekymringer på alvor 💬⚓️ Lær mer om Namsmannen Båt ⬇️
+- Norsk Båtformidling  | ads=1 maxdup=1 oldest=202d | https://www.finn.no/mobility/item/459467872 | No button | likes=3549
+    Solgt - ta kontakt om du ønsker å kjøpe eller selge båt. Vi har mange nyheter på vei inn samt interessent lister på forskjellige båter.   https://www.finn.no/mobility/item/459467872
+- Diamanten - Paradis | ads=1 maxdup=1 oldest=33d | http://diamanten-paradis.no/ | Learn more | likes=28
+    Ny leilighet i Stavanger? Salget er i gang! Nå lanseres Diamanten i Paradis! 🌊  💎 Leiligheter fra 66 til 183 m² 💎 Skjermede balkonger og private takterrasser 💎 Treningsrom, gjesteleilighet og selskapslokale 💎 Umiddelbar nærhet til tog, buss og sentrum  Se boli
+- Styleevo10 | ads=1 maxdup=1 oldest=19d | https://qcviwxfqmc.com/17?sc=FAUmpPuV&subid1={{campaign.id}}&ad_id={{ad.id}} | Learn more | likes=36
+    Positiv og enkel forklaring som lindrer usikkerhet rundt båten 🌊✨ Lær mer om Namsmannen Båt ⬇️
+- Vevelar8 | ads=1 maxdup=1 oldest=14d | https://qcviwxfqmc.com/17?sc=A5VTfcaU&subid1={{campaign.id}}&ad_id={{ad.id}} | Learn more | likes=25
+    Empatisk innsikt som tar dine bekymringer på alvor 💬⚓️ Lær mer om Namsmannen Båt ⬇️
+- Styleevo83 | ads=1 maxdup=1 oldest=14d | https://qcviwxfqmc.com/17?sc=HWYfJSbV&subid1={{campaign.id}}&ad_id={{ad.id}} | Learn more | likes=100
+    Vennlig, forståelsesfull informasjon som møter dine bekymringer 💙📘 Lær mer om Namsmannen Båt ⬇️

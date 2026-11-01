@@ -1,0 +1,18 @@
+
+##### NO_rederi.json 13
+- Cruise.no | ads=4 maxdup=3 oldest=591d | https://www.cruise.no/msc-cruises/ | Watch more | likes=9970
+    Ferien for alle!
+- Cruiseshop | ads=3 maxdup=2 oldest=98d | https://www.cruiseshop.no/rederi/royal-caribbean | Order now | likes=581
+    Hei! Det er oss i Cruiseshop. Vi har familieferien din klar vi! Royal Caribbean, riktig lugar, riktig rute – vi fikser. Du pakker solbrillene. ☀️⛴️
+- Østensjø Life | ads=1 maxdup=1 oldest=10d | https://ostensjo.no/new-job-application-page/?rmpage=job&rmjob=81&utm_medium=talentech_publishing&utm_source=jobtip | Apply now | likes=2455
+    Trives du med ansvar, selvstendighet og et tett miljø om bord? Østensjø Rederi søker maskinsjef til vår taubåtflåte
+- Port of Kristiansand | ads=1 maxdup=1 oldest=34d | None | None | likes=5758
+    ⚓ Takk for Havnekonferansen 2026!  For noen inspirerende dager! Havnekonferansen 2026 samlet dyktige fagfolk, spennende foredragsholdere og engasjerte deltakere til gode samtaler om havn, utvikling og fremtidens maritime næring. Vi fikk en to dagers reise med 
+- Nordmanns-Reiser | ads=1 maxdup=1 oldest=56d | http://fb.me/ | Get offer | likes=14330
+    Drømmer du om cruise – eller planlegger du allerede din neste reise? 🚢  Enten du ønsker sol og varme, elvecruise, ekspedisjon, luksus, Norden eller verdenscruise, hjelper våre erfarne cruiserådgivere deg med å finne riktig skip, rederi og rute.  Fyll ut skjema
+- Maritim Logg | ads=1 maxdup=1 oldest=250d | None | Call now | likes=2483
+    Maria har kjempet i årevis for å bli trodd – nå har hun endelig fått medhold i Diskrimineringsnemnda. 💬  - Saken til Maria viser hvor ille det kan være å bli utsatt for trakassering på et fartøy. Norsk arbeidsliv bør og skal være inkluderende også til sjøs, si
+- Navis Agency | ads=1 maxdup=1 oldest=4d | None | Send message | likes=552
+    ⚓ Tusberg Agency er nå Navis Agency!  Vi har relansert bemanningsportalen med nytt navn, ny plattform og et klart mål: å koble sjøfolk og rederier direkte. Helt gratis, og uten fordyrende mellomledd.  Nytt fra i dag: Rederier kan nå utlyse ledige stillinger di
+- Norheim Kulturhus | ads=1 maxdup=1 oldest=14d | https://karmoy.ticketco.events/no/nb/e/knutsenrederiets_historie__forfatter_tor_inge_vormedal__norheim_kulturhus | Buy tickets | likes=1547
+    Foredraget tar for seg Knutsen-rederiets historie fra slutten av 1800-tallet og frem til i dag: Historien om det gamle Knutsen-rederiet fram til 1984, og etter 1984 da Jens Ulltveit-Moe og Trygve Seglem overtok rederiet.  Knut Knutsen O.A.S. var en gang blant 

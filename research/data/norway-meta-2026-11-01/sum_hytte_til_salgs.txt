@@ -1,0 +1,12 @@
+
+##### NO_hytte_til_salgs.json 15
+- Notar Sunnmøre | ads=8 maxdup=2 oldest=7d | https://notar.no/bolig-til-salgs/eiendomsmegler-notar-ulsteinvik/hornindal/CF77FE4C-E74F-4DC1-A5B9-0DD44E88862A?utm_source=adfenix&utm_medium=newsfeed&utm_campaign=notar_target_sunnm_re | Learn more | likes=1750
+    Til Salgs - Flott og moderne fritidsbolig i attraktive Harevadet hyttefelt. Oppført i 2021 med moderne standard, gjennomtenkte løsninger og behagelig atmosfære. Gangavstand til skitrekket gir enkel tilgang til bakken. Om sommeren byr området på fine turmulighe
+- EiendomsMegler 1 Bodø | ads=3 maxdup=1 oldest=3d | https://www.eiendomsmegler1.no/boliger/nn-2260315 | Learn more | likes=3931
+    Forstranda | Annet | BRA-i 53.0 m² | 3 soverom | Prisantydning 1 250 000 NOK | Totalpris 1 282 340 NOK | Energimerke G 🏠  Visning 2026-11-08 | Hytte i fantastiske omgivelser på Forstrand i Gildeskål. Nydelig havutsikt i idylliske, naturskjønne omgivelser.
+- EiendomsMegler 1 Kristiansand | ads=2 maxdup=1 oldest=3d | https://www.eiendomsmegler1.no/boliger/b17ec32d-2cbc-444f-9c3d-fb9aa8fe7c84 | Learn more | likes=1327
+    Bygland | Fritidseiendom | BRA-i 67.0 m² | 2 soverom | Prisantydning 490 000 NOK | Totalpris 503 340 NOK | Energimerke E 🏠  Visning  | Koselig og enkel hytte med innlagt strøm og utvendig borebrønn | Flott utsiktstomt | Attraktivt hytteområde!
+- Norgeshus Egersund | ads=1 maxdup=1 oldest=3d | None | Call now | likes=2648
+    Til salgs: Hytte 1 på Leidland hyttefelt, Eigerøy  Ny, arkitekttegnet og nøkkelferdig sjøhytte på 81 m² med 4 soverom, store uteplasser, flotte solforhold og sjøutsikt. Egen båtplass følger med, og det er kort vei til Egersund sentrum.  Skal årets julegave vær
+- EiendomsMegler 1 Sandnessjøen | ads=1 maxdup=1 oldest=1d | https://www.eiendomsmegler1.no/boliger/nn-13260056 | Learn more | likes=1198
+    HERØY | Enebolig | BRA-i 88.0 m² | Ingen soverom | Prisantydning 1 300 000 NOK | Totalpris 1 333 590 NOK | Energimerke E 🏠  Visning 2026-11-11 | Frittliggende hytte på eiet tomt | Sørvendt altan | Stue med vedovn | Kort vei til sjøen

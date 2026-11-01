@@ -1,0 +1,40 @@
+
+##### NO_nye_boliger.json 30
+- Green-Acres | ads=6 maxdup=1 oldest=50d | https://www.green-acres.com/ | See details | likes=35229
+    What if your dream home is already waiting for you? Discover unique properties now on Green-Acres
+- Byggmann | ads=4 maxdup=1 oldest=501d | https://byggmann.no/bestill-katalog/?utm_source=meta&utm_medium=feed&utm_campaign=huskatalog2025_conversion&utm_content=borgund | Learn more | likes=22526
+    Byggmanns Huskatalog 2025 er lansert – spekket med ny inspirasjon, smarte planløsninger og boliger for alle livsfaser. 🏡   Fra moderne eneboliger til praktiske familiehjem – finn huset som passer deg.  Bestill katalogen gratis i dag – og se om du finner ditt d
+- Verksbyen - Ny bydel i Fredrikstad | ads=2 maxdup=1 oldest=84d | https://www.arcanova.no/verksbyen/verket_atrium | Learn more | likes=1989
+    Arca Nova har bygget boliger på østsiden i Fredrikstad i over 20 år. Tidligere hadde de aller fleste kjøperne lokal tilhørighet til området. I dag ser bildet ganske annerledes ut, hvor over halvparten av kjøperne kommer fra andre steder.  Det gjorde oss nysgje
+- Proaktiv Eiendomsmegling | ads=2 maxdup=1 oldest=90d | https://www.xn--rdhusplassen-boliger-wzb.no/ | See details | likes=10521
+    Ny leilighet i Klæbu sentrum?  Nye moderne leiligheter ferdigstilles 3.kvartal 2027. Ønsker du et møte om prosjektet? Kontakt megler.
+- Rom123 | ads=2 maxdup=2 oldest=27d | https://kampanje.bladkiosken.no/kampanje/rom123-some-ww-julemorgen-kopper | Order now | likes=22642
+    Rom123 holder deg oppdatert på de siste interiørtrendene. Alle nye abonnenter får to kopper fra Julemorgen kolleksjonen til Wik & Walsøe i velkomstgave ✨
+- Vision Huse A/S | ads=1 maxdup=1 oldest=368d | http://visionhuse.dk/ | Watch more | likes=913
+    {{product.brand}}
+- Atlas Eiendom | ads=1 maxdup=1 oldest=122d | https://www.finn.no/realestate/planned/ad.html?finnkode=468036614 | See details | likes=629
+    🏡 Nye boliger i Ekornveien på Slemdal  I idylliske Ekornveien kommer et eksklusivt nytt boligprosjekt med 3 tomannsboliger og 1 enebolig – tegnet i klassisk stil med moderne kvaliteter og svært gode solforhold.  ✅ Ca. 218–255 m² BRA ✅ 3–4 soverom ✅ 3 bad + god
+- Lilleeng Helsepark | ads=1 maxdup=1 oldest=28d | None | Call now | likes=7036
+    Spennende nyheter fra Moss!  I 2027 åpner et helt nytt hotell med 142 rom, rett ved siden av Lilleeng Helsepark. Sammen med rundt 2000 nye boliger som er planlagt i området de neste ti årene, blir Høyda en av Moss sine mest attraktive bydeler å både bo, jobbe 
+- Boligbyggelaget Usbl | ads=1 maxdup=1 oldest=82d | https://www.usbl.no/inspirasjon-og-tips/eiendom-og-okonomi/her-bygger-vi-i-vestfold-og-telemark | Learn more | likes=13684
+    Hos Usbl kan du være trygg på boligkjøpet. Oppdag våre nyeste boligprosjekter i Vestfold og Telemark – moderne hjem nær kysten, kultur og gode pendlermuligheter. 🏠
+- Råholtåsen | ads=1 maxdup=1 oldest=38d | https://www.raholtasen.no/?utm_source=facebook&utm_medium=ads&utm_content=video&utm_campaign=cpc-u39-45 | See details | likes=247
+    NYE LEILIGHETER PÅ RÅHOLT! Kort vei til tog, butikker og natur – og enkel pendling til Oslo og Gardermoen. Her får du moderne boliger med gjennomtenkte planløsninger og en beliggenhet som gjør hverdagen enklere. Oppdag Råholtåsen!
+- The Home Place | ads=1 maxdup=1 oldest=41d | https://orbitpeek.com/no/articles/nye-containerhus-i-norge-i-2026-se-priser?dest=bnZ6bTNyLmdyeHZscXN4ei5jb20=&network=facebook&site=direct&ad_id={{ad.id}}&dpco=1&subid2=facebook&subid3=5387647_FBTR_Tonic_ShippContHomeHMTIMGAPIv9_NO5442&campaign_name=5387647_FBTR_Tonic_ShippContHomeHMTIMGAPIv9_NO5442&adtitle=Er%20boligprosjektet%20ditt%20stoppet%20av%20h%C3%B8ye%20priser%3F%20Se%20veiledende%20priser%20for%20containerhus%20med%20to%20soverom%20i%20Norge%20i%202026%20og%20finn%20ut%20hva%20som%20kan%20v%C3%A6re%20inkludert%2C%20hvilke%20kostnader%20som%20ofte%20kommer%20i%20tillegg%20og%20hvilket%20totalbudsjett%20du%20b%C3%B8r%20planlegge%20for. | Learn more | likes=11296
+    Er boligprosjektet ditt stoppet av høye priser? Se veiledende priser for containerhus med to soverom i Norge i 2026 og finn ut hva som kan være inkludert, hvilke kostnader som ofte kommer i tillegg og hvilket totalbudsjett du bør planlegge for.
+- Maison Interiør | ads=1 maxdup=2 oldest=12d | https://kampanje.bladkiosken.no/kampanje/maison-interior-some-mdw-saper-jul | Order now | likes=9291
+    Bladet for alle som er interessert i vakre boliger❣️ Vi liker hjem med personlighet og stil, og tar deg med på besøk til mennesker med sans for estetikk.
+- Flatebygrenda | ads=1 maxdup=1 oldest=332d | https://flatebygrenda.no/ | Watch more | likes=55
+    I Aremark kan du søke startlån som førstegangsetablerer – enten du er ung i etableringsfasen eller har fast inntekt med uføretrygd. Nye boliger i naturskjønne omgivelser – med støtteordninger som gjør boligdrømmen mulig☺
+- Aduro | ads=1 maxdup=2 oldest=179d | http://adurofire.com/nb-no/products/aduro-23 | Learn more | likes=6543
+    {{product.brand}}
+- Eikeparken | ads=1 maxdup=1 oldest=49d | https://eikeparken.no/trinn-2/ | Watch more | likes=74
+    Nyhet! Eikeparken trinn 2 kommer nå. Registrer deg for å motta link til priser og all nødvendig informasjon i dag.
+- Doktor Holms vei 9 - 0787 Oslo | ads=1 maxdup=1 oldest=27d | None | None | likes=524
+    Fra tidligere bebyggelse til 9 nye boliger under oppføring i Doktor Holms vei 9.Se forskjellen før og nå, og følg prosjektet videre på DHV9.no Fra tidligere bebyggelse til 9 nye boliger under oppføring i Doktor Holms vei 9. Se forskjellen før og nå, og følg pr
+- Medland Spain | ads=1 maxdup=1 oldest=64d | https://www.medlandspania.no/iforms/propertyfullinfo/?ref=7450503&TRACK=FACEBOOK | Learn more | likes=86819
+    {{product.brand}}
+- Via Vestby | ads=1 maxdup=1 oldest=62d | https://www.viavestby.no/ | Learn more | likes=27
+    Nye rekkehus midt i småbyen med kort vei til tog, sentrum og natur. Solrike uteplasser, romslige boliger og et nytt nabolag i vekst. Dette er for deg som vil bo litt friere, lysere og enklere!
+- JM Norge | ads=1 maxdup=1 oldest=4d | https://www.jm.no/trondelag-fylke/trondheim-kommune/strinda/strindalia-3---hus-h/ | No button | likes=17268
+    Hus H på Strindalia er nå i salg! 💚 Tirsdag 3. november kl. 15-17 inviterer vi til visning i vårt nye salgslokale. Kom og se helt nye planløsninger, med leilighetstyper vi ikke har tilbudt før, og få en innføring i hvor fint det blir å bo i bygget med prosjekt

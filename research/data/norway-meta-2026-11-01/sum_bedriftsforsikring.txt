@@ -1,0 +1,6 @@
+
+##### NO_bedriftsforsikring.json 7
+- If Skadeforsikring | ads=6 maxdup=1 oldest=124d | https://www.if.no/bedrift/forsikring-for-bedrifter/firmaforsikring/smabedriftsforsikring-cmpn?utm_source=facebook&utm_medium=banner&utm_campaign=no_if_b2b_insurance&utm_content=26pricehyb03_no_if_b2b_insurance | Learn more | likes=38224
+    {{product.brand}}
+- Gjensidige i Norge | ads=1 maxdup=1 oldest=31d | https://www.gjensidige.no/bedrift/aktuelt/trygghet-for-de-ansatte?utm_id=44vopo&utm_source=meta&utm_medium=social&utm_campaign=smb_tggb | Learn more | likes=95053
+    Du trenger ikke kunne alt om forsikring for å ta vare på de ansatte. Vi hjelper deg å velge riktig.

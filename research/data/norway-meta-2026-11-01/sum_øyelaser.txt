@@ -1,0 +1,8 @@
+
+##### NO_øyelaser.json 40
+- Lirema Øyeklinikk | ads=20 maxdup=2 oldest=95d | https://lirema.no/?cmpid=6a187ba1a5092179c0f3b36d&sub1={{ad.id}}&sub2={{adset.id}}&sub3={{campaign.id}}&sub4={{ad.name}}&sub5={{adset.name}}&sub6={{campaign.name}}&sub7={{placement}}&sub8={{site_source_name}}&utm_source=facebook&utm_medium=paid | See details | likes=1739
+    {{product.brand}}
+- Memira Eyecenter | ads=19 maxdup=2 oldest=17d | https://c.memira.no/undersokelse_mid-laser/ | Book now | likes=39688
+    Vurderer du øyelaser for å slippe briller og kontaktlinser?  Bli med når John får utført sin øyelaserbehandling hos Memira, og få et innblikk i hvordan behandlingen foregår.  Vil du vite om øyelaser kan være aktuelt for deg? Bestill en kostnadsfri og uforplikt
+- Volkmann Øyelege og Laserklinikk | ads=1 maxdup=1 oldest=179d | https://volkmann.no/ | Learn more | likes=413
+    {{product.brand}}

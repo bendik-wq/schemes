@@ -1,0 +1,16 @@
+
+##### NO_tannimplantat.json 22
+- EuroDent.no | ads=8 maxdup=3 oldest=116d | https://eurodent.no/tannimplantat-i-utlandet | Request time | likes=7970
+    {{product.brand}}
+- Opalia tannklinikk Trondheim | ads=3 maxdup=1 oldest=536d | https://opalia.no/nytt-smil/?utm_source=Facebook&utm_campaign=034NyeTenner&utm_content=Trondheim | Learn more | likes=510
+    {{product.brand}}
+- Opalia Tannklinikk Tromsø | ads=3 maxdup=1 oldest=96d | https://opalia.no/kontakt-oss/tromso/ | See details | likes=3853
+    Trenger du krone, implantat, bro eller vurderer du fasetter? Hos Opalia tannklinikk møter du tannleger som forklarer – ikke presser.  Vi tilbyr et bredt spekter av tannbehandling: • Porselenskroner og broer • Implantat og faste løsninger • Proteser / gebiss • 
+- Oralcare As | ads=3 maxdup=1 oldest=13d | https://oralcare.no/nye-tenner-meta/ | See details | likes=4526
+    {{product.brand}}
+- A-pomfihfb | ads=2 maxdup=1 oldest=112d | https://www.trusted-experts24.com/rsp/alt-du-ma-vite-om-tannimplantater-etter-fylte-50-ar/?cmpid=b0rt1mzcey&sty=dark&sa=1 | See details | likes=52
+    👉Se prisinformasjon for tannimplantater
+- Lillestrøm Tannhelse  | ads=2 maxdup=1 oldest=2d | https://www.lillestromtannhelse.no/implantat-konsultasjon/ | Sign up | likes=596
+    Et tannimplantat erstatter en tapt tann – fast, stabilt og naturlig 😁  Implantatkonsultasjon for 399 kr: ✔️ Behandlingsplan ✔️ Prisoverslag før vi starter  Hos Lillestrøm Tannhelse i Nittedalsgata 20B. 👉 Fyll ut skjemaet, så ringer vi deg og finner en tid som 
+- Strømmen.tannhelse | ads=1 maxdup=1 oldest=190d | None | Call now | likes=149
+    Mangler du én eller flere tenner? Hos Strømmen Tannhelse tilbyr vi gratis konsultasjon for tannimplantat, slik at du får en trygg vurdering og en skreddersydd behandlingsplan.
