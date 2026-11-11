@@ -1,0 +1,59 @@
+kategori,tittel,volum_kontrakter,open_interest_kontrakter,event_ticker
+Economics,Recession in 2027?,981320,425158,KXRECSSNBER-27
+Economics,Next Fed rate hike?,352240,149507,KXFEDHIKE-2
+Financials,"30Y US Treasury yield on Dec 31, 2027?",247142,4962,KXUST30YRRATE27-27DEC31
+Financials,"10Y US Treasury yield on Dec 31, 2027?",225875,6764,KXUST10YRRATE27-27DEC31
+Economics,Fed funds rate at end of 2027,201691,94053,KXFEDFUNDSYEAR-28JAN01
+Economics,US real GDP growth in 2036?,158458,14691,KXGDPYEAR-36
+Economics,US real GDP growth in 2035?,157309,34380,KXGDPYEAR-35
+Economics,US real GDP growth in 2033?,156964,21607,KXGDPYEAR-33
+Economics,Fed decision in Dec 2027?,138815,14631,KXFEDDECISION-27DEC
+Economics,Fed funds rate after Dec 2027 meeting?,90982,87178,KXFED-27DEC
+Economics,US real GDP growth in 2032?,79122,8428,KXGDPYEAR-32
+Economics,US headline CPI inflation in December 2027,73436,16039,KXUSCPIYEAR-28FEB01
+Economics,US real GDP growth in 2028?,43931,11690,KXGDPYEAR-28
+Economics,US real GDP growth in 2030?,39900,7376,KXGDPYEAR-30
+Economics,US real GDP growth in 2034?,30515,17863,KXGDPYEAR-34
+Economics,US real GDP growth in 2027?,30303,16497,KXGDPYEAR-27
+Economics,US real GDP growth in 2029?,26937,7703,KXGDPYEAR-29
+Economics,US real GDP growth in 2031?,23621,9021,KXGDPYEAR-31
+Economics,US headline CPI inflation in December 2029,19772,4054,KXUSCPIYEAR-30FEB01
+Economics,Fed funds rate at end of 2036,14248,1371,KXFEDFUNDSYEAR-37JAN01
+Economics,Fed decision in Jan 2028?,10918,4684,KXFEDDECISION-28JAN
+Economics,US headline CPI inflation in December 2028,8461,1723,KXUSCPIYEAR-29FEB01
+Politics,Kevin Warsh out as Fed chair?,8197,5175,KXWARSHOUT-26JUL
+Economics,Next Fed rate cut?,6352,5440,KXFEDCUT-31DEC28
+Economics,Fed funds rate at end of 2031,4565,1848,KXFEDFUNDSYEAR-32JAN01
+Economics,Fed funds rate at end of 2033,4462,2616,KXFEDFUNDSYEAR-34JAN01
+Economics,Fed funds rate at end of 2030,4255,2440,KXFEDFUNDSYEAR-31JAN01
+Economics,Fed funds rate at end of 2028,4126,2375,KXFEDFUNDSYEAR-29JAN01
+Economics,US headline CPI inflation in December 2030,3950,1519,KXUSCPIYEAR-31FEB01
+Economics,Fed funds rate at end of 2029,3664,1766,KXFEDFUNDSYEAR-30JAN01
+Economics,US headline CPI inflation in December 2031,3521,791,KXUSCPIYEAR-32FEB01
+Economics,Fed funds rate at end of 2035,2489,1308,KXFEDFUNDSYEAR-36JAN01
+Economics,Fed funds rate at end of 2032,2209,1010,KXFEDFUNDSYEAR-33JAN01
+Economics,Fed funds rate at end of 2034,2166,1274,KXFEDFUNDSYEAR-35JAN01
+Economics,US headline CPI inflation in December 2034,2107,585,KXUSCPIYEAR-35FEB01
+Economics,US headline CPI inflation in December 2036,1712,609,KXUSCPIYEAR-37FEB01
+Economics,US headline CPI inflation in December 2035,1655,327,KXUSCPIYEAR-36FEB01
+Economics,US headline CPI inflation in December 2033,910,272,KXUSCPIYEAR-34FEB01
+Economics,US nominal GDP growth in 2036,605,556,KXNOMGDPGROWTH-37JAN28
+Climate and Weather,Will the average minimum temperature in Texas (DFW & IAH) fall below 20°F for at least 2 days within a 4-day span?,565,210,KXTXURI-28DEC31
+Economics,US headline CPI inflation in December 2032,348,185,KXUSCPIYEAR-33FEB01
+Economics,US nominal GDP growth in 2035,244,225,KXNOMGDPGROWTH-36JAN28
+Economics,Fed funds rate after Jan 2028 meeting?,216,211,KXFED-28JAN
+Politics,Will Congress pass a bill repealing any of Trump's tariffs?,123,123,KXTARIFFREPEAL-26NOV
+Economics,US nominal GDP growth in 2029,57,53,KXNOMGDPGROWTH-30JAN28
+Economics,Total Fed dissents in 2027,50,50,KXFEDDISSENTYEAR-27
+Economics,US nominal GDP growth in 2034,40,25,KXNOMGDPGROWTH-35JAN28
+Economics,US nominal GDP growth in 2028,14,9,KXNOMGDPGROWTH-29JAN28
+Economics,US nominal GDP growth in 2027,6,0,KXNOMGDPGROWTH-28JAN28
+Economics,US nominal GDP growth in 2030,0,0,KXNOMGDPGROWTH-31JAN28
+Economics,US nominal GDP growth in 2033,0,0,KXNOMGDPGROWTH-34JAN28
+Economics,US nominal GDP growth in 2032,0,0,KXNOMGDPGROWTH-33JAN28
+Economics,US nominal GDP growth in 2031,0,0,KXNOMGDPGROWTH-32JAN28
+Elections,2029 GDP growth × 2028 winner,0,0,KXGDPPARTYCOMBO-30MAR
+Elections,2029 inflation × 2028 winner,0,0,KXCPIPARTYCOMBO-30MAR
+Elections,Vermont Senate Lamoille winner? (2028),0,0,KXSTATELEGVT-28NOV07VTSLAM
+Elections,Vermont House Lamoille-3 winner? (2028),0,0,KXSTATELEGVT-28NOV07VTHL3
+Politics,Iran nuclear deal × WTI at end of 2027,0,0,KXIRANWTICOMBO-28JAN
