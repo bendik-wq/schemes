@@ -22,7 +22,7 @@ For Josh:
 - "You've probably noticed a few owners in your patch heading for 65 with nobody lined up to take over. What's less obvious is what that does to the price and the terms."
 
 ### 1.2 Future pacing
-**What it does:** puts the reader at a specific point in the future and has them judge the decision from there. For operators, make it a dated, operational picture with the work and the risk included. No beach.
+**What it does:** puts the reader at a specific point in the future and has them judge the decision from there. For operators: dated, operational, work and risk included.
 
 From the file:
 - "Imagine, for a moment, that it's a month from today..."
@@ -34,7 +34,7 @@ For Josh:
 - "Just suppose the owner down the road sells to a roll-up instead. Picture your next tender against a competitor with twice your balance sheet."
 
 ### 1.3 Story methods
-**What it does:** a story gets past "that won't work for me" better than an argument does. The file names three types: first person, endorsement and future-paced.
+**What it does:** a story beats an argument against "that won't work for me". Three types: first person, endorsement, future-paced.
 
 From the file:
 - "First person story: Where you talk about how you used a product or service to get the result."
@@ -69,10 +69,9 @@ From the file:
 
 For Josh:
 - "When you run your own numbers on a target, start from the last three years of actual EBITDA, not the seller's forecast."
-- "Since you've read this far, I'll assume the idea doesn't strike you as mad. So let's talk about terms."
 
 ### 1.6 Agreement framing
-**What it does:** builds momentum out of things the reader already agrees with. The file does this with tag questions to create a "yes trance". The B2B version states the obvious plainly and lets the reader nod. Leave the tag off.
+**What it does:** builds momentum out of things the reader already agrees with. The file uses tag questions for a "yes trance". The B2B version states the obvious and leaves the tag off.
 
 From the file:
 - "Use statements at the beginning of the ad copy that your prospects already know to be true. This creates trust right away."
@@ -95,7 +94,6 @@ From the file:
 
 For Josh:
 - "Let me show you what this looks like on one page: price, what's paid at settlement, what's paid out of the target's own cash flow, and what's left for you."
-- "Get a feel for it before you sign anything. Walk the site, sit in on a Monday toolbox meeting, and listen to how the staff talk about the owner."
 
 ### 1.8 P.S. closers
 **What it does:** the P.S. is often what gets read last, or first. Use it to restate one point and offer one low-pressure next step. The file's "but/however" move works when what follows is true and useful.
@@ -122,10 +120,9 @@ From the file:
 For Josh:
 - "The 3 numbers a bank checks before it funds senior debt on an acquisition"
 - "How to tell if a seller's add-backs are real or wishful"
-- "What to do when the seller wants all cash at settlement"
 
 ### 1.10 Guarantee framing
-**What it does:** lowers the risk the reader sees. Never guarantee an outcome. You can't promise a deal will close, a price or a return. What you can be honest about is process: what you'll do, what it costs, and what happens if a deal doesn't go ahead. Only say it if it's in the engagement terms.
+**What it does:** lowers the risk the reader sees. Never guarantee an outcome (closing, price, return). Be honest about process instead: what you'll do, what it costs, what happens if a deal doesn't proceed. Only if it's in the engagement terms.
 
 From the file:
 - "What would be the best way for us to prove this (product or service) really does what we say? THAT'S what we'll do for you..."
@@ -184,12 +181,11 @@ For Josh:
 | **Trance and unconscious-mind lines:** "Now I want your unconscious mind to listen very carefully...", "And you will sink deeper and deeper...", "When you're lying in bed tonight, you will think of all the benefits of buying our product." | Creepy and obviously manipulative. It would wreck Josh's credibility. |
 | **Telling them how they feel:** "Your feeling of...is slowly vanishing away as you come closer to ordering..." | Presumptuous. "You might be wondering" is fine. Telling them what they feel isn't. |
 | **Ads dressed as articles:** "A key to getting your ad read is making your ad's headline not look like a headline and your ad not look like an ad." | Teaching content is fine. Presenting a pitch as independent editorial isn't. Always make the call to action and who's behind the piece clear. |
-| **Wealth and payback claims:** "Dear Future Millionaire,", "Make Money…", "Just one of these (benefits) will pay for your purchase many times over." | These imply income outcomes. Show real deal maths and let the reader draw their own conclusion. |
-| **Tax claims:** "Remember, this purchase could be tax detectable." | Tax treatment is for the client's accountant, not marketing copy. |
+| **Wealth and payback claims:** "Dear Future Millionaire,", "Make Money…", "Just one of these (benefits) will pay for your purchase many times over.", "Remember, this purchase could be tax detectable." | Implied income and tax outcomes. Show real deal maths; leave tax to the accountant. |
 | **Assertion and shouting:** "Obviously you can see how using this Hypnotic Swipe File will clearly make you more money...", "I'm ready to EXPLODE!" | Asserting instead of showing makes a sceptic look for the hole. Wrong voice, and no exclamation marks. |
 | **Testimonial padding:** "We have over ( ) pages of testimonials, here is just small sample of them:" | Only if it's literally true. Testimonials must be real, consented and representative. |
 
-If a piece talks about funding structures or returns in any detail, get it checked against the relevant financial-services and advertising rules before it's published. This guide is not legal advice.
+Anything detailing funding structures or returns gets a compliance check before publishing. This guide is not legal advice.
 
 ---
 
@@ -213,7 +209,7 @@ If a piece talks about funding structures or returns in any detail, get it check
 - [ ] No tag questions ("...don't you?"), no "STOP", no "-ly" assertions.
 - [ ] Zero exclamation marks. Count them.
 - [ ] More numbers than adjectives in any paragraph that makes a claim.
-- [ ] Read it aloud as Josh talking to an owner over coffee. Cut anything he wouldn't say.
+- [ ] Read it aloud as Josh over coffee with an owner. Cut what he wouldn't say.
 
 **Compliance pass**
 - [ ] Every factual claim has a source, or is framed as experience ("in deals we've worked on") or as opinion.
@@ -221,6 +217,6 @@ If a piece talks about funding structures or returns in any detail, get it check
 - [ ] No promised outcomes, returns, timelines, prices or tax results.
 - [ ] Risk is stated in the same tone as the upside.
 - [ ] The CTA is low-pressure, with no deadline, scarcity or bonus unless it's literally true.
-- [ ] It's clear who wrote the piece and that G&L offers a paid service.
+- [ ] It's clear G&L wrote it and offers a paid service.
 
 **Final test:** would a sceptical owner who's already bought a business forward this to their accountant without feeling embarrassed? If not, take out the last device you added.
