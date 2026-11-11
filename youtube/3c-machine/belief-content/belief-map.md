@@ -1,0 +1,20 @@
+# Belief map: the 12 beliefs that stop $1M+ owners from buying
+
+Each long-form piece shifts one belief. Each row lists the belief the owner holds now, the belief to install, the distinction that does the work ("X vs real X"), the proof we're allowed to use, and the identity line the piece lands on.
+
+Proof comes only from `../source-owners-academy.md`, the landing page (apply.grosfjeld-li.com) and clearly labelled illustrative examples. Keep relationships exact: Cam, Jason Nagy and Elliot are friends, Jy Kingston is a student, Saul is an Owners Academy member, and Christian Dawes is an example.
+
+| # | Old belief | New belief | The distinction | Proof / mechanism | Identity line |
+|---|---|---|---|---|---|
+| 1 | "Growth means winning more customers." | The fastest growth is buying profit that's already built. | Growing vs compounding | Landing example: $500K profit, $1.5M price, lender + seller note + working-capital line; 1.5× DSCR | Owners who buy growth, not grind for it |
+| 2 | "You need money to buy a business." | You need a structure the business can carry. | Paying for a business vs funding one | Josh: two businesses, 100% seller-financed; first deal 7 yrs at 4%, 9-month holiday, no deposit; Cam: 2 deals in 23 days | Owners who think in structures, not savings |
+| 3 | "Sellers sell to the highest bidder." | Retiring owners sell to the buyer they trust, on terms that look after them. | The highest offer vs the best offer | Elliot: ~40 offers, 3 LOIs at 100% seller finance, e.g. $350K/yr for life on $500K NOI; the generation of retiring owners | The obvious successor |
+| 4 | "The bank won't lend, or it'll want my house." | Banks lend to cash flow and security, not to your past. | Borrowing vs being lent to | Christian Dawes: $2.4M funded 100% (over-financed); 60/40 with no personal guarantee; Jason Nagy 60/40 | The buyer a bank wants to fund |
+| 5 | "I'm an operator, not a dealmaker." | Operators make the best buyers. Deal skill can be borrowed. | Experience vs credibility | Josh at 25, no track record, borrowed one through a board found on LinkedIn, still owns 73%; Jy's board in under 30 days | You're already 80% of a buyer |
+| 6 | "A second business will double my hours." | Buying is what forces you to build the layer that frees you. | Owning a job vs owning a business | Integration planning from day one; management layer; the four-week test | Owner of a group, not a job |
+| 7 | "Debt is dangerous." | Debt without a ratio is dangerous. Debt at 1.5× is a tool. | Debt vs serviceable debt | 1.5× DSCR; profit ÷ 1.5 = the most it can repay; never prop it up with the first business | The owner who knows the number |
+| 8 | "Investors are the safe way to fund growth." | Investors are the most expensive money you'll ever take. | Dilution vs debt | Debt over dilution: investors cost equity, control and the exit; months per cheque; a bank is set up to lend | Owner who keeps the exit |
+| 9 | "My business is worth what it's worth." | Value is a multiple, and you can change the multiple. | Profit vs value | Multiple arbitrage: buy around 4×, the group sells at 8, 10, 15×; Jason Nagy: $5.5M zero down, $200M PE exit after 7 years | The owner who builds the number at the end |
+| 10 | "I'll do it when the timing is right." | Not deciding is a decision, and it has a cost. | Active risk vs passive risk | Decide at 60%; Josh: 4 failed deals, ~1,000 calls, then the first; "there is never a perfect moment" | The owner who decides before they feel ready |
+| 11 | "Good businesses come through brokers." | The best businesses are bought before they're listed. | Finding deals vs making them | "Have you ever thought about selling?"; Saul's cold call to a signed NDA on a $3.8M business (in DD, not closed) | The buyer who asks first |
+| 12 | "I can work this out myself from free content." | Information isn't the bottleneck. Decisions and someone to ask are. | Knowing vs doing | "How many offers have you sent?"; time, money, energy; the 90-day path to a signed LOI; 7-day refund | The owner who acts |
