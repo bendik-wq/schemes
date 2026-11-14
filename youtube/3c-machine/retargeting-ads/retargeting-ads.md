@@ -9,7 +9,7 @@ VIDEO SCRIPT (Josh to camera, 45-75 seconds, short punchy lines):
 Plenty of buyers do ten deals and can’t make a single one profitable. Ten signed. Ten headaches. Zero group value.
 The reason is boring. They buy anything that breathes. They overpay on adjusted earnings. They take on debt the target can’t carry. Then they prop it up with their first business.
 One deal structured right beats ten done wrong.
-The test is brutal. Cash flow after debt service must cover at least 1.5 times. No exceptions. If it doesn’t, walk.
+The test is brutal. Cash flow must cover debt service at least 1.5 times. No exceptions. If it doesn’t, walk.
 The reward is not vanity deal count. It’s a group bought at one number and worth a bigger number.
 If you own a business doing a million plus and want to buy a competitor in your own vertical, apply. We’ll see if your next deal can be the one that compounds.
 If not, I’ll tell you straight.
@@ -31,7 +31,7 @@ HOOKS (first 3 seconds, 3 variants):
 - If the target’s cash flow covers debt service at less than 1.5 times, you are not buying a business. You are buying a leak.
 
 VIDEO SCRIPT (Josh to camera, 45-75 seconds, short punchy lines):
-Most first acquisitions don’t fail at the closing table. They fail inside your own business.
+A lot of first acquisitions don’t fail at the closing table. They fail inside your own business.
 First, fake add-backs. The owner adds back every personal expense, then you pay three to five times on profit that doesn’t exist.
 Second, debt the target can’t carry. A bank might lend, but if free cash flow doesn’t cover debt service at 1.5 times minimum, you bleed.
 Third, you prop up the new business with your first one. That is not growth. That is a donation.
@@ -40,7 +40,7 @@ The 1.5x rule stops the bleeding before it starts. Free cash flow must cover eve
 If you own a business doing a million plus and want to buy a competitor without lighting your first business on fire, apply. We’ll look at the numbers and tell you straight.
 
 PRIMARY TEXT (Meta, 80-150 words):
-Most six and seven figure losses don’t come from one bad decision. They come from four.
+A lot of six and seven figure losses don’t come from one bad decision. They come from four.
 Owners overpay on fake add-backs, take debt the target can’t carry, prop up the new business with their first one, and lose the key staff who knew how to run it.
 The fix is simple and boring: free cash flow must cover debt service at a minimum of 1.5 times. If it doesn’t, you walk. That single rule stops most of the damage before it starts.
 Josh Li helps owners of $1M+ businesses buy a competitor or a retiring owner’s business with little to no money down, using seller finance, seller rollover and bank debt. Aiming at a signed letter of intent in 90 days. Apply for a call. 7-day money-back guarantee. Not financial advice.
@@ -90,7 +90,7 @@ If your business does a million plus, you've got cash sitting there, and you wan
 
 PRIMARY TEXT (Meta, 80-150 words):
 Cash in the bank is not a strategy. It’s a slow bleed against inflation and a missed shot at SMB cash flow.
-Josh Li helps owners with cash in the bank use structure, not cash, to buy businesses. Seller finance, seller rollover and bank debt let the business pay for itself out of its own cash flow. The 1.5x debt service cover keeps the debt safe. Debt over dilution means you don’t give away equity or the exit.
+Josh Li helps owners with cash in the bank use structure, not cash, to buy businesses. Seller finance, seller rollover and bank debt let the business pay for itself out of its own cash flow. The 1.5x debt service cover keeps the repayments covered with a buffer. Debt over dilution means you don’t give away equity or the exit.
 Your cash stays liquid for the next deal. You keep control. You keep the exit.
 Apply now for a call. Josh helps owners of businesses doing $1M+ buy a competitor or retiring owner’s business with little to no money down, aiming at a signed letter of intent in 90 days. 7-day money-back guarantee. Not financial advice.
 
@@ -107,7 +107,7 @@ HOOKS (first 3 seconds, 3 variants):
 VIDEO SCRIPT (Josh to camera, 45-75 seconds, short punchy lines):
 You’ve watched. You’ve visited the application page. You didn’t apply.
 That is not a crime. It is a delay.
-Another year of watching costs you far more than two minutes. Your competitor gets bought by someone else. A retiring owner in your industry picks another buyer. You stay at the same ceiling.
+Another year of watching can cost you far more than two minutes. Your competitor can get bought by someone else. A retiring owner in your industry can pick another buyer. You stay at the same ceiling.
 The application takes about two minutes. If we can help, I’ll show you how to buy a competitor or a retiring owner’s business with little to no money down, using seller finance, seller rollover and bank debt, aiming at a signed letter of intent in 90 days.
 If we can’t help, we’ll tell you straight.
 There is a 7-day money-back guarantee. There is no fake deadline. There is just the cost of another year of watching.
@@ -115,8 +115,8 @@ Apply now.
 
 PRIMARY TEXT (Meta, 80-150 words):
 You’ve watched Josh’s videos. You’ve been to the page. You haven’t applied. That’s the pattern.
-Another year of watching is not neutral. It costs you the competitor who gets bought by someone else. It costs you the retiring owner who chooses another buyer. It costs you another year at the same revenue.
-The application takes about two minutes. After that, a call with Josh to see if a structured acquisition fits. If it can help, he’ll show you how to buy with little to no money down using seller finance, seller rollover and bank debt, with debt service covered at 1.5x. If it won’t help, he’ll tell you straight.
+Another year of watching is not neutral. It can cost you the competitor who gets bought by someone else. It can cost you the retiring owner who chooses another buyer. It costs you another year at the same revenue.
+The application takes about two minutes. After that, a call with Josh’s team to see if a structured acquisition fits. If it can help, they’ll show you how to buy with little to no money down using seller finance, seller rollover and bank debt, with debt service covered at 1.5x. If it won’t help, they’ll tell you straight.
 7-day money-back guarantee. No fake deadline. Just the cost of waiting. Not financial advice.
 
 HEADLINE (max 40 characters): You watched. You haven’t applied.
